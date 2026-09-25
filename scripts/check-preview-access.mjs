@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+let calls=[],ok=true,redirect='';
+const window={};const context={window,parent:window,URLSearchParams,location:{search:'',replace:s=>redirect=s},fetch:async(path,options={})=>{calls.push({path,options});return {ok,json:async()=>ok?{student:{id:'private-student'}}:{error:'Invalid code'}};}};
+vm.runInNewContext(fs.readFileSync('public/preview-access.js','utf8'),context);
+assert.equal((await window.PreviewAccess.check()).id,'private-student');
+await window.PreviewAccess.enter('a-private-code');assert.equal(JSON.parse(calls.at(-1).options.body).code,'a-private-code');
+ok=false;await assert.rejects(window.PreviewAccess.enter('VANESSA-DEMO'),/Invalid code/);assert.equal(await window.PreviewAccess.check(),null);
+await assert.rejects(window.PreviewAccess.logout(),/Could not log out/);assert.equal(redirect,'');
+ok=true;await window.PreviewAccess.logout();assert.equal(calls.at(-1).options.method,'DELETE');assert.equal(redirect,'access.html?notice=logout');
+console.log('Access UI checks passed: server validation, invalid code handling and confirmed server logout.');

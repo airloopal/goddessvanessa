@@ -1,0 +1,1 @@
+CREATE INDEX `idx_education_enrolments_updated` ON `education_enrolments` (`updated_at`);

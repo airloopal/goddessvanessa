@@ -1,0 +1,101 @@
+/* Reuse the original interface and keep restored pages separate from course-editor chrome. */
+body{--face:Poppins,Arial,sans-serif}h1{font-family:Poppins,Arial,sans-serif;font-weight:700}.p-header{height:auto;min-height:92px}.application-layout{min-height:calc(100svh - 92px)}.application-main>p{color:var(--muted);font-size:17px}.choice-card{text-align:left;color:var(--ink)}.choice-card[aria-pressed=true]{border-color:var(--darkPink);background:#fcecf4}.choice-card[aria-pressed=true] .selection-mark{background:var(--darkPink);color:white}.choice-card .selection-mark{display:grid;place-items:center;padding:0}.introduction-image video{width:100%;height:100%;object-fit:cover}.introduction-image:after{display:none}.application-main .questions{display:block}.application-main .questions fieldset{background:transparent;border:0;border-radius:0;padding:0}.application-main .questions legend{padding:0}.application-main .field{display:block;font-weight:600;margin:22px 0}.application-main .field input{width:100%;padding:14px;border:1px solid #c6abb9;border-radius:12px}.restored-application .lesson-layout{max-width:1250px;padding:36px;margin:auto}.lesson-menu{background:var(--pink);border:0;border-radius:24px;padding:24px}.lesson-menu button[aria-current=true]{background:var(--ink);color:white}.access-page{min-height:calc(100svh - 92px)}.access-card{width:min(580px,100%)}.access-card .actions{flex-wrap:wrap}.access-card h1{font-size:38px}.dashboard-layout{min-height:calc(100svh - 92px)}.dashboard .p-header{padding:18px 4vw}.dashboard-links a{font-size:14px}.dashboard .dash-title h1{font-family:Poppins,Arial,sans-serif}.dashboard .signature-label{max-width:560px;margin-bottom:26px}.dashboard td{white-space:normal;min-width:140px}.dashboard td small{display:block;color:var(--muted)}.dashboard .admin-conversation{color:var(--ink)}.dashboard #admin-form{display:grid;gap:10px}.dashboard #admin-form .p-button{justify-self:end}.dashboard .conversation-list{display:block}.chat-shell{height:calc(100dvh - 92px)}.chat-shell .chat-header{flex-wrap:wrap}.chat-main{min-width:0}.chat-composer{margin:0}.chat-composer .p-button{flex-shrink:0}.chat-shell.dark .chat-header strong,.chat-shell.dark .chat-header small{color:var(--chat-ink)}.typing-bubble{display:flex;gap:5px;align-items:center;align-self:flex-start;width:58px;min-height:34px;padding:11px 13px;background:var(--bubble,#fff);border-radius:18px 18px 18px 4px;box-shadow:0 2px 8px #0001}.typing-bubble i{display:block;width:7px;height:7px;border-radius:50%;background:#9c6d86;animation:typing-dot 1.1s infinite}.typing-bubble i:nth-of-type(2){animation-delay:.15s}.typing-bubble i:nth-of-type(3){animation-delay:.3s}@keyframes typing-dot{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-4px);opacity:1}}#work-cover::backdrop{background:#201a20;backdrop-filter:blur(20px)}.dashboard-links .quiet,.dashboard-links .p-button{white-space:nowrap}.chat-warning{font-size:13px}#floating-chat .typing-bubble{background:#3a3b3c}.stat-grid{grid-template-columns:repeat(4,minmax(0,1fr))}@media(max-width:1000px){.dashboard .p-header{align-items:flex-start;flex-wrap:wrap}.stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-links{justify-content:flex-start}}@media(max-width:800px){.application-layout{display:block}.application-aside{padding:24px}.application-aside h2{font-size:28px;margin:12px 0 20px}.step-list{display:flex;gap:18px;overflow:auto}.step-list li{flex-shrink:0;font-size:13px}.aside-note{display:none}.application-main{padding:32px 22px}.restored-application .lesson-layout{padding:22px}.dashboard .demo-conversations{grid-template-columns:1fr}.dashboard .conversation-list{max-height:230px}.dashboard-links a:nth-child(2),.dashboard-links a:first-child{display:inline-flex}.chat-shell{grid-template-columns:1fr}.chat-sidebar{display:none}.chat-shell .chat-header{padding:14px}.chat-shell .chat-header .quiet{font-size:13px}.chat-composer{padding:12px}.messages{padding:20px}.header-note{display:none}}@media(max-width:480px){.choice-grid{grid-template-columns:1fr}.p-header{padding:16px 20px}.chat-shell{min-height:520px}.chat-composer{gap:8px}.chat-composer input{width:0}.chat-composer .p-button{padding:10px 16px}.stat-card strong{font-size:30px}.dashboard-links .quiet,.dashboard-links .p-button{font-size:13px}.step-list li{gap:8px}.access-card{padding:26px}.chat-header .chat-portrait{display:none}}@media(prefers-reduced-motion:reduce){.typing-bubble i{animation:none}.application-main{animation:none}}
+
+.chat-view .chat-shell{height:100dvh}.chat-view .chat-composer{padding:18px 22px}.chat-view .chat-header strong{font-size:16px}.chat-view .chat-shell.dark .messages{background-image:none;background-color:var(--chat-background)}.chat-view .chat-shell.light .messages{background-image:none;background-color:var(--chat-background)}.chat-view .chat-shell.dark .chat-session-note{color:var(--chat-ink)}.typing-bubble[hidden]{display:none!important}
+
+.agreement-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.agreement-option strong{font-size:30px}.agreement-options{border:0;padding:0;margin:28px 0}.agreement-options legend{font-size:20px;font-weight:700}.agreement-particulars p{font-size:14px}.terms-box{height:300px}.signature-label input:disabled{background:#f3edf0}.access-code-form{display:grid;gap:16px;margin:24px 0;padding-bottom:24px;border-bottom:1px solid var(--line)}#student-account-dialog .manage-options{display:grid;gap:12px}#close-account-dialog{float:right;min-width:42px}.dashboard .dash-title,.dashboard .stat-card,.dashboard .dash-card{animation:arrive .25s ease-out}.chat-view .account-options{z-index:20}.entry-payment-status{background:#f3e3eb!important;color:#7a2850!important}@media(max-width:560px){.agreement-grid{grid-template-columns:1fr}.participant-fields{grid-template-columns:1fr}}@media(prefers-reduced-motion:reduce){.dashboard .dash-title,.dashboard .stat-card,.dashboard .dash-card{animation:none}}
+
+/* Match the preserved review/signature screenshot. */
+#prototype-terms.terms-box{height:390px;max-height:60dvh}
+#typed-preview.signature-visual{font:italic 28px/1.55 Georgia,serif;color:#a92360;border-bottom:1px solid var(--line);padding:15px 0;margin:0}
+#review-signature{height:52px;background:#fff;border:1px solid #c6abb9;border-radius:12px;font-size:14px;padding:14px}
+#signature-help,#scroll-hint{font-size:14px;line-height:1.55;color:#6c5b64}
+#signature-help{margin:14px 0 12px}
+#review-age{margin-top:3px;border-radius:0}
+#learning-status:empty{display:none}
+#enrol-now:disabled{background:#171316;border-color:#171316;opacity:.42}
+.application-main .session-note{font-size:12px;line-height:1.55;margin:25px 0 0;color:#6c5b64}
+@media(max-width:680px){#prototype-terms.terms-box{height:350px}.step-actions{flex-wrap:wrap}#enrol-now{margin-left:auto;max-width:100%}}
+.entry-review-heading{display:flex!important;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}.entry-review-heading h2{margin:0}.entry-review-heading .quiet{font-size:14px}.price-breakdown .entry-review-heading{border-bottom:0;padding:0 0 20px}#entry-lightbox{width:min(650px,calc(100vw - 28px));max-height:calc(100dvh - 32px);overflow:auto;padding:28px;border-radius:24px;box-shadow:0 24px 90px #30162540;animation:arrive .2s ease-out}#entry-lightbox::backdrop{background:#24132166;backdrop-filter:blur(5px)}.entry-lightbox-top{display:flex;justify-content:space-between;align-items:center;gap:10px}.entry-lightbox-top .overline{margin-right:auto}.entry-lightbox-top .quiet{font-size:13px;padding:9px 12px;min-height:42px}.entry-lightbox-top .lightbox-close{padding:8px;min-width:40px;font-size:24px;border:0}#entry-lightbox h2{font-family:Poppins,Arial,sans-serif;font-size:28px;margin:24px 0 16px}.entry-payment-card{padding:24px;border:1px solid var(--line);border-radius:20px;background:#fff;display:flex;flex-direction:column;gap:8px}.entry-payment-card strong{font-size:40px;line-height:1.2}.entry-payment-card small{font-size:14px;color:var(--muted)}.entry-lightbox-actions{display:flex;justify-content:space-between;gap:12px;margin-top:24px}#entry-lightbox .entry-lightbox-actions .p-button{width:auto;margin:0}#entry-lightbox-status:empty{display:none}#entry-lightbox video,.verification-reply-form video{width:100%;max-height:360px;background:#21131c;border-radius:16px;margin:18px 0}.verification-state{display:inline-flex;border-radius:30px;padding:7px 12px;background:#f9e1ed;color:#81324f;font-size:14px}.verification-state.ready{background:#e4f1e9;color:#215d3d}.verification-response{white-space:pre-wrap}.verification-reply-form textarea{display:block;width:100%;min-height:100px;padding:12px;margin:8px 0 18px;border:1px solid var(--line);border-radius:12px;font:inherit}.verification-reply-form [role=status]{font-size:14px}.verification-request-grid{align-items:start}.verification-request-grid .dash-card{min-width:0}.verification-request-grid input{min-width:0}#verification-panel{margin:20px 0}#verification-back{margin-top:16px}@media(max-width:600px){#entry-lightbox{padding:20px}.entry-lightbox-top{flex-wrap:wrap}.entry-lightbox-top .overline{flex-basis:100%}.entry-lightbox-top .lightbox-close{position:absolute;right:12px;top:12px}.entry-lightbox-actions{flex-wrap:wrap}.entry-lightbox-actions .p-button{flex:1}}@media(prefers-reduced-motion:reduce){#entry-lightbox{animation:none}}
+/* Shared student/admin conversation controls. */
+.chat-view .chat-header{justify-content:flex-start;gap:12px}
+.chat-view .chat-header>div:nth-child(2){margin-right:0;min-width:0}
+.chat-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-left:auto;flex-wrap:wrap}
+.chat-view .chat-header-actions #mobile-theme{margin-left:0}
+.chat-header-actions .account-dropdown{margin:0}
+.chat-view .chat-header-actions .quiet{min-height:40px;padding:8px 12px;font-size:14px;white-space:nowrap}
+.dashboard .admin-conversation{--chat-background:#fce7f0;--bubble:#fff;--chat-ink:#171316;background:linear-gradient(160deg,var(--chat-background),var(--bubble))}
+.dashboard .admin-chat-heading{justify-content:flex-start;gap:12px;background:#fff;border-bottom:1px solid #b8869e22;padding:20px 28px}
+.dashboard .admin-chat-heading .chat-header-person{margin-right:auto}
+.dashboard .admin-chat-heading small{display:block;font-size:13px;margin-top:5px;color:var(--muted)}
+.dashboard .admin-conversation #admin-thread{padding:20px clamp(18px,3vw,40px);gap:16px;min-height:280px;max-height:55dvh;overflow:auto}
+.dashboard .admin-conversation .message{margin:0;max-width:min(78%,560px);font-size:16px;line-height:1.55;border-radius:22px 22px 22px 6px}
+.dashboard .admin-conversation .message.outgoing{background:#211b20;color:#fff;border-radius:22px 22px 6px 22px}
+.admin-chat-bottom{padding:16px 22px;background:#fff;border-top:1px solid var(--line)}
+.admin-media-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.admin-media-actions .quiet{font-size:14px;min-height:40px;padding:8px 12px;gap:7px}
+.dashboard #admin-form.chat-composer{display:flex;align-items:center;gap:10px;padding:0;border:0;background:transparent}
+.dashboard #admin-form.chat-composer input{flex:1;min-width:0;border-radius:24px;background:var(--chat-background);color:var(--chat-ink);border:1px solid transparent;padding:15px 20px;height:54px}
+.dashboard #admin-form.chat-composer .p-button{border-radius:50%;width:52px;min-width:52px;height:52px;min-height:52px;padding:14px;gap:0;flex-shrink:0;font-size:0;background:#211b20;border-color:#211b20}
+#media-request-status{font-size:12px;color:var(--muted);margin:10px 0 0}
+#access-new-code{margin-top:14px}.saved-learning{margin-top:26px;border-top:1px solid var(--line);padding-top:20px}.saved-learning summary{font-size:14px;cursor:pointer}.saved-learning .quiet{margin:8px 6px 0 0;font-size:14px}
+@media(max-width:600px){.chat-view .chat-header-actions{gap:6px;justify-content:flex-start;margin-left:0;flex-basis:100%}.chat-view .chat-header-actions .quiet{font-size:13px}.dashboard .admin-chat-heading{padding:16px}.admin-chat-bottom{padding:14px}.admin-media-actions .quiet{font-size:12px;padding:8px;gap:5px}.dashboard .admin-conversation .message{max-width:90%}}
+/* Connected accounts retain the established chat surfaces and typography. */
+#student-code-dialog{width:min(540px,calc(100vw - 32px));border:1px solid #ead6e0;border-radius:24px;padding:28px;color:var(--ink,#211920);background:#fff9fc}
+#student-code-dialog::backdrop{background:#21131c80;backdrop-filter:blur(4px)}
+#student-code-dialog input{width:100%;font-size:14px;letter-spacing:.03em}
+.student-chat-list .floating-conversation-row{width:100%;text-align:left;gap:10px}
+.student-chat-list small{display:block;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+.conversation-list .student-chat-list button{display:flex;align-items:center}
+.chat-header-actions{flex-wrap:wrap}
+.chat-attachment-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 22px 0;flex-shrink:0;color:var(--chat-ink,var(--ink));font-size:14px}
+.chat-attachment-controls .quiet,.chat-attachment-controls .p-button{min-height:36px;padding:7px 12px;font-size:13px}
+.chat-attachment-controls .attachment-status{width:100%;font-size:12px;opacity:.8}
+.chat-attachment-controls .attachment-status:empty{display:none}
+.attachment-selection{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.message-attachment{display:grid;gap:8px;max-width:min(320px,65vw)}
+.message-attachment img,.message-attachment video{width:100%;max-height:300px;object-fit:contain;border-radius:12px}
+.message-attachment audio{width:min(300px,65vw)}
+.message-attachment a{color:inherit;font-size:12px;overflow-wrap:anywhere}
+.admin-chat-bottom .chat-attachment-controls{padding:6px 0}
+.access-code-help{position:relative;align-self:flex-start;margin:8px 0 0 14px;flex-shrink:0}
+.access-code-info{display:grid;place-items:center;width:36px;height:36px;padding:0;border:1px solid #e6bdcf;border-radius:50%;background:#fcecf4;color:#9c2756;cursor:pointer}
+.access-code-info:hover,.access-code-info:focus-visible{background:#f6c5db;outline:2px solid #9c2756;outline-offset:3px}
+.access-code-tooltip{position:absolute;z-index:50;right:0;top:100%;width:min(350px,calc(100vw - 48px));padding:20px;background:#fff9fc;border:1px solid #e6bdcf;border-radius:18px;box-shadow:0 14px 40px #32182724;color:#291e25;font-size:14px;line-height:1.6;font-weight:400}
+.access-code-tooltip[hidden]{display:none}
+.access-code-tooltip strong{display:block;font-size:15px}
+.access-code-tooltip ol{padding-left:20px;margin:12px 0}
+.access-code-tooltip li+li{margin-top:7px}
+.access-code-tooltip p{font-size:13px!important;color:#725260!important;margin:12px 0 0!important}
+/* Dashboard layout uses the actual header height; clearance belongs to content, not the sidebar. */
+body.restored-dashboard{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
+.restored-dashboard>.p-header{flex-shrink:0}
+.restored-dashboard .dashboard-layout{flex:1;min-height:0;padding-bottom:0;align-items:stretch}
+.restored-dashboard #dashboard-nav{align-self:stretch}
+.restored-dashboard #dashboard-main{padding-bottom:100px}
+.restored-dashboard .connections-card{margin-top:20px}
+.restored-dashboard .dash-card>p:first-child{margin-top:0}
+.restored-dashboard .dash-card>p:last-child{margin-bottom:0}
+/* Shared field treatment for newly connected forms without changing switches or choice controls. */
+.restored-dashboard :where(input:not([type=checkbox]):not([type=radio]):not([type=hidden]),select,textarea){box-sizing:border-box;max-width:100%;min-width:0;border:1px solid #dec5d1;border-radius:12px;background:#fffafd;color:#211920;padding:12px 14px;font:inherit;font-size:14px;line-height:1.5;transition:border-color .15s,box-shadow .15s}
+.restored-dashboard :where(input,textarea)::placeholder{color:#796773;opacity:1}
+.restored-dashboard :where(input,select,textarea):focus-visible{outline:2px solid #9c2756;outline-offset:2px;border-color:#9c2756}
+.restored-dashboard :where(select),.restored-chat .chat-sidebar select{appearance:none;padding-right:40px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23725260' stroke-width='1.7'%3E%3Cpath d='m5 8 5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-size:18px;background-position:right 14px center}
+.restored-dashboard input[type=file]{width:100%;padding:8px;background:#fff9fc}
+.restored-dashboard input[type=file]::file-selector-button{font:inherit;font-size:13px;font-weight:500;padding:9px 13px;margin-right:12px;border:0;border-radius:8px;background:#f6c5db;color:#211920;cursor:pointer}
+.conversation-search{display:flex;align-items:center;gap:10px;min-height:46px;width:100%;box-sizing:border-box;padding:0 14px;border:1px solid #ead6e0;border-radius:24px;background:#f7f0f4;color:#806775;margin:0 0 18px}
+.conversation-search svg{flex-shrink:0}
+.restored-dashboard .conversation-search input{display:block;flex:1;width:100%;min-width:0;margin:0;padding:11px 0;border:0;border-radius:0;background:transparent;color:inherit;font-size:14px;box-shadow:none;outline:none}
+.conversation-search:focus-within{outline:2px solid #9c2756;outline-offset:2px}
+#student-picker{max-width:540px;margin:22px 0}
+#student-picker h2,.conversation-list>h2{margin:0 0 16px}
+.conversation-empty{padding:18px 8px;margin:0;color:#796773;font-size:14px;line-height:1.6}
+#floating-chat .conversation-search{border-color:transparent;background:#3a3b3c;color:#e4e6eb;margin:0 0 8px;min-height:40px}
+#floating-chat .conversation-search input{font-size:14px;padding:9px 0;color:#e4e6eb}
+#floating-chat .conversation-search input::placeholder{color:#b0b3b8}
+#floating-chat .conversation-search:focus-within{outline-color:#f2a8cc}
+#floating-chat .conversation-empty{color:#b0b3b8;padding:22px 10px 28px;text-align:center}
+#floating-chat #floating-students{padding:0 4px}
+#floating-chat #floating-see-all{width:calc(100% + 24px);margin-left:-12px;padding:14px 16px;border-top:1px solid #393a3b}
+@media(max-width:700px){.restored-dashboard #dashboard-main{padding:24px 18px 100px}.restored-dashboard .dash-columns{grid-template-columns:1fr;gap:18px}.restored-dashboard .connections-card{margin-top:18px}.restored-dashboard :where(input:not([type=checkbox]):not([type=radio]):not([type=hidden]),select,textarea){font-size:16px}}
+@media(prefers-reduced-motion:reduce){.restored-dashboard :where(input,select,textarea){transition:none}}

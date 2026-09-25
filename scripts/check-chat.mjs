@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+let interval,stored=[],requests=[],fail=false;
+const window={};const context={window,parent:window,location:{search:''},URLSearchParams,crypto,document:{body:{classList:{contains:()=>false}},hidden:false,addEventListener(){}},setInterval:fn=>interval=fn,Date,Map,Set,eduEscape:s=>s.replaceAll('<','&lt;'),fetch:async(path,options)=>{requests.push({path,options});if(fail)return {ok:false,status:503,json:async()=>({error:'Try again'})};let data={};if(path.includes('/messages')&&options.method==='GET')data={messages:stored,states:[],online:true,hasMore:false};if(path.endsWith('/messages')&&options.method==='POST'){const b=JSON.parse(options.body),m={id:b.id,text:b.text,seq:stored.length+1,from:'client',at:Date.now()};stored.push(m);data={message:m};}return {ok:true,json:async()=>data};}};
+vm.createContext(context);vm.runInContext(fs.readFileSync('public/restored-chat.js','utf8'),context);context.PreviewChat=window.PreviewChat;
+await window.PreviewChat.select('student-a');assert.equal(window.PreviewChat.online(),true);
+await window.PreviewChat.send('client','<hello>','123');assert.equal(window.PreviewChat.all().length,1);assert.equal(requests.find(r=>r.options.method==='POST').options.headers['X-Chat-Role'],'student');
+assert.match(vm.runInContext("previewThread('client')",context),/&lt;hello>/);
+fail=true;await assert.rejects(window.PreviewChat.send('client','not sent','456'),/Try again/);assert.equal(window.PreviewChat.all().length,1);
+fail=false;stored=[];await window.PreviewChat.select('student-b');assert.equal(window.PreviewChat.all().length,0);
+console.log('Chat UI transport checks passed: server delivery, explicit student role, escaped content, failed-send handling and conversation isolation.');

@@ -8,7 +8,7 @@ async function visualAPI(request,env,url,userId){
  if(request.method!=='PUT')return json({error:'Method not allowed'},405);
  if(request.headers.get('origin')!==url.origin)return json({error:'Request origin rejected'},403);
  if(!request.headers.get('content-type')?.startsWith('application/json'))return json({error:'JSON required'},415);
- if(published&&request.headers.get('oai-authenticated-user-email')?.toLowerCase()!==EDITOR_OWNER_EMAIL)return json({error:'Only the site owner can publish changes.'},403);
+ if(published&&request.headers.get('oai-authenticated-user-email')?.toLowerCase()!==EDITOR_OWNER_EMAIL)return json({error:'Only Goddess can publish changes.'},403);
  const raw=await request.text();if(raw.length>900000)return json({error:'This version is too large. Export it before reducing its size.'},413);
  let data;try{data=JSON.parse(raw);}catch{return json({error:'Invalid JSON'},400);}
  if(!data||!Number.isInteger(data.revision)||data.revision<0||!validVisual(data.config))return json({error:'Invalid editor version'},400);

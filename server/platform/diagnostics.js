@@ -14,7 +14,7 @@ export async function recordFailure(DB,{path,status,requestId,issue}){
 }
 async function bounded(fn){let timer;try{return await Promise.race([Promise.resolve().then(fn),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('timeout')),8000);})]);}finally{clearTimeout(timer);}}
 export async function statusAPI(request,env,{database,storage}){
- if(!request.headers.get('oai-authenticated-user-id')||request.headers.get('oai-authenticated-user-email')?.toLowerCase()!==ownerEmail)return json({error:'Owner access required.'},403);
+ if(!request.headers.get('oai-authenticated-user-id')||request.headers.get('oai-authenticated-user-email')?.toLowerCase()!==ownerEmail)return json({error:'Goddess access required.'},403);
  if(request.method!=='GET')return json({error:'Method not allowed.'},405);
  if(new URL(request.url).pathname==='/api/admin/changelog')return json({release,changelog});
  const checks=[],started=Date.now();let DB,events=[],historyAvailable=false,counts=null;
@@ -28,9 +28,9 @@ export async function statusAPI(request,env,{database,storage}){
   try{counts=await bounded(()=>DB.prepare("SELECT (SELECT COUNT(*) FROM education_enrolments) AS applications,(SELECT COUNT(*) FROM chat_students WHERE status='active') AS active_students,(SELECT COUNT(*) FROM chat_messages) AS messages").first());}catch{}
  }
  const emailConfigured=!!env.RESEND_API_KEY&&typeof env.EMAIL_FROM==='string'&&!/[\r\n]/.test(env.EMAIL_FROM)&&/[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+/.test(env.EMAIL_FROM);
- checks.push({id:'email',name:'Admin-issued code emails',state:emailConfigured?'unverified':'attention',detail:emailConfigured?'Sender settings are present. Delivery has not been tested; check the result when Vanessa issues a code.':'Email delivery is not configured. Vanessa can copy and share codes privately.'});
- checks.push({id:'admin',name:'Admin sign-in',state:'ok',detail:'Your owner session is verified. This does not test a new sign-in email or its redirect.'});
- checks.push({id:'access',name:'Student access',state:'info',detail:'Only the administrator issues codes. An application session does not open chat.'});
+ checks.push({id:'email',name:'Goddess-issued code emails',state:emailConfigured?'unverified':'attention',detail:emailConfigured?'Sender settings are present. Delivery has not been tested; check the result when Vanessa issues a code.':'Email delivery is not configured. Vanessa can copy and share codes privately.'});
+ checks.push({id:'admin',name:'Goddess sign-in',state:'ok',detail:'Your Goddess session is verified. This does not test a new sign-in email or its redirect.'});
+ checks.push({id:'access',name:'Student access',state:'info',detail:'Only Goddess issues codes. An application session does not open chat.'});
  checks.push({id:'payments',name:'Payments',state:'attention',detail:'Not connected. Displayed entry and contract amounts do not collect money.'});
  const commit=/^[a-f0-9]{7,40}$/i.test(env.VERCEL_GIT_COMMIT_SHA||'')?env.VERCEL_GIT_COMMIT_SHA.slice(0,7):null;
  return json({release,checkedAt:new Date().toISOString(),durationMs:Date.now()-started,environment:env.VERCEL_ENV==='production'?'Production':env.VERCEL_ENV==='preview'?'Preview':'Local / unspecified',commit,checks,counts,events,historyAvailable,historyNote:'Up to 50 recorded server failures and rate limits from the last 7 days. Recording begins with this release. No message text, names, email addresses, codes or keys are stored. Browser errors and provider logs are not included.'});

@@ -12,10 +12,10 @@ async function chatAPI(request,env,url){
  if(path==='session'&&method==='POST'){
   const ip=request.headers.get('cf-connecting-ip')||'unknown';if(!await chatLimit(env,'login:'+await chatHash(ip),20,15*60*1000))return json({error:'Too many attempts. Try again in 15 minutes.'},429);
   const code=typeof body.code==='string'?body.code.trim().toLowerCase():'';
-  if(!/^[a-f0-9]{48}$/.test(code))return json({error:'This code is invalid or has expired. Ask the administrator for a new code.'},401);
+  if(!/^[a-f0-9]{48}$/.test(code))return json({error:'This code is invalid or has expired. Ask Goddess for a new code.'},401);
   // Atomic consumption prevents two requests from redeeming one code.
   const student=await db(env).prepare("UPDATE chat_students SET code_hash=NULL,code_expires=0 WHERE code_hash=? AND code_expires>? AND status='active' RETURNING id,name,user_id").bind(await chatHash(code),now).first();
-  if(!student)return json({error:'This code is invalid or has expired. Ask the administrator for a new code.'},401);
+  if(!student)return json({error:'This code is invalid or has expired. Ask Goddess for a new code.'},401);
   const token=chatToken();await db(env).batch([db(env).prepare('DELETE FROM chat_sessions WHERE student_id=? OR expires_at<=?').bind(student.id,now),db(env).prepare('INSERT INTO chat_sessions (hash,student_id,expires_at) VALUES (?,?,?)').bind(await chatHash(token),student.id,now+30*86400000)]);
   const response=json({student:{id:student.id,name:student.name}});response.headers.set('Set-Cookie',chatCookie(token,30*86400));return response;
  }
@@ -23,7 +23,7 @@ async function chatAPI(request,env,url){
  const student=await chatStudent(request,env);
  if(path==='session'&&method==='GET')return student?json({student:{id:student.id,name:student.name,email:student.email}}):json({error:'Enter your access code to open your conversation.'},401);
  if(path==='students'){
-  if(!owner)return json({error:'Owner access required.'},403);
+  if(!owner)return json({error:'Goddess access required.'},403);
   if(method==='GET'){const rows=await db(env).prepare("SELECT s.id,s.name,s.email,s.status,s.created_at,(SELECT body FROM chat_messages WHERE student_id=s.id ORDER BY seq DESC LIMIT 1) AS last_message,(SELECT MAX(seq) FROM chat_messages WHERE student_id=s.id) AS last_seq,(SELECT COUNT(*) FROM chat_messages WHERE student_id=s.id AND sender='client' AND seq>COALESCE((SELECT MAX(read_seq) FROM chat_state WHERE student_id=s.id AND role='admin'),0)) AS unread FROM chat_students s ORDER BY last_seq DESC NULLS LAST,s.created_at DESC LIMIT 200").all();return json({students:rows.results||[]});}
   if(method==='POST'){
    let record;if(body.reference)record=await db(env).prepare('SELECT user_id,name,snapshot FROM education_enrolments WHERE reference=?').bind(String(body.reference)).first();
@@ -36,7 +36,7 @@ async function chatAPI(request,env,url){
   if(method==='PATCH'&&['active','suspended'].includes(body.status)){const r=await db(env).prepare('UPDATE chat_students SET status=?,code_hash=NULL,code_expires=0 WHERE id=? RETURNING id').bind(body.status,String(body.studentId||'')).first();if(!r)return json({error:'Student not found.'},404);await db(env).prepare('DELETE FROM chat_sessions WHERE student_id=?').bind(r.id).run();return json({ok:true});}
   return json({error:'Method not allowed'},405);
  }
- if(path==='presence'&&method==='PUT'){if(!owner)return json({error:'Owner access required.'},403);await db(env).prepare("INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES ('chat-presence',?,1,?) ON CONFLICT(id) DO UPDATE SET content=excluded.content,updated_at=excluded.updated_at").bind(JSON.stringify({online:body.online===true,until:now+60000}),new Date(now).toISOString()).run();return json({ok:true});}
+ if(path==='presence'&&method==='PUT'){if(!owner)return json({error:'Goddess access required.'},403);await db(env).prepare("INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES ('chat-presence',?,1,?) ON CONFLICT(id) DO UPDATE SET content=excluded.content,updated_at=excluded.updated_at").bind(JSON.stringify({online:body.online===true,until:now+60000}),new Date(now).toISOString()).run();return json({ok:true});}
  if(!owner&&!student)return json({error:'Your session has ended. Please enter a new access code.'},401);
  const role=owner?'admin':'client',id=owner?(url.searchParams.get('student')||body.studentId):student.id;
  if(!id)return json({error:'Choose a conversation.'},400);

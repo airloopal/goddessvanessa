@@ -1,7 +1,7 @@
 async function educationVerificationAPI(request,env,url,{user,email,owner}){
  const admin=url.pathname==='/api/education/verifications';
  if(!user)return json({error:'Start your application in this browser to request verification.'},401);
- if(admin&&!owner)return json({error:'Only the site owner can review verification requests.'},403);
+ if(admin&&!owner)return json({error:'Only Goddess can review verification requests.'},403);
  const key='education-verification:'+user;
  const decode=row=>row?{key:row.id,revision:row.revision,...JSON.parse(row.content)}:null;
  const mine=async()=>decode(await db(env).prepare('SELECT id,content,revision FROM prototype_settings WHERE id=?').bind(key).first());

@@ -17,7 +17,7 @@ async function educationAPI(request,env,url){
  if(['/api/education/verification','/api/education/verifications'].includes(path))return educationVerificationAPI(request,env,url,{user,email,owner});
  const which=path.split('/').at(-1);
  if(path==='/api/education/published'||path==='/api/education/draft'){
-  if(!(which==='published'&&request.method==='GET')&&!owner)return json({error:'Sign in with the site owner account to edit or publish courses.'},403);
+  if(!(which==='published'&&request.method==='GET')&&!owner)return json({error:'Sign in with the Goddess account to edit or publish courses.'},403);
   if(request.method==='GET')return json(await educationConfig(env,which));
   if(request.method!=='PUT')return json({error:'Method not allowed'},405);
   const p=await educationBody(request,url,400000);if(p instanceof Response)return p;
@@ -27,7 +27,7 @@ async function educationAPI(request,env,url){
   return r.meta?.changes?json({revision:p.revision+1,updatedAt:stamp}):json({error:'Someone saved a newer version. Export your changes, then reload before saving.'},409);
  }
  if(path==='/api/education/enrolments'){
-  if(!owner)return json({error:'Only the site owner can view learner records.'},403);
+  if(!owner)return json({error:'Only Goddess can view learner records.'},403);
   if(request.method!=='GET')return json({error:'Method not allowed'},405);
   const rows=await db(env).prepare('SELECT reference,name,path_id,snapshot,completed,created_at,updated_at FROM education_enrolments ORDER BY updated_at DESC LIMIT 200').all();
   return json({enrolments:(rows.results||[]).map(r=>({...r,snapshot:JSON.parse(r.snapshot),completed:JSON.parse(r.completed)}))});

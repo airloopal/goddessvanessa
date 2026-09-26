@@ -1,59 +1,41 @@
-# Vercel migration checklist
+# Migration implementation and verification
 
-## Preserve the UI
+## Preserved presentation
 
-Keep current public asset names, routes, Poppins fonts, colours and existing
-responsive layouts. Deploy only the assets selected by scripts/build.mjs.
-Do not publish server source, migration files or environment values as static
-assets. Preserve the CSP and media authorization rules.
+All existing CSS, fonts, images and animation assets are byte-for-byte unchanged. Seven existing frontend files change only login links/labels or the upload transport. The new email sign-in page reuses the access-page classes and styles. There is no redesigned application, chat or dashboard.
 
-## Backend requirements
+The published visual configuration and draft were copied separately to Supabase. The owner draft uses the stable key `owner`; owner authorization still requires a server-verified, email-confirmed Supabase user whose email matches the existing owner.
 
-| Current component | Work required for Vercel |
-| --- | --- |
-| Worker fetch(request, env) | Adapt handlers to a supported Vercel runtime and route configuration. |
-| D1 DB binding and SQLite queries | Choose a durable database, create a compatible adapter or port queries, then transfer records. Local serverless SQLite files are not a persistent database. |
-| R2 BUCKET binding | Connect private object storage and port put/get/delete, byte ranges, ownership and deletion cleanup. Export existing bytes and metadata. |
-| Host-provided ChatGPT admin sign-in | Replace with trusted server-validated authentication. Never trust visitor-supplied oai-authenticated-user-* headers on Vercel. |
-| Student access-code cookies | Keep random single-use codes, hashed storage, expiry, throttling, CSRF checks and session revocation. Issue new sessions after domain cutover. |
-| Media uploads up to 25 MB | Check Vercel request-body limits; use authenticated direct-to-storage uploads where required rather than assuming the current binary upload endpoint will work. |
-| Access-code emails | Keep RESEND_API_KEY server-side and EMAIL_FROM configured with an approved sender. No keys are included. |
-| Configuration/visual editor | Transfer prototype_settings, visual_site and relevant draft records; preserve revision checks. |
+## Backend
 
-The existing `.openai/hosting.json` documents the original runtime bindings. It
-is not a Vercel configuration. The code currently trusts identity headers
-because its original host injects them; this trust must not be carried over to
-public request headers on a new host.
+- `api/index.js` is the Vercel Web-standard function entry point.
+- `scripts/build.mjs` produces the existing bundled application and a whitelisted static output at `dist/public`.
+- PostgreSQL preserves legacy string user IDs, JSON-text snapshots and millisecond timestamps. The adapter maps parameter placeholders and table names; dialect-specific JSON updates, conflict handling and read-state queries are explicitly converted to PostgreSQL.
+- Multi-statement writes use transactions. Chat state now has a composite primary key to prevent concurrent duplicates.
+- Application tables are in the private `academy` schema with RLS enabled and public grants revoked. No direct browser table access is permitted. Supabase's informational “RLS Enabled No Policy” findings are intentional for these server-only tables: https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy
+- The server strips all client-supplied old-host identity headers and validates Supabase users server-side. Owner privileges never come from editable user metadata. Only the Vercel-managed forwarded IP is used for per-IP throttling on Vercel.
+- Student chat sessions remain hashed, single-use-code based with HttpOnly cookies. The code is visible to the admin once when issued; only its hash is persisted.
+- Direct upload preparation authorizes the conversation, reserves quota in a transaction and returns a signed staging-upload URL. Completion revalidates access, size and detected file type before recording the file/message. Final media and staging buckets are private; files cannot be directly listed or read by public clients.
+- Authorized media requests redirect to five-minute signed URLs, avoiding the Vercel response-size limit. These URLs are bearer links valid until expiry, including after logout. Original media URLs still recheck current access.
+- Supabase Auth handles owner/applicant email sign-in; Resend handles chat-code delivery. Both need provider configuration before live email tests.
 
-## Data transfer
+## Verification completed
 
-1. Select destination database, private file storage and administrator auth.
-2. Take a database backup/export and enumerate private media objects using an
-   authorized export mechanism. Current source files contain none of this data.
-3. Preserve relationships, stable IDs, attachment keys, agreement snapshots and
-   code hashes. Avoid transferring active sessions; issue fresh codes instead.
-4. Copy media bytes privately and compare counts, sizes and checksums.
-5. Reconcile writes made on the old site after the initial snapshot. Arrange a
-   short write pause only for final synchronization, not throughout development.
+`npm run build` and `npm test` pass using PostgreSQL via PGlite (not a SQL mock), plus frontend transport tests. Coverage includes:
 
-## Acceptance checks before switching the domain
+- Owner authorization, forged/unconfirmed identities, cross-student access denial.
+- Draft/publish revision conflicts, visual element validation and saved settings.
+- Agreement name/age/policy/revision checks and immutable server-derived amounts.
+- Atomic lesson progress, application privacy and verification reply permissions.
+- Access-code redemption/expiry/reuse, rotation, suspension, logout and deletion.
+- Chat persistence, idempotent sends, typing, unread/read state and presence.
+- Private media, byte ranges in the legacy core, signed redirects in the Vercel adapter, MIME validation, size/quota reservation, direct-upload completion/retry and deletion.
+- Mocked email success/failure, anti-enumeration and resend throttling; no real email sent.
 
-- Anonymous visitors cannot impersonate the owner with forged headers.
-- Two students cannot read each other's records, conversations or media.
-- Code issuance, redemption, replacement, expiry, suspension and logout work.
-- Student/admin messages sync across devices without duplicate sends.
-- Private uploads, downloads, audio/video ranges and verification visibility work.
-- Deleting a chat account removes its chat attachments as intended.
-- Enrolment and lesson progress survive reloads and concurrent updates.
-- Visual editor draft/publish and revision conflict behavior is preserved.
-- Desktop/mobile layouts match the retained design.
-- Email is actually delivered using the configured sender.
+Remote checks confirmed the schema exists, RLS is enabled, both buckets are private, and the editor settings were imported.
 
-Only then change DNS, monitor failures, and retain the old site as a rollback
-option. No custom-domain switch or destination deployment has been performed.
+## Remaining live checks
 
-Reference documentation:
-- https://vercel.com/docs/functions/runtimes
-- https://vercel.com/docs/functions/limitations
-- https://vercel.com/kb/guide/is-sqlite-supported-in-vercel
-- https://docs.github.com/en/repositories/working-with-files/managing-files/adding-a-file-to-a-repository
+The production Vercel build, actual database connection/TLS credentials, browser cookies/PKCE callback, Storage uploads and email delivery must be verified after the code is uploaded and runtime configuration is complete. Do not interpret passing local tests as a completed deployment.
+
+No payment processing or paid fulfilment was added. Historical SQLite migrations are retained as archive only; do not apply them to PostgreSQL. `supabase/schema.sql` documents the already-applied initial schema; do not run it again on the configured project.

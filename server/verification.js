@@ -7,7 +7,7 @@ async function educationVerificationAPI(request,env,url,{user,email,owner}){
  const mine=async()=>decode(await db(env).prepare('SELECT id,content,revision FROM prototype_settings WHERE id=?').bind(key).first());
  if(request.method==='GET'){
   if(!admin)return json({request:await mine()});
-  const rows=await db(env).prepare("SELECT id,content,revision FROM prototype_settings WHERE id LIKE 'education-verification:%' ORDER BY CASE WHEN json_extract(content,'$.status')='pending' THEN 0 ELSE 1 END,updated_at DESC LIMIT 200").all();
+  const rows=await db(env).prepare("SELECT id,content,revision FROM prototype_settings WHERE id LIKE 'education-verification:%' ORDER BY CASE WHEN (content::jsonb->>'status')='pending' THEN 0 ELSE 1 END,updated_at DESC LIMIT 200").all();
   return json({requests:(rows.results||[]).map(decode)});
  }
  if(request.method!==(admin?'PUT':'POST'))return json({error:'Method not allowed'},405);

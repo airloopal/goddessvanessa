@@ -23,7 +23,7 @@ async function educationAPI(request,env,url){
   return json({enrolments:(rows.results||[]).map(r=>({...r,snapshot:JSON.parse(r.snapshot),completed:JSON.parse(r.completed)}))});
  }
  if(path!=='/api/education/enrolment'&&path!=='/api/education/progress')return json({error:'Not found'},404);
- if(!user)return json({error:'Sign in with ChatGPT to save your enrolment and lesson progress.'},401);
+ if(!user)return json({error:'Sign in to save your enrolment and lesson progress.'},401);
  const read=async()=>{const r=await db(env).prepare('SELECT reference,name,path_id,answers,snapshot,completed,created_at,updated_at FROM education_enrolments WHERE user_id=?').bind(user).first();return r?{...r,answers:JSON.parse(r.answers),snapshot:JSON.parse(r.snapshot),completed:JSON.parse(r.completed)}:null;};
  if(request.method==='GET')return json({enrolment:await read()});
  if(request.method!=='PUT')return json({error:'Method not allowed'},405);
@@ -35,8 +35,8 @@ async function educationAPI(request,env,url){
   if(typeof p.completed!=='boolean'||!config.lessons.some(l=>l.id===p.lessonId))return json({error:'Choose a current lesson.'},400);
   const existing=await read();if(!existing)return json({error:'Enrol before saving lesson progress.'},409);
   // Apply one lesson change atomically, so separate tabs cannot overwrite one another.
-  if(p.completed)await db(env).prepare("UPDATE education_enrolments SET completed=CASE WHEN EXISTS(SELECT 1 FROM json_each(completed) WHERE value=?) THEN completed ELSE json_insert(completed,'$[#]',?) END,updated_at=? WHERE user_id=?").bind(p.lessonId,p.lessonId,now,user).run();
-  else await db(env).prepare("UPDATE education_enrolments SET completed=(SELECT json_group_array(value) FROM json_each(education_enrolments.completed) WHERE value<>?),updated_at=? WHERE user_id=?").bind(p.lessonId,now,user).run();
+  if(p.completed)await db(env).prepare("UPDATE education_enrolments SET completed=CASE WHEN completed::jsonb @> jsonb_build_array(?::text) THEN completed ELSE (completed::jsonb || jsonb_build_array(?::text))::text END,updated_at=? WHERE user_id=?").bind(p.lessonId,p.lessonId,now,user).run();
+  else await db(env).prepare("UPDATE education_enrolments SET completed=(SELECT COALESCE(jsonb_agg(value),'[]'::jsonb)::text FROM jsonb_array_elements_text(education_enrolments.completed::jsonb) AS items(value) WHERE value<>?),updated_at=? WHERE user_id=?").bind(p.lessonId,now,user).run();
   return json({enrolment:await read()});
  }
  if(typeof p.name!=='string'||p.name.trim().length<2||p.name.length>100||!config.paths.some(x=>x.id===p.pathId)||p.accepted!==true||!p.answers||typeof p.answers!=='object'||Array.isArray(p.answers))return json({error:'Enter your name, choose a learning path and confirm your enrolment.'},400);

@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import worker from '../dist/server/index.js';
 import {request,env,sql} from './check-education.mjs';
 const objects=new Map();env.BUCKET={async put(key,bytes){objects.set(key,new Uint8Array(bytes));return {};},async get(key,options){const bytes=objects.get(key);if(!bytes)return null;const range=options?.range;return {body:range?bytes.slice(range.offset,range.offset+range.length):bytes};},async delete(keys){for(const key of Array.isArray(keys)?keys:[keys])objects.delete(key);}};
-const ref=sql.prepare("SELECT reference FROM education_enrolments WHERE user_id='learner-test'").get().reference;
+const ref=(await env.DB.prepare("SELECT reference FROM education_enrolments WHERE user_id='learner-test'").bind().first()).reference;
 const issue=(await request('/api/chat/students',{method:'POST',account:'owner',data:{reference:ref}})).data;
 const login=await request('/api/chat/session',{method:'POST',data:{code:issue.code}}),cookie=login.headers.get('set-cookie').split(';')[0];
-const second=sql.prepare("SELECT id FROM chat_students WHERE user_id='other-test'").get().id;
+const second=(await env.DB.prepare("SELECT id FROM chat_students WHERE user_id='other-test'").bind().first()).id;
 const issue2=(await request('/api/chat/students',{method:'POST',account:'owner',data:{studentId:second}})).data;
 const login2=await request('/api/chat/session',{method:'POST',data:{code:issue2.code}}),cookie2=login2.headers.get('set-cookie').split(';')[0];
 async function upload({bytes,id=crypto.randomUUID(),student=issue.studentId,scope='chat',key,cookie:session=cookie,owner=false,type='image/png',name='Lesson.png',origin='https://academy.test'}){const headers={origin,'Content-Type':type,'X-Upload-Id':id,'X-File-Name':encodeURIComponent(name)};if(session)headers.cookie=session;if(owner){headers['oai-authenticated-user-id']='owner-test';headers['oai-authenticated-user-email']='danielvernontp@gmail.com';}const query=new URLSearchParams({scope,student});if(key)query.set('request',key);const response=await worker.fetch(new Request('https://academy.test/api/media/upload?'+query,{method:'POST',headers,body:bytes}),env);return {status:response.status,data:await response.json(),id};}

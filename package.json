@@ -1,1 +1,24 @@
-{"name":"house-of-vanessa","private":true,"type":"module","scripts":{"build":"node scripts/build.mjs","db:generate":"drizzle-kit generate"},"devDependencies":{"drizzle-kit":"0.31.4","drizzle-orm":"0.44.5"}}
+{
+  "name": "house-of-vanessa",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node scripts/check-integrations.mjs && node scripts/check-platform.mjs && node scripts/check-chat.mjs && node scripts/check-preview-access.mjs && node scripts/check-auth.mjs",
+    "dev": "node scripts/dev.mjs",
+    "maintenance": "node scripts/maintenance.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "drizzle-kit": "0.31.4",
+    "drizzle-orm": "0.44.5"
+  },
+  "dependencies": {
+    "@supabase/ssr": "0.12.7",
+    "@supabase/supabase-js": "2.117.2",
+    "pg": "8.23.0"
+  },
+  "engines": {
+    "node": "24.x"
+  }
+}

@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {DatabaseSync} from 'node:sqlite';
+import {PGlite} from '@electric-sql/pglite';
+import {database} from '../server/platform/database.js';
 import worker from '../dist/server/index.js';
-const sql=new DatabaseSync(':memory:');for(const file of fs.readdirSync('drizzle').filter(x=>x.endsWith('.sql')).sort())sql.exec(fs.readFileSync('drizzle/'+file,'utf8'));
-const env={DB:{async batch(statements){sql.exec('BEGIN');try{const out=[];for(const statement of statements)out.push(await statement.run());sql.exec('COMMIT');return out;}catch(e){sql.exec('ROLLBACK');throw e;}},prepare(query){let args=[];const statement=sql.prepare(query);const api={bind(...a){args=a;return api;},async first(){return statement.get(...args)||null;},async all(){return {results:statement.all(...args)};},async run(){const r=statement.run(...args);return {meta:{changes:Number(r.changes)}};}};return api;}}};
+const sql=new PGlite();
+await sql.exec("CREATE ROLE anon; CREATE ROLE authenticated;");
+await sql.exec(fs.readFileSync('supabase/schema.sql','utf8'));
+const env={DB:database(sql)};
 const accounts={owner:['owner-test','danielvernontp@gmail.com'],learner:['learner-test','learner@example.test'],other:['other-test','other@example.test']};
 async function request(path,{method='GET',data,account,cookie,chatRole,origin='https://academy.test'}={}){const headers={origin};if(chatRole)headers['x-chat-role']=chatRole;if(cookie)headers.cookie=cookie;if(account){headers['oai-authenticated-user-id']=accounts[account][0];headers['oai-authenticated-user-email']=accounts[account][1];}if(data)headers['content-type']='application/json';const res=await worker.fetch(new Request('https://academy.test'+path,{method,headers,body:data?JSON.stringify(data):undefined}),env);return {status:res.status,data:res.headers.get('content-type')?.includes('application/json')?await res.json():await res.text(),headers:res.headers};}
 const endpoint='/api/education/';
@@ -59,10 +62,10 @@ console.log('Restored application, dashboard, access and chat routes and their a
 
 for(const [key,value] of [['signature','Different name'],['ageConfirmed',false],['aupAccepted',false],['read',false],['email','invalid'],['entryReviewed',false]]){const invalid=structuredClone(enrol);invalid.review[key]=value;assert.equal((await request(endpoint+'enrolment',{method:'PUT',data:invalid,account:'learner'})).status,400);}
 const stale=structuredClone(enrol);stale.review.revision=0;assert.equal((await request(endpoint+'enrolment',{method:'PUT',data:stale,account:'learner'})).status,409);
-const snapshot=(await request(endpoint+'enrolment',{account:'learner'})).data.enrolment.snapshot.agreement;assert.equal(snapshot.entry.amount,8500);assert.equal(snapshot.contract.amount,10000);assert.equal(snapshot.paymentStatus,'not_collected');assert.equal(sql.prepare("SELECT count(*) n FROM prototype_settings WHERE id LIKE 'education-review-%'").get().n,1);
+const snapshot=(await request(endpoint+'enrolment',{account:'learner'})).data.enrolment.snapshot.agreement;assert.equal(snapshot.entry.amount,8500);assert.equal(snapshot.contract.amount,10000);assert.equal(snapshot.paymentStatus,'not_collected');assert.equal((await env.DB.prepare("SELECT count(*) n FROM prototype_settings WHERE id LIKE 'education-review-%'").bind().first()).n,1);
 const renamed=structuredClone(changed);renamed.agreement.contractPlans[0].name='Renamed educational plan';renamed.agreement.contractPlans[0].amount=15000;assert.equal((await request(endpoint+'published',{method:'PUT',data:{revision:1,config:renamed},account:'owner'})).status,200);assert.equal((await request(endpoint+'enrolment',{account:'learner'})).data.enrolment.snapshot.agreement.contract.amount,10000);
 assert.equal((await request(endpoint+'enrolment',{method:'PUT',data:enrol,account:'learner'})).status,409);
-const fresh=structuredClone(enrol);fresh.review.revision=2;fresh.review.amount=1;assert.equal((await request(endpoint+'enrolment',{method:'PUT',data:fresh,account:'learner'})).status,200);assert.equal((await request(endpoint+'enrolment',{account:'learner'})).data.enrolment.snapshot.agreement.contract.amount,15000);assert.equal(sql.prepare("SELECT count(*) n FROM prototype_settings WHERE id LIKE 'education-review-%'").get().n,2);
+const fresh=structuredClone(enrol);fresh.review.revision=2;fresh.review.amount=1;assert.equal((await request(endpoint+'enrolment',{method:'PUT',data:fresh,account:'learner'})).status,200);assert.equal((await request(endpoint+'enrolment',{account:'learner'})).data.enrolment.snapshot.agreement.contract.amount,15000);assert.equal((await env.DB.prepare("SELECT count(*) n FROM prototype_settings WHERE id LIKE 'education-review-%'").bind().first()).n,2);
 console.log('Agreement checks passed: matching name, email format, age/policy acceptance, revision conflicts, server-owned rates and immutable prior review snapshots.');
 assert.equal((await request(endpoint+'verification')).status,401);
 assert.equal((await request(endpoint+'verifications',{account:'learner'})).status,403);
@@ -91,7 +94,7 @@ assert.equal((await request(chat+'session',{method:'POST',data:{code:'VANESSA-DE
 const ref=(await request(endpoint+'enrolment',{account:'learner'})).data.enrolment.reference;
 const issue=await request(chat+'students',{method:'POST',account:'owner',data:{reference:ref}});
 assert.equal(issue.status,200);assert.equal(issue.data.emailSent,false);
-assert.equal(sql.prepare('SELECT code_hash FROM chat_students WHERE id=?').get(issue.data.studentId).code_hash.includes(issue.data.code),false);
+assert.equal((await env.DB.prepare('SELECT code_hash FROM chat_students WHERE id=?').bind(issue.data.studentId).first()).code_hash.includes(issue.data.code),false);
 const login=await request(chat+'session',{method:'POST',data:{code:issue.data.code}});assert.equal(login.status,200);
 const cookie=login.headers.get('set-cookie').split(';')[0];assert.match(login.headers.get('set-cookie'),/HttpOnly/);assert.match(login.headers.get('set-cookie'),/Secure/);
 assert.equal((await request(chat+'session',{method:'POST',data:{code:issue.data.code}})).status,401);
@@ -138,7 +141,7 @@ assert.equal((await request(chat+'session',{cookie:cookie2})).status,401);
 const finalCode=(await request(chat+'students',{method:'POST',account:'owner',data:{studentId:sid}})).data.code;
 const finalLogin=await request(chat+'session',{method:'POST',data:{code:finalCode}}),finalCookie=finalLogin.headers.get('set-cookie').split(';')[0];
 assert.equal((await request(chat+'account',{method:'DELETE',cookie:finalCookie,data:{confirm:true}})).status,200);
-assert.equal(sql.prepare('SELECT count(*) n FROM chat_messages WHERE student_id=?').get(sid).n,0);
+assert.equal((await env.DB.prepare('SELECT count(*) n FROM chat_messages WHERE student_id=?').bind(sid).first()).n,0);
 assert.equal((await request(endpoint+'enrolment',{account:'learner'})).data.enrolment.reference,ref);
 assert.equal((await request(chat+'session',{cookie:finalCookie})).status,401);
 console.log('Live chat checks passed: single-use hashed codes, secure sessions, linked records, private threads, durable messages, idempotent sends, unread counts, typing, presence, code rotation, suspension, logout and deletion.');

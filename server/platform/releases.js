@@ -1,6 +1,7 @@
-export const release={version:'2026.09.26.5',date:'2026-09-26',title:'Account menu interaction fix'};
+export const release={version:'2026.09.26.6',date:'2026-09-26',title:'Live dashboard overview & transitions'};
 export const changelog=[
- {...release,changes:['Fixed premature menu dismissal when moving focus to an Account option.','Allowed link and button actions to finish before closing the dropdown.']},
+ {...release,changes:['Added circular dashboard loading transitions in the site colours.','Added live totals, recent applications and a seven-day activity chart.','Updated the dashboard guide for the new layout and live workflows.']},
+ {version:'2026.09.26.5',date:'2026-09-26',title:'Account menu interaction fix',changes:['Fixed premature menu dismissal when moving focus to an Account option.','Allowed link and button actions to finish before closing the dropdown.']},
  {version:'2026.09.26.4',date:'2026-09-26',title:'Compact dashboard header',changes:['Simplified the dashboard header to a notification bell and Account dropdown.','Grouped dashboard tools, availability, settings and logout into Account.','Kept mobile controls compact and keyboard accessible.']},
  {version:'2026.09.26.3',date:'2026-09-26',title:'Private Goddess code login',changes:['Added a dedicated Goddess access-code login page.','Added dashboard Settings to change the code by confirming the current code.','Added session expiry, logout, attempt limits and session revocation after code changes.']},
  {version:'2026.09.26.2',date:'2026-09-26',title:'Goddess navigation & mobile access',changes:['Made Status & Debug prominent in the dashboard header.','Added labelled navigation icons and a wrapping mobile menu.','Updated sign-in, access and error messages to refer to Goddess.']},

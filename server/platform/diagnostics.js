@@ -1,3 +1,4 @@
+import {overview} from './overview.js';
 import {release,changelog} from './releases.js';
 const ownerEmail='danielvernontp@gmail.com';
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json','Cache-Control':'private, no-store'}});
@@ -17,6 +18,7 @@ export async function statusAPI(request,env,{database,storage}){
  if(!request.headers.get('oai-authenticated-user-id')||request.headers.get('oai-authenticated-user-email')?.toLowerCase()!==ownerEmail)return json({error:'Goddess access required.'},403);
  if(request.method!=='GET')return json({error:'Method not allowed.'},405);
  if(new URL(request.url).pathname==='/api/admin/changelog')return json({release,changelog});
+ if(new URL(request.url).pathname==='/api/admin/overview')return json(await bounded(()=>overview(database())));
  const checks=[],started=Date.now();let DB,events=[],historyAvailable=false,counts=null;
  const probe=async(id,name,fn)=>{const start=Date.now();try{const detail=await bounded(fn);checks.push({id,name,state:'ok',detail,ms:Date.now()-start});}catch{checks.push({id,name,state:'error',detail:'The check failed or timed out. Review the provider logs, then try again.',ms:Date.now()-start});}};
  await Promise.all([

@@ -9,7 +9,7 @@ export async function handle(request,env=process.env,dependencies={}){
  let context,DB;const requestId=crypto.randomUUID();
  const finish=async response=>{const issue=response.headers.get('X-Platform-Issue');await recordFailure(DB,{path:url.pathname,status:response.status,requestId,issue});const out=new Response(response.body,{status:response.status,headers:response.headers});out.headers.set('X-Request-ID',requestId);out.headers.delete('X-Platform-Issue');return context?context.apply(out):out;};
  try{
-  if(['/api/admin/status','/api/admin/changelog'].includes(url.pathname)){context=dependencies.auth||authContext(request,{...env,...(dependencies.DB?{DB:dependencies.DB}:{})});const verified=await verifiedRequest(request,context.client,env);return context.apply(await statusAPI(verified,env,{database:()=>dependencies.DB||productionDatabase(env),storage:()=>dependencies.BUCKET||storage(env)}));}
+  if(['/api/admin/status','/api/admin/changelog','/api/admin/overview'].includes(url.pathname)){context=dependencies.auth||authContext(request,{...env,...(dependencies.DB?{DB:dependencies.DB}:{})});const verified=await verifiedRequest(request,context.client,env);return context.apply(await statusAPI(verified,env,{database:()=>dependencies.DB||productionDatabase(env),storage:()=>dependencies.BUCKET||storage(env)}));}
   DB=dependencies.DB||productionDatabase(env);
   const runtime={...env,DB,BUCKET:dependencies.BUCKET||storage(env),DIRECT_UPLOADS:true};
   if(url.pathname==='/api/health'){

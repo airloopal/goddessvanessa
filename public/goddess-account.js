@@ -7,7 +7,9 @@
  button.addEventListener('keydown',e=>{if(e.key==='ArrowDown'){e.preventDefault();open();panel.querySelector('button,a,input')?.focus();}});
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!panel.hidden){e.preventDefault();close(true);}});
  document.addEventListener('click',e=>{if(!panel.hidden&&!account.contains(e.target))close();});
- account.addEventListener('focusout',()=>queueMicrotask(()=>{if(!account.contains(document.activeElement))close();}));
- panel.addEventListener('click',e=>{if(e.target.closest('a,button'))close();});
+ // Check the destination of focus, never the transient blur state between controls.
+ document.addEventListener('focusin',e=>{if(!panel.hidden&&!account.contains(e.target))close();});
+ // Let native links and button handlers finish before hiding the clicked control.
+ panel.addEventListener('click',e=>{if(e.target.closest('a,button'))setTimeout(()=>close(),0);});
  document.getElementById('account-settings').addEventListener('click',()=>{document.querySelector('#dashboard-nav [data-tab="settings"]')?.click();const heading=document.querySelector('#dashboard-main h1');if(heading){heading.setAttribute('tabindex','-1');heading.focus();}});
 })();

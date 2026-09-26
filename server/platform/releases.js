@@ -1,6 +1,7 @@
-export const release={version:'2026.09.26.4',date:'2026-09-26',title:'Compact dashboard header'};
+export const release={version:'2026.09.26.5',date:'2026-09-26',title:'Account menu interaction fix'};
 export const changelog=[
- {...release,changes:['Simplified the dashboard header to a notification bell and Account dropdown.','Grouped dashboard tools, availability, settings and logout into Account.','Kept mobile controls compact and keyboard accessible.']},
+ {...release,changes:['Fixed premature menu dismissal when moving focus to an Account option.','Allowed link and button actions to finish before closing the dropdown.']},
+ {version:'2026.09.26.4',date:'2026-09-26',title:'Compact dashboard header',changes:['Simplified the dashboard header to a notification bell and Account dropdown.','Grouped dashboard tools, availability, settings and logout into Account.','Kept mobile controls compact and keyboard accessible.']},
  {version:'2026.09.26.3',date:'2026-09-26',title:'Private Goddess code login',changes:['Added a dedicated Goddess access-code login page.','Added dashboard Settings to change the code by confirming the current code.','Added session expiry, logout, attempt limits and session revocation after code changes.']},
  {version:'2026.09.26.2',date:'2026-09-26',title:'Goddess navigation & mobile access',changes:['Made Status & Debug prominent in the dashboard header.','Added labelled navigation icons and a wrapping mobile menu.','Updated sign-in, access and error messages to refer to Goddess.']},
  {version:'2026.09.26.1',date:'2026-09-26',title:'Status centre & site identity',changes:['Added a branded favicon and home-screen icon.','Added a Goddess-only status centre with connection checks, recent server issues and a downloadable diagnostic report.','Added this dated release history.']},

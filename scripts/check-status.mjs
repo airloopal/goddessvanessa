@@ -19,7 +19,7 @@ assert.equal((await call('admin/status',{method:'POST'})).status,405);
 let r=await call('admin/status');assert.equal(r.status,200);assert.equal(r.headers.get('cache-control'),'private, no-store');assert.equal(r.body.checks.find(c=>c.id==='database').state,'ok');assert.equal(r.body.checks.find(c=>c.id==='storage').state,'ok');assert.equal(r.body.checks.find(c=>c.id==='email').state,'attention');assert.equal(r.body.checks.find(c=>c.id==='payments').state,'attention');assert.equal(Number(r.body.counts.applications),0);
 const broken={prepare(){throw Error('SECRET database credentials');}};
 r=await call('admin/status',{db:broken,bucket:{health:async()=>{throw Error('SECRET bucket');}}});assert.equal(r.status,200);assert.equal(r.body.checks.filter(c=>c.state==='error').length,2);assert.equal(r.body.counts,null);assert.equal(r.body.historyAvailable,false);assert.ok(!JSON.stringify(r.body).includes('SECRET'));
-assert.equal((await call('admin/changelog',{db:broken})).body.changelog.length,7);
+assert.equal((await call('admin/changelog',{db:broken})).body.changelog.length,8);
 const reference=crypto.randomUUID();await recordFailure(DB,{path:'/api/chat/messages?email=private@example.test',status:503,requestId:reference,issue:'private text'});
 r=await call('admin/status');assert.equal(r.body.events[0].requestId,reference);assert.equal(r.body.events[0].area,'chat');assert.equal(r.body.events[0].message,'A server request failed.');assert.ok(!JSON.stringify(r.body).includes('private@example'));
 await DB.prepare('INSERT INTO chat_limits (key,count,expires) VALUES (?,5,?)').bind('goddess-login:global',Date.now()+900000).run();

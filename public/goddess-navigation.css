@@ -3,3 +3,5 @@
 @media(max-width:380px){.dashboard #dashboard-nav{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard .presence-preview-control{margin-left:0}}
 
 @media(max-width:600px){.dashboard #dashboard-nav a,.dashboard #dashboard-nav button{flex-direction:column;justify-content:center;text-align:center;gap:5px;overflow-wrap:anywhere}.dashboard #dashboard-nav .goddess-action-icon{margin:0}.dashboard #dashboard-nav .notification-count{align-self:center}}
+
+.goddess-security-card{max-width:620px}.goddess-security-card .signature-label{display:block;margin:18px 0}.goddess-security-card input{width:100%;box-sizing:border-box}.goddess-security-card p{line-height:1.75}#change-code-status{color:#9c2756}

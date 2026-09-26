@@ -1,14 +1,32 @@
 import assert from 'node:assert/strict';
-import {authContext,authAPI} from '../server/platform/auth.js';
-const env={SUPABASE_URL:'https://hlmlqdkcwchmzxbcvrtp.supabase.co',SUPABASE_PUBLISHABLE_KEY:'test-publishable'},originalFetch=globalThis.fetch;
-let payload;
-globalThis.fetch=async(url,init)=>{assert.match(String(url),/\/auth\/v1\/otp/);payload=JSON.parse(init.body);return new Response('{}',{headers:{'Content-Type':'application/json'}});};
-try{
- const request=new Request('https://academy.test/api/auth/email',{method:'POST',headers:{origin:'https://academy.test','Content-Type':'application/json'},body:JSON.stringify({email:'danielvernontp@gmail.com',returnTo:'/dashboard.html'})});
- const context=authContext(request,env),response=context.apply(await authAPI(request,context,env));assert.equal(response.status,200);assert.equal(payload.email,'danielvernontp@gmail.com');assert.equal(payload.code_challenge_method,'s256');assert.ok(payload.code_challenge);
- const cookies=response.headers.getSetCookie();assert.ok(cookies.some(c=>c.includes('code-verifier')));for(const cookie of cookies){assert.match(cookie,/HttpOnly/);assert.match(cookie,/Secure/);assert.match(cookie,/SameSite=Lax/);}
- assert.match(response.headers.get('cache-control'),/no-store/);
- const denied=await authAPI(new Request('https://academy.test/api/auth/email',{method:'POST',headers:{origin:'https://other.test'},body:'{}'}),context,env);assert.equal(denied.status,403);
- const missing=await authAPI(new Request('https://academy.test/api/auth/callback'),context,env);assert.equal(missing.status,303);assert.match(missing.headers.get('location'),/signin.html\?error=link/);
-}finally{globalThis.fetch=originalFetch;}
-console.log('Supabase email sign-in checks passed: actual SDK PKCE challenge, secure verifier cookies, origin checks and invalid callback handling. No real email sent.');
+import fs from 'node:fs';
+import {PGlite} from '@electric-sql/pglite';
+import {database} from '../server/platform/database.js';
+import {hashCode} from '../server/platform/goddess-auth.js';
+import {handle} from '../api/index.js';
+const sql=new PGlite();await sql.exec('CREATE ROLE anon;CREATE ROLE authenticated;');await sql.exec(fs.readFileSync('supabase/schema.sql','utf8'));const DB=database(sql);
+await DB.prepare('INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?)').bind('goddess-credential',JSON.stringify({...await hashCode('000000'),userId:'test-owner',initial:true}),new Date().toISOString()).run();
+async function call(path,{body,cookie,method=body?'POST':'GET',origin='https://academy.test',headers={}}={}){const r=await handle(new Request('https://academy.test/api/'+path,{method,headers:{origin,...headers,...(cookie?{cookie}:{}),'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined}),{DB},{DB});return {status:r.status,headers:r.headers,body:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]};}
+assert.equal((await call('auth/code',{body:{code:'000000'},origin:'https://evil.test'})).status,403);
+assert.equal((await call('auth/email',{body:{email:'danielvernontp@gmail.com'}})).status,403);
+assert.equal((await call('admin/status',{headers:{'oai-authenticated-user-id':'test-owner','oai-authenticated-user-email':'danielvernontp@gmail.com'}})).status,403);
+assert.equal((await call('auth/code',{body:{code:'wrong'}})).status,401);
+const a=await call('auth/code',{body:{code:'000000',returnTo:'//evil.test'}}),b=await call('auth/code',{body:{code:'000000'}});assert.equal(a.status,200);assert.equal(a.body.redirect,'/dashboard.html#settings');assert.notEqual(a.cookie,b.cookie);
+for(const text of ['HttpOnly','Secure','SameSite=Strict','Path=/','Max-Age=43200'])assert.ok(a.headers.get('set-cookie').includes(text));assert.match(a.cookie,/^__Host-goddess_session=/);
+assert.equal((await call('education/identity',{cookie:a.cookie})).body.owner,true);assert.equal((await call('education/draft',{cookie:a.cookie})).status,200);assert.equal((await call('chat/students',{cookie:a.cookie})).status,200);
+assert.equal((await call('auth/session',{cookie:a.cookie})).body.initialCode,true);
+assert.equal((await call('auth/code-change',{body:{oldCode:'000000',newCode:'938275',confirmCode:'938275'}})).status,401);
+assert.equal((await call('auth/code-change',{cookie:a.cookie,body:{oldCode:'wrong',newCode:'938275',confirmCode:'938275'}})).status,401);
+assert.equal((await call('auth/code-change',{cookie:a.cookie,body:{oldCode:'000000',newCode:'938275',confirmCode:'999999'}})).status,400);
+assert.equal((await call('auth/code-change',{cookie:a.cookie,body:{oldCode:'000000',newCode:'000000',confirmCode:'000000'}})).status,400);
+assert.equal((await call('auth/code-change',{cookie:a.cookie,body:{oldCode:'000000',newCode:'938275',confirmCode:'938275'}})).status,200);
+assert.equal((await call('auth/session',{cookie:a.cookie})).status,401);assert.equal((await call('auth/session',{cookie:b.cookie})).status,401);
+assert.equal((await call('auth/code',{body:{code:'000000'}})).status,401);
+const c=await call('auth/code',{body:{code:'938275',returnTo:'//evil.test'}});assert.equal(c.status,200);assert.equal(c.body.redirect,'/dashboard.html');assert.equal(c.body.initialCode,false);
+const stored=await DB.prepare("SELECT content FROM prototype_settings WHERE id='goddess-credential'").first();assert.ok(!stored.content.includes('938275'));
+assert.equal((await call('auth/logout',{cookie:c.cookie,body:{},origin:'https://evil.test'})).status,403);assert.equal((await call('auth/logout',{cookie:c.cookie,body:{}})).status,200);assert.equal((await call('auth/session',{cookie:c.cookie})).status,401);
+await DB.prepare('DELETE FROM chat_limits').run();
+const d=await call('auth/code',{body:{code:'938275',returnTo:'/studio.html'}});assert.equal(d.body.redirect,'/studio.html');
+await DB.prepare("UPDATE prototype_settings SET content=? WHERE id LIKE 'goddess-session:%'").bind(JSON.stringify({expires:0,userId:'test-owner'})).run();assert.equal((await call('auth/session',{cookie:d.cookie})).status,401);
+await DB.prepare('DELETE FROM chat_limits').run();for(let i=0;i<5;i++)assert.equal((await call('auth/code',{body:{code:'bad'}})).status,401);const blocked=await call('auth/code',{body:{code:'938275'}});assert.equal(blocked.status,429);assert.equal(blocked.headers.get('retry-after'),'900');
+await sql.close();console.log('Goddess code authentication passed: salted hashing, incorrect codes, origin checks, secure cookies, protected dashboard/editor/chat, old-code verification, rotation, all-session revocation, logout, expiry, attempt limits and safe redirects.');

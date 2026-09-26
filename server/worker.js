@@ -5,7 +5,7 @@ export default {async fetch(request,env){
  if(pathname.startsWith('/api/visual/')){
   if(!['/api/visual/published','/api/visual/draft'].includes(pathname))return json({error:'Not found'},404);
   const authenticatedUser=request.headers.get('oai-authenticated-user-id'),userId=authenticatedUser?'owner':null;
-  if(!(request.method==='GET'&&pathname==='/api/visual/published')&&(!userId||request.headers.get('oai-authenticated-user-email')?.toLowerCase()!==EDITOR_OWNER_EMAIL))return json({error:'Sign in as Goddess to edit. Use /signin-with-chatgpt?return_to=%2Fstudio.html'},403);
+  if(!(request.method==='GET'&&pathname==='/api/visual/published')&&(!userId||request.headers.get('oai-authenticated-user-email')?.toLowerCase()!==EDITOR_OWNER_EMAIL))return json({error:'Sign in as Goddess to edit. Use /signin.html?return_to=%2Fstudio.html'},403);
   try{return await visualAPI(request,env,url,userId);}catch{return json({error:'Editor storage unavailable. Keep your edits open and retry.'},503);}
  }
  if(['/api/media/prepare','/api/media/complete'].includes(pathname)){try{return await directMediaAPI(request,env,url);}catch{return json({error:'File upload is temporarily unavailable. Please retry.'},503);}}

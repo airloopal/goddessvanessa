@@ -29,7 +29,7 @@ export async function statusAPI(request,env,{database,storage}){
  }
  const emailConfigured=!!env.RESEND_API_KEY&&typeof env.EMAIL_FROM==='string'&&!/[\r\n]/.test(env.EMAIL_FROM)&&/[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+/.test(env.EMAIL_FROM);
  checks.push({id:'email',name:'Goddess-issued code emails',state:emailConfigured?'unverified':'attention',detail:emailConfigured?'Sender settings are present. Delivery has not been tested; check the result when Vanessa issues a code.':'Email delivery is not configured. Vanessa can copy and share codes privately.'});
- checks.push({id:'admin',name:'Goddess sign-in',state:'ok',detail:'Your Goddess session is verified. This does not test a new sign-in email or its redirect.'});
+ checks.push({id:'admin',name:'Goddess sign-in',state:'ok',detail:'Your private Goddess code session is verified. New sign-ins use your access code.'});
  checks.push({id:'access',name:'Student access',state:'info',detail:'Only Goddess issues codes. An application session does not open chat.'});
  checks.push({id:'payments',name:'Payments',state:'attention',detail:'Not connected. Displayed entry and contract amounts do not collect money.'});
  const commit=/^[a-f0-9]{7,40}$/i.test(env.VERCEL_GIT_COMMIT_SHA||'')?env.VERCEL_GIT_COMMIT_SHA.slice(0,7):null;

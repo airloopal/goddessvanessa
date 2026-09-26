@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node scripts/check-integrations.mjs && node scripts/check-platform.mjs && node scripts/check-chat.mjs && node scripts/check-preview-access.mjs && node scripts/check-auth.mjs",
+    "test": "node scripts/check-integrations.mjs && node scripts/check-platform.mjs && node scripts/check-chat.mjs && node scripts/check-preview-access.mjs && node scripts/check-auth.mjs && node scripts/check-settings.mjs",
     "dev": "node scripts/dev.mjs",
     "maintenance": "node scripts/maintenance.mjs"
   },

@@ -11,7 +11,7 @@ async function educationAPI(request,env,url){
   if(request.method==='GET')return json(await educationConfig(env,which));
   if(request.method!=='PUT')return json({error:'Method not allowed'},405);
   const p=await educationBody(request,url,400000);if(p instanceof Response)return p;
-  if(!Number.isInteger(p.revision)||p.revision<0||!validEducation(p.config))return json({error:'Check the fields: keep at least one path and lesson, use unique answer options, and supply a valid HTTPS URL for video blocks.'},400);
+  if(!Number.isInteger(p.revision)||p.revision<0||!validEducation(p.config))return json({error:educationSettingsErrors(p.config)[0]||'Check the fields: keep at least one path and lesson, use unique answer options, and supply a valid HTTPS URL for video blocks.'},400);
   const stamp=new Date().toISOString(),key='education-'+which,data=JSON.stringify(p.config);
   const r=p.revision===0?await db(env).prepare('INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?) ON CONFLICT(id) DO NOTHING').bind(key,data,stamp).run():await db(env).prepare('UPDATE prototype_settings SET content=?,revision=revision+1,updated_at=? WHERE id=? AND revision=?').bind(data,stamp,key,p.revision).run();
   return r.meta?.changes?json({revision:p.revision+1,updatedAt:stamp}):json({error:'Someone saved a newer version. Export your changes, then reload before saving.'},409);
@@ -39,6 +39,7 @@ async function educationAPI(request,env,url){
   else await db(env).prepare("UPDATE education_enrolments SET completed=(SELECT COALESCE(jsonb_agg(value),'[]'::jsonb)::text FROM jsonb_array_elements_text(education_enrolments.completed::jsonb) AS items(value) WHERE value<>?),updated_at=? WHERE user_id=?").bind(p.lessonId,now,user).run();
   return json({enrolment:await read()});
  }
+ if(!p.review||p.review.revision!==revision)return json({error:'Application settings changed. Load the updated version and review it before confirming.',code:'settings_changed'},409);
  if(typeof p.name!=='string'||p.name.trim().length<2||p.name.length>100||!config.paths.some(x=>x.id===p.pathId)||p.accepted!==true||!p.answers||typeof p.answers!=='object'||Array.isArray(p.answers))return json({error:'Enter your name, choose a learning path and confirm your enrolment.'},400);
  const answerKeys=Object.keys(p.answers);if(answerKeys.some(k=>!config.questions.some(q=>q.id===k)))return json({error:'The questionnaire changed. Please reload and review your answers.'},409);
  if(config.features.questionnaire&&config.questions.some(q=>!q.options.includes(p.answers[q.id])))return json({error:'Answer each learning question using a current option.'},400);

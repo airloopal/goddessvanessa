@@ -34,15 +34,14 @@ assert.equal((await request('/api/education/verifications',{method:'PUT',account
 assert.equal((await request(ver.data.file.url,{cookie})).status,200);
 assert.equal((await request(ver.data.file.url,{cookie:cookie2})).status,404);
 assert.equal((await request('/api/chat/capabilities')).data.uploads,true);
-assert.equal((await request('/api/chat/request-code',{method:'POST',data:{email:'learner@example.test'}})).status,503);
+assert.equal((await request('/api/chat/request-code',{method:'POST',data:{email:'learner@example.test'}})).status,403);
 const realFetch=globalThis.fetch;const emails=[];env.RESEND_API_KEY='test-key';env.EMAIL_FROM='Academy <access@example.test>';
 globalThis.fetch=async(url,options)=>{assert.equal(url,'https://api.resend.com/emails');assert.equal(options.headers.Authorization,'Bearer test-key');emails.push(JSON.parse(options.body));return new Response(JSON.stringify({id:'mock-email-id'}),{status:200});};
 try{
  assert.equal((await request('/api/chat/capabilities')).data.email,true);
- const reset=await request('/api/chat/request-code',{method:'POST',data:{email:'learner@example.test'}});assert.equal(reset.status,200);assert.equal(emails.length,1);assert.equal(emails[0].to[0],'learner@example.test');
- assert.equal((await request('/api/chat/session',{cookie})).status,200,'requesting a code does not end an existing session');
- const unknown=await request('/api/chat/request-code',{method:'POST',data:{email:'unknown@example.test'}});assert.deepEqual(unknown.data,reset.data);assert.equal(emails.length,1);
- await request('/api/chat/request-code',{method:'POST',data:{email:'learner@example.test'}});assert.equal(emails.length,1,'per-email resend throttle');
+ assert.equal((await request('/api/chat/request-code',{method:'POST',data:{email:'learner@example.test'}})).status,403);assert.equal(emails.length,0);
+ assert.equal((await request('/api/chat/session',{cookie})).status,200,'blocked self-service does not revoke the admin-issued session');
+ const reset=await request('/api/chat/students',{method:'POST',account:'owner',data:{studentId:issue.studentId}});assert.equal(reset.status,200);assert.equal(emails.length,1);
  const code=emails[0].text.match(/[a-f0-9]{48}/)[0];const emailLogin=await request('/api/chat/session',{method:'POST',data:{code}});assert.equal(emailLogin.status,200);assert.equal((await request('/api/chat/session',{cookie})).status,401);
  const latestCookie=emailLogin.headers.get('set-cookie').split(';')[0];
  const emailed=(await request('/api/chat/students',{method:'POST',account:'owner',data:{studentId:second}})).data;assert.equal(emailed.emailSent,true);assert.equal(emailed.emailStatus,'accepted');
@@ -51,4 +50,4 @@ try{
  assert.equal(objects.size,1,'chat deletion removes its files, while separate verification record remains');
  assert.equal((await request(sent.data.file.url,{account:'owner'})).status,404);
 }finally{globalThis.fetch=realFetch;delete env.RESEND_API_KEY;delete env.EMAIL_FROM;}
-console.log('Media/email integration checks passed: private uploads, file validation, idempotence, byte ranges, verification visibility, deletion cleanup, email configuration gating, private recovery, throttling and provider failure handling. No real emails were sent.');
+console.log('Media/email integration checks passed: private uploads, file validation, idempotence, byte ranges, verification visibility, deletion cleanup, email configuration gating, admin-only code issuance and provider failure handling. No real emails were sent.');

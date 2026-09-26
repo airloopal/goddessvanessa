@@ -1,6 +1,6 @@
 async function educationVerificationAPI(request,env,url,{user,email,owner}){
  const admin=url.pathname==='/api/education/verifications';
- if(!user)return json({error:'Sign in to request verification and receive the response.'},401);
+ if(!user)return json({error:'Start your application in this browser to request verification.'},401);
  if(admin&&!owner)return json({error:'Only the site owner can review verification requests.'},403);
  const key='education-verification:'+user;
  const decode=row=>row?{key:row.id,revision:row.revision,...JSON.parse(row.content)}:null;
@@ -14,6 +14,7 @@ async function educationVerificationAPI(request,env,url,{user,email,owner}){
  const body=await educationBody(request,url,6000);if(body instanceof Response)return body;
  const now=new Date().toISOString();
  if(!admin){
+  if(!await chatLimit(env,'verification:'+await chatHash(request.headers.get('cf-connecting-ip')||'unknown'),10,3600000))return json({error:'Too many requests. Try again later.'},429);
   if(typeof body.name!=='string'||!body.name.trim()||body.name.length>80)return json({error:'Enter your name or nickname (up to 80 characters).'},400);
   const {config}=await educationConfig(env);const plan=config.agreement.entryPlans.find(p=>p.id===body.entryId);
   if(!plan)return json({error:'Choose an entry plan first.'},400);

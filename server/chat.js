@@ -8,7 +8,7 @@ async function chatAPI(request,env,url){
  const path=url.pathname.slice('/api/chat/'.length),method=request.method,owner=!!request.headers.get('oai-authenticated-user-id')&&request.headers.get('oai-authenticated-user-email')?.toLowerCase()===EDUCATION_OWNER&&request.headers.get('x-chat-role')!=='student',now=Date.now();
  let body={};if(!['GET','HEAD'].includes(method)){body=await educationBody(request,url,8000);if(body instanceof Response)return body;}
  if(path==='capabilities'&&method==='GET')return json({email:emailReady(env),uploads:!!env.BUCKET,maxUploadBytes:MEDIA_MAX});
- if(path==='request-code'&&method==='POST')return requestAccessEmail(request,env,url,body);
+ if(path==='request-code'&&method==='POST')return json({error:'Only Goddess Vanessa can issue or replace access codes. Contact her for a code.'},403);
  if(path==='session'&&method==='POST'){
   const ip=request.headers.get('cf-connecting-ip')||'unknown';if(!await chatLimit(env,'login:'+await chatHash(ip),20,15*60*1000))return json({error:'Too many attempts. Try again in 15 minutes.'},429);
   const code=typeof body.code==='string'?body.code.trim().toLowerCase():'';

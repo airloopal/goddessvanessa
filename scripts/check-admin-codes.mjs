@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {PGlite} from '@electric-sql/pglite';
+import {database} from '../server/platform/database.js';
+import {handle} from '../api/index.js';
+import {authAPI} from '../server/platform/auth.js';
+const sql=new PGlite();await sql.exec('CREATE ROLE anon;CREATE ROLE authenticated;');await sql.exec(fs.readFileSync('supabase/schema.sql','utf8'));const DB=database(sql);
+const owner={id:'owner',email:'danielvernontp@gmail.com',email_confirmed_at:'2026-01-01'};
+async function call(path,{method='GET',data,cookie,user=null,origin='https://academy.test',headers={}}={}){
+ const auth={client:{auth:{getUser:async()=>({data:{user},error:null})}},apply:r=>r};
+ const r=await handle(new Request('https://academy.test/api/'+path,{method,headers:{origin,...headers,...(cookie?{cookie}:{}),...(data?{'content-type':'application/json'}:{})},body:data?JSON.stringify(data):undefined}),{}, {DB,auth});return {status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0],headers:r.headers};
+}
+assert.equal((await call('education/application-session',{method:'POST',data:{},origin:'https://elsewhere.test'})).status,403);
+const a=await call('education/application-session',{method:'POST',data:{}}),b=await call('education/application-session',{method:'POST',data:{}});assert.equal(a.status,200);assert.notEqual(a.cookie,b.cookie);assert.match(a.headers.get('set-cookie'),/HttpOnly/);assert.match(a.headers.get('set-cookie'),/Secure/);assert.match(a.headers.get('set-cookie'),/SameSite=Strict/);
+const identity=(await call('education/identity',{cookie:a.cookie})).data;assert.equal(identity.signedIn,false);assert.equal(identity.application,true);assert.equal(identity.owner,false);
+assert.equal((await call('chat/session',{cookie:a.cookie})).status,401);
+assert.equal((await call('education/draft',{cookie:a.cookie})).status,403);
+const config=(await call('education/published')).data.config;
+const enrol={name:'Applicant One',pathId:config.paths[0].id,answers:Object.fromEntries(config.questions.map(q=>[q.id,q.options[0]])),accepted:true,review:{revision:0,entryId:'basic',contractId:'day',email:'student@example.test',signature:'Applicant One',ageConfirmed:true,aupAccepted:true,read:true,entryReviewed:true}};
+const verification=await call('education/verification',{method:'POST',cookie:a.cookie,data:{name:'Applicant One',entryId:'basic'}});assert.equal(verification.status,200);assert.equal((await call('education/verification',{cookie:b.cookie})).data.request,null);
+const saved=await call('education/enrolment',{method:'PUT',cookie:a.cookie,data:enrol});assert.equal(saved.status,200);assert.equal(saved.data.access.codeIssued,false);assert.equal(saved.data.access.status,'awaiting_admin');assert.equal((await DB.prepare('SELECT COUNT(*) n FROM chat_students').first()).n,0);assert.equal((await call('education/enrolment',{cookie:b.cookie})).data.enrolment,null);
+const existingEmailUser={id:'old-student-auth',email:'student@example.test',email_confirmed_at:'2026-01-01'};assert.equal((await call('education/identity',{user:existingEmailUser})).data.signedIn,false);
+const forged={'oai-authenticated-user-id':'owner','oai-authenticated-user-email':owner.email};
+assert.equal((await call('chat/students',{method:'POST',cookie:a.cookie,data:{reference:saved.data.enrolment.reference},headers:forged})).status,403);
+assert.equal((await call('chat/request-code',{method:'POST',data:{email:'student@example.test'}})).status,403);
+assert.equal((await call('chat/session',{cookie:a.cookie})).status,401);
+const issued=await call('chat/students',{method:'POST',user:owner,data:{reference:saved.data.enrolment.reference}});assert.equal(issued.status,200);assert.equal(issued.data.code.length,48);assert.equal(issued.data.emailSent,false);
+const login=await call('chat/session',{method:'POST',data:{code:issued.data.code}});assert.equal(login.status,200);assert.equal((await call('chat/session',{method:'POST',data:{code:issued.data.code}})).status,401);assert.equal((await call('education/enrolment',{cookie:login.cookie})).data.enrolment.reference,saved.data.enrolment.reference);
+assert.equal((await call('chat/messages',{cookie:login.cookie})).status,200);assert.equal((await call('chat/messages',{cookie:a.cookie})).status,401);
+assert.equal((await call('chat/request-code',{method:'POST',cookie:login.cookie,data:{email:'student@example.test'}})).status,403);
+const authResponse=await authAPI(new Request('https://academy.test/api/auth/email',{method:'POST',headers:{origin:'https://academy.test','content-type':'application/json'},body:JSON.stringify({email:'student@example.test'})}),{client:{auth:{signInWithOtp(){throw Error('Student must not trigger auth email');}}}},{});assert.equal(authResponse.status,403);
+assert.equal((await call('chat/session',{method:'DELETE',cookie:login.cookie,data:{}})).status,200);assert.equal((await call('chat/session',{cookie:login.cookie})).status,401);
+await sql.close();console.log('Admin-code flow passed: anonymous private applications and verification, no automatic student/code creation, isolated records, owner-only issuance, no email self-service, single-use login, linked records and logout.');

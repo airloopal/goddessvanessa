@@ -50,3 +50,9 @@ html:has(body.landing){scroll-snap-type:y mandatory;scroll-behavior:smooth}
 .landing #sub-access-link:focus-visible,.landing #hero-cta:focus-visible{outline:3px solid #fff;outline-offset:3px}
 
 .landing #sub-access-link,.landing #hero-cta{font-weight:600}.landing #sub-access-link span,.landing #sub-access-link svg{color:inherit}
+
+/* Full-bleed video chapters. Desktop files include a soft extension of the
+   original footage so the central portrait stays visible without empty bars. */
+.landing .video-scene{width:100%;padding:0;border:0;margin:0;overflow:hidden}
+.landing .video-scene .hero-video{display:block;inset:0;width:100%;max-width:none;height:100%;object-fit:cover;object-position:50% 50%;border:0;border-radius:0}
+@media(max-aspect-ratio:4/5){.landing .video-scene .hero-video{object-position:50% 45%}}

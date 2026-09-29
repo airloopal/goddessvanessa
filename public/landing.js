@@ -2,6 +2,21 @@ const expectations=document.getElementById('expectations');document.getElementBy
 
 const scenes=[...document.querySelectorAll('.video-scene')],sceneButtons=[...document.querySelectorAll('.scene-button')],motionButton=document.getElementById('hero-motion');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+const portraitViewport=matchMedia('(max-aspect-ratio: 4/5)');
+function selectVideoFiles(){
+ scenes.forEach(scene=>{
+  const video=scene.querySelector('video');
+  const file=portraitViewport.matches?video.dataset.mobile:video.dataset.desktop;
+  // Preserve an independently chosen video from the visual editor.
+  const current=video.getAttribute('src');
+  if(!file||(current&&current!==video.dataset.mobile&&current!==video.dataset.desktop))return;
+  video.poster=file.replace(/\.mp4$/,'.jpg');
+  if(current!==file){video.src=file;video.load();}
+ });
+}
+selectVideoFiles();
+portraitViewport.addEventListener('change',()=>{selectVideoFiles();syncPlayback();});
+
 let activeScene=0,manualPause=reduced.matches;
 const colours=['#f071b4','#e8bc68','#bc8cff','#8bd9e6'];
 function syncPlayback(){

@@ -19,3 +19,20 @@ assert.equal((await request('/api/chat/messages?student='+b,{cookie})).status,40
 assert.equal((await save(a,{color:null,pattern:'dots',revision:1})).status,200);
 assert.equal((await request('/api/chat/messages',{cookie})).data.background.color,null);
 console.log('Background checks passed: owner-only changes, validation, per-chat isolation, student sync, revision conflicts and reset.');
+const worker=(await import('../dist/server/index.js')).default;
+const objects=new Map();env.BUCKET={async put(k,bytes){objects.set(k,bytes);},async get(k){return objects.has(k)?{body:objects.get(k)}:null;},async delete(k){objects.delete(k);}};
+const imageId=crypto.randomUUID();
+async function uploadBg(id,bytes,asOwner=true){const headers={origin:'https://academy.test','content-type':'image/png','x-upload-id':id,cookie};if(asOwner){headers['oai-authenticated-user-id']='owner-test';headers['oai-authenticated-user-email']='danielvernontp@gmail.com';}return worker.fetch(new Request('https://academy.test/api/media/upload?scope=background&student='+a,{method:'POST',headers,body:bytes}),env);}
+const png=new Uint8Array([137,80,78,71,13,10,26,10]);
+assert.equal((await uploadBg(crypto.randomUUID(),png,false)).status,403);
+assert.equal((await uploadBg(crypto.randomUUID(),new TextEncoder().encode('<svg/>'))).status,415);
+assert.equal((await uploadBg(imageId,png)).status,200);
+assert.equal((await env.DB.prepare('SELECT COUNT(*) AS n FROM chat_messages WHERE attachment_id=?').bind(imageId).first()).n,0);
+assert.equal((await save(b,{color:null,pattern:'dots',revision:0,imageId,overlay:'pink'})).status,400);
+assert.equal((await save(a,{color:null,pattern:'dots',revision:2,imageId,overlay:'pink'})).status,200);
+assert.equal((await request('/api/chat/messages',{cookie})).data.background.imageId,imageId);
+assert.equal((await request('/api/media/'+imageId,{cookie})).status,200);
+assert.equal((await request('/api/media/'+imageId,{account:'other'})).status,404);
+assert.equal((await save(a,{color:null,pattern:'dots',revision:3,imageId,overlay:'invalid'})).status,400);
+assert.equal((await save(a,{color:null,pattern:'dots',revision:3,imageId:null,overlay:'burgundy'})).status,200);
+console.log('Image background checks passed: upload validation, owner restriction, no chat message, private reads, conversation isolation, overlay and removal.');

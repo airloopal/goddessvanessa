@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {boundedText} from '../server/platform/request-body.js';
+import {request,env} from './check-education.mjs';
+const source=new TextEncoder().encode('❤️🔒');
+const stream=new ReadableStream({start(c){c.enqueue(source.slice(0,2));c.enqueue(source.slice(2));c.close();}});
+assert.equal(await boundedText(new Request('https://academy.test',{method:'POST',body:stream,duplex:'half'}),source.length),'❤️🔒');
+let cancelled=false,reads=0;
+const oversized=new ReadableStream({pull(c){reads++;c.enqueue(new Uint8Array(10));},cancel(){cancelled=true;}});
+await assert.rejects(()=>boundedText(new Request('https://academy.test',{method:'POST',body:oversized,duplex:'half'}),15),e=>e.status===413);assert.equal(cancelled,true);assert.ok(reads<=3);
+await assert.rejects(()=>boundedText(new Request('https://academy.test',{method:'POST',headers:{'content-length':'1000'},body:'x'}),20),e=>e.status===413);
+assert.equal((await request('/api/education/application-session',{method:'POST',data:{padding:'x'.repeat(1001)}})).status,413);
+assert.equal((await request('/api/education/application-session',{method:'POST',data:{},origin:'https://evil.test'})).status,403);
+const session=await request('/api/education/application-session',{method:'POST',data:{}}),cookie=session.headers.get('set-cookie');
+assert.match(cookie,/^__Host-vanessa_application=/);for(const flag of ['HttpOnly','Secure','SameSite=Strict','Path=/'])assert.ok(cookie.includes(flag));assert.ok(!cookie.includes('Domain='));
+const legacy='vanessa_application='+'ab'.repeat(24);assert.equal((await request('/api/education/identity',{cookie:legacy})).data.application,false);
+assert.equal((await request('/api/chat/session',{cookie:'vanessa_student='+'ab'.repeat(24)})).status,401);
+const issue=await request('/api/chat/students',{method:'POST',account:'owner',data:{studentId:(await env.DB.prepare('SELECT id FROM chat_students LIMIT 1').first()).id}});
+const login=await request('/api/chat/session',{method:'POST',data:{code:issue.data.code}});assert.match(login.headers.get('set-cookie'),/^__Host-vanessa_student=/);
+const config=JSON.parse(fs.readFileSync('vercel.json','utf8'));const headers=Object.fromEntries(config.headers[0].headers.map(h=>[h.key,h.value]));assert.ok(headers['Content-Security-Policy'].includes("form-action 'self'"));assert.ok(headers['Content-Security-Policy'].includes('upgrade-insecure-requests'));assert.equal(headers['Strict-Transport-Security'],'max-age=31536000');assert.ok(headers['Permissions-Policy'].includes('geolocation=()'));
+const publicFiles=fs.readdirSync('dist/public');for(const f of publicFiles)if(f.endsWith('.js')){const s=fs.readFileSync('dist/public/'+f,'utf8');assert.ok(!/SUPABASE_SERVICE_ROLE_KEY|SQUARE_ACCESS_TOKEN|SQUARE_WEBHOOK_SIGNATURE_KEY/.test(s),'Server secrets must not be exported to public scripts');}
+console.log('Security checks passed: streaming limits, cancellation, UTF-8 emojis, cross-origin denial, host-only sessions, legacy cookie rejection, security headers and public secret boundary.');

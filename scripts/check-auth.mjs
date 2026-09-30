@@ -7,6 +7,7 @@ import {handle} from '../api/index.js';
 const sql=new PGlite();await sql.exec('CREATE ROLE anon;CREATE ROLE authenticated;');await sql.exec(fs.readFileSync('supabase/schema.sql','utf8'));const DB=database(sql);
 await DB.prepare('INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?)').bind('goddess-credential',JSON.stringify({...await hashCode('000000'),userId:'test-owner',initial:true}),new Date().toISOString()).run();
 async function call(path,{body,cookie,method=body?'POST':'GET',origin='https://academy.test',headers={}}={}){const r=await handle(new Request('https://academy.test/api/'+path,{method,headers:{origin,...headers,...(cookie?{cookie}:{}),'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined}),{DB},{DB});return {status:r.status,headers:r.headers,body:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]};}
+assert.equal((await call('auth/code',{body:{code:'000000',padding:'x'.repeat(2049)}})).status,413);
 assert.equal((await call('auth/code',{body:{code:'000000'},origin:'https://evil.test'})).status,403);
 assert.equal((await call('auth/email',{body:{email:'danielvernontp@gmail.com'}})).status,403);
 assert.equal((await call('admin/status',{headers:{'oai-authenticated-user-id':'test-owner','oai-authenticated-user-email':'danielvernontp@gmail.com'}})).status,403);

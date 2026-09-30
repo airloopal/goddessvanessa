@@ -45,7 +45,7 @@ async function squareReconcile(env,r){if(!r)return;if(r.paymentId)return squareA
 async function squareWebhook(request,env){
  if(request.method!=='POST')return json({error:'Method not allowed'},405);
  if(!squareReady(env))return json({error:'Payments are not configured.'},503);
- const raw=await request.text();if(raw.length>1000000)return json({error:'Request too large'},413);
+ let raw;try{raw=await boundedText(request,1000000);}catch(error){return json({error:error.status===413?'Request too large':'Invalid request body'},error.status===413?413:400);}
  const signature=request.headers.get('x-square-hmacsha256-signature')||'';
  let bytes;try{bytes=Uint8Array.from(atob(signature),c=>c.charCodeAt(0));}catch{return json({error:'Invalid signature'},403);}
  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SQUARE_WEBHOOK_SIGNATURE_KEY),{name:'HMAC',hash:'SHA-256'},false,['verify']);

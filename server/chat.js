@@ -1,8 +1,8 @@
 // Private learning-support conversations. Codes are random, single-use and stored only as hashes.
 const chatHash=async value=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(x=>x.toString(16).padStart(2,'0')).join('');
 const chatToken=()=>Array.from(crypto.getRandomValues(new Uint8Array(24))).map(x=>x.toString(16).padStart(2,'0')).join('');
-const chatCookie=(token,age)=>'vanessa_student='+token+'; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age='+age;
-async function chatStudent(request,env){const token=request.headers.get('cookie')?.match(/(?:^|;\s*)vanessa_student=([a-f0-9]{48})(?:;|$)/)?.[1];if(!token)return null;const student=await db(env).prepare("SELECT s.* FROM chat_students s JOIN chat_sessions a ON a.student_id=s.id WHERE a.hash=? AND a.expires_at>? AND s.status='active'").bind(await chatHash(token),Date.now()).first();return student&&await squareAccessAllowed(env,student.user_id)?student:null;}
+const chatCookie=(token,age)=>'__Host-vanessa_student='+token+'; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age='+age;
+async function chatStudent(request,env){const token=request.headers.get('cookie')?.match(/(?:^|;\s*)__Host-vanessa_student=([a-f0-9]{48})(?:;|$)/)?.[1];if(!token)return null;const student=await db(env).prepare("SELECT s.* FROM chat_students s JOIN chat_sessions a ON a.student_id=s.id WHERE a.hash=? AND a.expires_at>? AND s.status='active'").bind(await chatHash(token),Date.now()).first();return student&&await squareAccessAllowed(env,student.user_id)?student:null;}
 async function chatLimit(env,key,max,period){const now=Date.now();const row=await db(env).prepare('INSERT INTO chat_limits (key,count,expires) VALUES (?,1,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN chat_limits.expires<=? THEN 1 ELSE chat_limits.count+1 END,expires=CASE WHEN chat_limits.expires<=? THEN excluded.expires ELSE chat_limits.expires END RETURNING count').bind(key,now+period,now,now).first();return row.count<=max;}
 async function chatAPI(request,env,url){
  const path=url.pathname.slice('/api/chat/'.length),method=request.method,owner=!!request.headers.get('oai-authenticated-user-id')&&request.headers.get('oai-authenticated-user-email')?.toLowerCase()===EDUCATION_OWNER&&request.headers.get('x-chat-role')!=='student',now=Date.now();
@@ -20,7 +20,7 @@ async function chatAPI(request,env,url){
   const token=chatToken();await db(env).batch([db(env).prepare('DELETE FROM chat_sessions WHERE student_id=? OR expires_at<=?').bind(student.id,now),db(env).prepare('INSERT INTO chat_sessions (hash,student_id,expires_at) VALUES (?,?,?)').bind(await chatHash(token),student.id,now+30*86400000)]);
   const response=json({student:{id:student.id,name:student.name}});response.headers.set('Set-Cookie',chatCookie(token,30*86400));return response;
  }
- if(path==='session'&&method==='DELETE'){const token=request.headers.get('cookie')?.match(/(?:^|;\s*)vanessa_student=([a-f0-9]{48})(?:;|$)/)?.[1];if(token)await db(env).prepare('DELETE FROM chat_sessions WHERE hash=?').bind(await chatHash(token)).run();const response=json({ok:true});response.headers.set('Set-Cookie',chatCookie('',0));return response;}
+ if(path==='session'&&method==='DELETE'){const token=request.headers.get('cookie')?.match(/(?:^|;\s*)__Host-vanessa_student=([a-f0-9]{48})(?:;|$)/)?.[1];if(token)await db(env).prepare('DELETE FROM chat_sessions WHERE hash=?').bind(await chatHash(token)).run();const response=json({ok:true});response.headers.set('Set-Cookie',chatCookie('',0));return response;}
  const student=await chatStudent(request,env);
  if(path==='request-code'||path==='code-requests')return chatCodeRequests(request,env,url,{owner,student,body,method,now,path});
  if(path==='session'&&method==='GET')return student?json({student:{id:student.id,name:student.name,email:student.email}}):json({error:'Enter your access code to open your conversation.'},401);
@@ -114,7 +114,7 @@ async function chatCodeRequests(request,env,url,{owner,student,body,method,now,p
   const existing=await read();
   if(!existing||!['approved','issued'].includes(existing.status))return json({error:'Your replacement request needs approval first.'},409);
   if(now-existing.reviewedAt>=86400000)return json({error:'This approval expired. Request another code.'},410);
-  const token=request.headers.get('cookie').match(/(?:^|;\s*)vanessa_student=([a-f0-9]{48})(?:;|$)/)[1];
+  const token=request.headers.get('cookie').match(/(?:^|;\s*)__Host-vanessa_student=([a-f0-9]{48})(?:;|$)/)[1];
   const code=(await chatHash('replacement-code:'+token+':'+existing.id)).slice(0,48),hash=await chatHash(code),expiresAt=existing.reviewedAt+86400000;
   const result=await db(env).prepare("WITH approved AS (UPDATE prototype_settings SET content=(content::jsonb || jsonb_build_object('status','issued','expiresAt',?::bigint))::text,revision=revision+1 WHERE id=? AND content::jsonb->>'id'=? AND content::jsonb->>'status'='approved' RETURNING id) UPDATE chat_students SET code_hash=?,code_expires=? WHERE id=? AND status='active' AND EXISTS(SELECT 1 FROM approved) RETURNING id").bind(expiresAt,key,existing.id,hash,expiresAt,student.id).first();
   if(!result){const current=await db(env).prepare('SELECT code_hash,code_expires FROM chat_students WHERE id=?').bind(student.id).first();if(current?.code_hash!==hash||current.code_expires<=now)return json({error:'This code has been used or replaced. Request another code.'},409);}

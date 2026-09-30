@@ -1,5 +1,6 @@
 import {randomBytes,scrypt as scryptCallback,timingSafeEqual,createHash} from 'node:crypto';
 import {promisify} from 'node:util';
+import {boundedText} from './request-body.js';
 import {productionDatabase} from './database.js';
 const scrypt=promisify(scryptCallback),credentialId='goddess-credential',cookieName='__Host-goddess_session',ttl=12*3600000;
 const digest=value=>createHash('sha256').update(value).digest('hex');
@@ -22,7 +23,7 @@ export async function authAPI(request,context,env){const path=new URL(request.ur
  if(request.headers.get('origin')!==new URL(request.url).origin)return json({error:'Request origin rejected.'},403);
  const DB=env.DB||context.getDB();
  if(path==='/api/auth/logout'){const t=token(request);if(t)await DB.prepare('DELETE FROM prototype_settings WHERE id=?').bind('goddess-session:'+digest(t)).run();context.setCookie('',0);return json({ok:true});}
- let body;try{const text=await request.text();if(text.length>2048)throw Error();body=JSON.parse(text);if(!body||typeof body!=='object')throw Error();}catch{return json({error:'Invalid request.'},400);}
+ let body;try{const text=await boundedText(request,2048);body=JSON.parse(text);if(!body||typeof body!=='object')throw Error();}catch(error){return json({error:error.status===413?'Request too large.':'Invalid request.'},error.status===413?413:400);}
  if(path==='/api/auth/code-change'){const {data:{user}}=await context.client.auth.getUser();if(!user)return json({error:'Goddess access required.'},401);}
  if(await limited(DB,request,env,path==='/api/auth/code'?'goddess-login':'goddess-change')){const r=json({error:'Too many attempts. Please wait 15 minutes before trying again.'},429);r.headers.set('Retry-After','900');return r;}
  const row=await DB.prepare('SELECT content,revision FROM prototype_settings WHERE id=?').bind(credentialId).first();if(!row)return json({error:'Goddess access has not been configured yet.'},503);const credential=JSON.parse(row.content),code=path==='/api/auth/code'?body.code:body.oldCode;

@@ -23,7 +23,7 @@ function squareIcon(kind){const paths={card:'<rect x="3" y="5" width="18" height
 function squareButton(button,kind,label,compact=false){if(!button)return;button.innerHTML=squareIcon(kind)+(compact?'':'<span>'+eduEscape(label)+'</span>');button.setAttribute('aria-label',label);button.title=label;button.classList.add('square-action');button.classList.toggle('square-icon-only',compact);}
 function squareCheckout(stage){if(stage!=='contract')return;squareSaveDraft();screen='review';squareContractPanel();}
 function squareCheckoutActions(){
- squareButton(document.getElementById('lightbox-verification'),'video','Request verification',true);
+ squareButton(document.getElementById('lightbox-verification'),'video','Request verification');
  squareButton(document.getElementById('square-refresh'),'retry','Check payment status',true);
  squareButton(document.getElementById('square-contract-refresh'),'retry','Check payment status',true);
  const refresh=document.getElementById('square-refresh'),actions=entryDialog?.querySelector('.entry-lightbox-actions');if(refresh&&actions)actions.insertBefore(refresh,document.getElementById('square-entry-pay'));

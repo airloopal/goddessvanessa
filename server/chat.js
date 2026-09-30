@@ -46,12 +46,22 @@ async function chatAPI(request,env,url){
  if(!owner&&((body.studentId&&body.studentId!==id)||(url.searchParams.has('student')&&url.searchParams.get('student')!==id)))return json({error:'Conversation unavailable.'},403);
  const target=owner?await db(env).prepare('SELECT id,status FROM chat_students WHERE id=?').bind(id).first():student;
  if(!target)return json({error:'Conversation not found.'},404);
+ if(path==='background'){
+  if(!owner)return json({error:'Only Vanessa can change conversation backgrounds.'},403);
+  if(method==='GET')return json({background:await chatBackground(env,id)});
+  if(method!=='PUT')return json({error:'Method not allowed'},405);
+  if((body.color!==null&&(typeof body.color!=='string'||!/^#[0-9a-f]{6}$/i.test(body.color)))||!['plain','dots','grid'].includes(body.pattern)||!Number.isInteger(body.revision)||body.revision<0)return json({error:'Choose a colour and pattern.'},400);
+  const value=JSON.stringify({color:body.color,pattern:body.pattern}),key='chat-background:'+id,stamp=new Date(now).toISOString();
+  const result=body.revision===0?await db(env).prepare('INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?) ON CONFLICT(id) DO NOTHING').bind(key,value,stamp).run():await db(env).prepare('UPDATE prototype_settings SET content=?,revision=revision+1,updated_at=? WHERE id=? AND revision=?').bind(value,stamp,key,body.revision).run();
+  if(!result.meta?.changes)return json({error:'This background changed in another window. Close and reopen the background editor.'},409);
+  return json({background:{color:body.color,pattern:body.pattern,revision:body.revision+1}});
+ }
  if(path==='messages'&&method==='GET'){
   const before=Number(url.searchParams.get('before')||Number.MAX_SAFE_INTEGER);if(!Number.isSafeInteger(before)||before<1)return json({error:'Invalid page.'},400);
   const rows=await db(env).prepare('SELECT seq,id,sender AS "from",body AS text,created_at AS at,attachment_id FROM chat_messages WHERE student_id=? AND seq<? ORDER BY seq DESC LIMIT 100').bind(id,before).all();
   const states=await db(env).prepare('SELECT role,MAX(typing_until) AS typing_until,MAX(read_seq) AS read_seq FROM chat_state WHERE student_id=? GROUP BY role').bind(id).all();
   const p=await db(env).prepare("SELECT content FROM prototype_settings WHERE id='chat-presence'").first(),presence=p?JSON.parse(p.content):{};
-  return json({messages:await chatAttachments(env,(rows.results||[]).reverse()),hasMore:rows.results.length===100,states:states.results,online:presence.online===true&&presence.until>now,status:target.status});
+  return json({background:await chatBackground(env,id),messages:await chatAttachments(env,(rows.results||[]).reverse()),hasMore:rows.results.length===100,states:states.results,online:presence.online===true&&presence.until>now,status:target.status});
  }
  if(path==='messages'&&method==='POST'){
   if(target.status!=='active')return json({error:'This account is suspended.'},403);
@@ -69,7 +79,7 @@ async function chatAPI(request,env,url){
  }
  if(path==='account'&&!owner){
   if(method==='PATCH'&&body.action==='deactivate'){await db(env).batch([db(env).prepare("UPDATE chat_students SET status='suspended',code_hash=NULL,code_expires=0 WHERE id=?").bind(id),db(env).prepare('DELETE FROM chat_sessions WHERE student_id=?').bind(id)]);return json({ok:true});}
-  if(method==='DELETE'&&body.confirm===true){await mediaDeleteStudent(env,id);await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind('code-request:'+id).run();await db(env).batch(['chat_messages','chat_state','chat_sessions'].map(table=>db(env).prepare('DELETE FROM '+table+' WHERE student_id=?').bind(id)).concat([db(env).prepare('DELETE FROM chat_students WHERE id=?').bind(id)]));const response=json({ok:true});response.headers.set('Set-Cookie',chatCookie('',0));return response;}
+  if(method==='DELETE'&&body.confirm===true){await mediaDeleteStudent(env,id);await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind('chat-background:'+id).run();await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind('code-request:'+id).run();await db(env).batch(['chat_messages','chat_state','chat_sessions'].map(table=>db(env).prepare('DELETE FROM '+table+' WHERE student_id=?').bind(id)).concat([db(env).prepare('DELETE FROM chat_students WHERE id=?').bind(id)]));const response=json({ok:true});response.headers.set('Set-Cookie',chatCookie('',0));return response;}
  }
  return json({error:'Not found'},404);
 }
@@ -114,3 +124,5 @@ async function chatCodeRequests(request,env,url,{owner,student,body,method,now,p
  const row=await db(env).prepare("INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?) ON CONFLICT(id) DO UPDATE SET content=excluded.content,revision=prototype_settings.revision+1,updated_at=excluded.updated_at WHERE prototype_settings.content::jsonb->>'status'<>'pending' AND (prototype_settings.content::jsonb->>'status'<>'approved' OR (prototype_settings.content::jsonb->>'reviewedAt')::bigint<=?) RETURNING content").bind(key,JSON.stringify(value),new Date(now).toISOString(),now-86400000).first();
  return json({request:row?JSON.parse(row.content):await read()});
 }
+
+async function chatBackground(env,id){const row=await db(env).prepare('SELECT content,revision FROM prototype_settings WHERE id=?').bind('chat-background:'+id).first();return row?{...JSON.parse(row.content),revision:row.revision}:{color:null,pattern:'dots',revision:0};}

@@ -24,3 +24,8 @@ Scope: application, student chat, Vanessa dashboard, private uploads, Square san
 - Change the Vanessa admin access code that was shared in chat before going live. The owner must do this through Account → Settings; no credential was read or changed during this review. Admin access currently uses one factor, not MFA.
 - Live payments remain disabled. Production promotion, production flows, backup/restore testing and an independent penetration test remain release checks.
 - Automatic approval review rejected a credential-state query as credential probing; it was not retried. Authentication behavior was checked using synthetic test credentials.
+
+## Admin authenticator MFA
+Optional enrollment in Settings requires a private 12-digit access code and a valid time-based authenticator code. Enabling invalidates all existing sessions. Sign-in and code rotation require a fresh authenticator code or a single-use recovery code. Setup keys are encrypted with AES-256-GCM under an independent scrypt-derived key from the raw access code; recovery codes are stored only as hashes. Concurrent recovery attempts use compare-and-swap so only one succeeds. Enrollment is incomplete until the administrator personally verifies their authenticator. No enrollment secrets or recovery codes are included in logs or screenshots.
+
+Verification: RFC 6238 SHA-1 vectors, encrypted-secret wrong-key and tamper rejection, session-bound enrollment, OTP replay rejection, concurrent recovery use, code rotation preserving MFA, and session revocation pass in synthetic tests. Backups and production firewall custom-rule publication remain operator actions; database backups must also cover separately stored media.

@@ -5,7 +5,7 @@ function squareReady(env){return squareMode(env)!=='off'&&!!(env.SQUARE_ACCESS_T
 async function squareCall(env,path,body){
  const base=squareMode(env)==='production'?'https://connect.squareup.com':'https://connect.squareupsandbox.com';
  const r=await (env.SQUARE_FETCH||fetch)(base+'/v2/'+path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+env.SQUARE_ACCESS_TOKEN,'Content-Type':'application/json','Square-Version':'2025-01-23'},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(15000)});
- if(!r.ok)throw Error('Square request failed ('+r.status+').');return r.json();
+ if(!r.ok){const data=await r.json().catch(()=>({}));const e=Error('Square request failed ('+r.status+').');e.squareCodes=(data.errors||[]).map(x=>x.code);throw e;}return r.json();
 }
 async function squareRecord(env,key){const r=await db(env).prepare('SELECT content,revision FROM prototype_settings WHERE id=?').bind(key).first();return r?{...JSON.parse(r.content),_revision:r.revision}:null;}
 async function squareWrite(env,key,value,revision){const {_revision,...clean}=value;return db(env).prepare('UPDATE prototype_settings SET content=?,revision=revision+1,updated_at=? WHERE id=? AND revision=?').bind(JSON.stringify(clean),new Date().toISOString(),key,revision).run();}
@@ -28,6 +28,7 @@ async function squareApplyPayment(env,paymentId){
   const r=await squareRecord(env,key);if(!r)return;
   if(r.orderId&&r.orderId!==p.order_id)return;
   if(p.location_id!==env.SQUARE_LOCATION_ID||order.location_id!==env.SQUARE_LOCATION_ID||p.amount_money?.amount!==r.plan.amount||p.amount_money?.currency!=='GBP'||p.total_money?.amount!==r.plan.amount||p.total_money?.currency!=='GBP')return;
+  if(r.method==='embedded'&&['FAILED','CANCELED'].includes(p.status))return;
   if(r.paymentId&&r.paymentId!==p.id)return;
   // Re-fetching Square's current object avoids replaying stale webhook payloads.
   if(r.providerUpdatedAt&&p.updated_at<r.providerUpdatedAt)return;
@@ -60,18 +61,20 @@ async function squareAPI(request,env,url,{user,owner}){
  const mode=squareMode(env),ready=squareReady(env);
  if(url.pathname==='/api/education/payments'&&request.method==='GET'){
   const state=user?await squarePaymentState(env,user):{};
-  return json({mode,ready,entry:squarePublic(state.entry),contract:squarePublic(state.contract)});
+  return json({mode,ready,embeddedReady:ready&&!!env.SQUARE_APPLICATION_ID,applicationId:env.SQUARE_APPLICATION_ID||null,locationId:env.SQUARE_LOCATION_ID||null,entry:squarePublic(state.entry),contract:squarePublic(state.contract)});
  }
  if(!user)return json({error:'Start your application in this browser first.'},401);
  if(request.method!=='POST')return json({error:'Method not allowed'},405);
- const body=await educationBody(request,url,2000);if(body instanceof Response)return body;
+ const body=await educationBody(request,url,4000);if(body instanceof Response)return body;
  if(!ready)return json({error:'Payments are not available yet. Please try again later.'},503);
  if(!await chatLimit(env,'square:'+await chatHash(user),30,60000))return json({error:'Please wait before trying again.'},429);
  if(url.pathname==='/api/education/payments/refresh'){
   const state=await squarePaymentState(env,user);for(const r of [state.entry,state.contract])await squareReconcile(env,r);
   const fresh=await squarePaymentState(env,user);return json({mode,ready,entry:squarePublic(fresh.entry),contract:squarePublic(fresh.contract)});
  }
- if(url.pathname!=='/api/education/payments/checkout')return json({error:'Not found'},404);
+ const embedded=['/api/education/payments/prepare','/api/education/payments/charge'].includes(url.pathname);
+ if(embedded&&!env.SQUARE_APPLICATION_ID)return json({error:'Card checkout is being configured. Please return shortly.'},503);
+ if(!embedded&&url.pathname!=='/api/education/payments/checkout')return json({error:'Not found'},404);
  if(!['entry','contract'].includes(body.stage))return json({error:'Choose a payment stage.'},400);
  const {config,revision}=await educationConfig(env);
  if(body.revision!==revision)return json({error:'Rates changed. Reload the application before paying.',code:'settings_changed'},409);
@@ -87,7 +90,7 @@ async function squareAPI(request,env,url,{user,owner}){
  const key=await squareKey(env,user,body.stage);
  let r=await squareRecord(env,key);
  if(!r){
-  const initial={user,stage:body.stage,plan,agreementId,mode,status:'pending',idempotencyKey:crypto.randomUUID(),createdAt:new Date().toISOString()};
+  const initial={method:embedded?'embedded':'hosted',user,stage:body.stage,plan,agreementId,mode,status:'pending',idempotencyKey:crypto.randomUUID(),createdAt:new Date().toISOString()};
   const returnURL=new URL('/application.html',env.SQUARE_SITE_URL);returnURL.searchParams.set('payment',body.stage);
   initial.request={idempotency_key:initial.idempotencyKey,order:{location_id:env.SQUARE_LOCATION_ID,reference_id:key,line_items:[{name:(body.stage==='entry'?'Entry fee — ':'Contract — ')+plan.name,quantity:'1',base_price_money:{amount:plan.amount,currency:'GBP'}}]},checkout_options:{redirect_url:returnURL.href,allow_tipping:false,ask_for_shipping_address:false},...(email?{pre_populated_data:{buyer_email:email}}:{})};
   await db(env).prepare('INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?) ON CONFLICT(id) DO NOTHING').bind(key,JSON.stringify(initial),initial.createdAt).run();r=await squareRecord(env,key);
@@ -96,6 +99,8 @@ async function squareAPI(request,env,url,{user,owner}){
  await squareReconcile(env,r);r=await squareRecord(env,key);
  if(r.status==='paid')return json({paid:true,payment:squarePublic(r)});
  if(r.status==='refund_review')return json({error:'This payment needs an administrator review.'},409);
+ if(embedded)return squareEmbedded(request,env,url,body,key,r);
+ if(r.method==='embedded')return json({error:'Please use the on-page card form.'},409);
  if(!r.checkoutUrl){
   const result=await squareCall(env,'online-checkout/payment-links',r.request),link=result.payment_link;
   if(!link?.url||!link.order_id)throw Error('Square did not return a checkout.');
@@ -107,4 +112,46 @@ async function squareAPI(request,env,url,{user,owner}){
   r=await squareRecord(env,key);
  }
  return json({url:r.checkoutUrl,mode});
+}
+
+// The browser supplies a single-use Square token, never a card number or price.
+async function squareEmbedded(request,env,url,body,key,r){
+ if(r.method!=='embedded')return json({error:'An earlier hosted checkout is still open. Complete it and use Check payment status before continuing.'},409);
+ if(!r.orderId){
+  const {order}=await squareCall(env,'orders',{idempotency_key:r.idempotencyKey,order:r.request.order});
+  if(!order?.id)throw Error('Square did not return an order.');
+  await squareWrite(env,key,{...r,orderId:order.id},r._revision);r=await squareRecord(env,key);
+  if(!r.orderId)return json({error:'Checkout changed. Please try again.'},409);
+ }
+ if(url.pathname.endsWith('/prepare'))return json({plan:r.plan,mode:squareMode(env),applicationId:env.SQUARE_APPLICATION_ID,locationId:env.SQUARE_LOCATION_ID,resumeAttempt:r.cardAttempt&&!r.cardAttempt.failed&&!r.cardAttempt.complete?r.cardAttempt.id:null});
+ if(typeof body.attemptId!=='string'||! /^[a-f0-9-]{36}$/.test(body.attemptId))return json({error:'Invalid payment attempt.'},400);
+ if(!r.cardAttempt||r.cardAttempt.failed){
+  if(r.cardAttempt?.id===body.attemptId)return json({error:'This card attempt was declined. Please try again.',retryCard:true},402);
+  if(typeof body.sourceId!=='string'||!body.sourceId.startsWith('cnon:')||body.sourceId.length>1024)return json({error:'Enter your card in the secure payment form.'},400);
+  const attempt={id:body.attemptId,request:{source_id:body.sourceId,idempotency_key:crypto.randomUUID(),amount_money:{amount:r.plan.amount,currency:'GBP'},location_id:env.SQUARE_LOCATION_ID,order_id:r.orderId,reference_id:key,autocomplete:true}};
+  await squareWrite(env,key,{...r,cardAttempt:attempt},r._revision);r=await squareRecord(env,key);
+ }
+ if(r.cardAttempt.id!==body.attemptId)return json({error:'Another payment is being checked. Refresh its status before trying again.'},409);
+ let result;
+ try{result=await squareCall(env,'payments',r.cardAttempt.request);}catch(e){
+  const declines=['CARD_DECLINED','CVV_FAILURE','ADDRESS_VERIFICATION_FAILURE','CARD_EXPIRED','GENERIC_DECLINE','INSUFFICIENT_FUNDS','CARD_TOKEN_EXPIRED','CARD_TOKEN_USED','CARD_DECLINED_VERIFICATION_REQUIRED'];
+  if(e.squareCodes?.some(c=>declines.includes(c))){
+   const current=await squareRecord(env,key);
+   if(current.status==='paid')return json({paid:true,payment:squarePublic(current)});
+   if(current.cardAttempt?.id===body.attemptId)await squareWrite(env,key,{...current,cardAttempt:{id:body.attemptId,failed:true}},current._revision);
+   return json({error:'The card was not accepted. Check your details or try another card.',retryCard:true},402);
+  }
+  return json({error:'Payment confirmation is delayed. Retry confirmation to check this same payment.',retrySame:true},503);
+ }
+ const p=result.payment;if(!p?.id) return json({error:'Payment confirmation is delayed. Retry confirmation.',retrySame:true},503);
+ if(['FAILED','CANCELED'].includes(p.status)){const current=await squareRecord(env,key);if(current.status==='paid')return json({paid:true,payment:squarePublic(current)});if(current.cardAttempt?.id===body.attemptId)await squareWrite(env,key,{...current,cardAttempt:{id:body.attemptId,failed:true}},current._revision);return json({error:'The card payment was not completed. Please try another card.',retryCard:true},402);}
+ // Read Square's authoritative payment and validate its order, amount, currency and location.
+ await squareApplyPayment(env,p.id);
+ const current=await squareRecord(env,key);
+ if(current.status==='paid'||current.status==='refund_review'){
+  // Discard the one-use token after a confirmed charge; preserve its attempt identity.
+  await squareWrite(env,key,{...current,cardAttempt:{id:body.attemptId,complete:true}},current._revision);
+  return json({paid:current.status==='paid',payment:squarePublic(current)});
+ }
+ return json({error:'Your payment is still being confirmed. Check payment status before trying another card.',retrySame:true},202);
 }

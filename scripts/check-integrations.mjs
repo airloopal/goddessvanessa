@@ -38,14 +38,14 @@ assert.equal((await request('/api/chat/request-code',{method:'POST',data:{email:
 const realFetch=globalThis.fetch;const emails=[];env.RESEND_API_KEY='test-key';env.EMAIL_FROM='Academy <access@example.test>';
 globalThis.fetch=async(url,options)=>{assert.equal(url,'https://api.resend.com/emails');assert.equal(options.headers.Authorization,'Bearer test-key');emails.push(JSON.parse(options.body));return new Response(JSON.stringify({id:'mock-email-id'}),{status:200});};
 try{
- assert.equal((await request('/api/chat/capabilities')).data.email,true);
+ assert.equal((await request('/api/chat/capabilities')).data.email,false);
  assert.equal((await request('/api/chat/request-code',{method:'POST',data:{email:'learner@example.test'}})).status,403);assert.equal(emails.length,0);
  assert.equal((await request('/api/chat/session',{cookie})).status,200,'blocked self-service does not revoke the admin-issued session');
- const reset=await request('/api/chat/students',{method:'POST',account:'owner',data:{studentId:issue.studentId}});assert.equal(reset.status,200);assert.equal(emails.length,1);
- const code=emails[0].text.match(/[a-f0-9]{48}/)[0];const emailLogin=await request('/api/chat/session',{method:'POST',data:{code}});assert.equal(emailLogin.status,200);assert.equal((await request('/api/chat/session',{cookie})).status,401);
+ const reset=await request('/api/chat/students',{method:'POST',account:'owner',data:{studentId:issue.studentId}});assert.equal(reset.status,200);assert.equal(emails.length,0);
+ const code=reset.data.code;const emailLogin=await request('/api/chat/session',{method:'POST',data:{code}});assert.equal(emailLogin.status,200);assert.equal((await request('/api/chat/session',{cookie})).status,401);
  const latestCookie=emailLogin.headers.get('set-cookie').split(';')[0];
- const emailed=(await request('/api/chat/students',{method:'POST',account:'owner',data:{studentId:second}})).data;assert.equal(emailed.emailSent,true);assert.equal(emailed.emailStatus,'accepted');
- globalThis.fetch=async()=>new Response('{}',{status:503});const failed=(await request('/api/chat/students',{method:'POST',account:'owner',data:{studentId:second}})).data;assert.equal(failed.emailSent,false);assert.equal(failed.emailStatus,'failed');assert.equal(failed.code.length,48);
+ const emailed=(await request('/api/chat/students',{method:'POST',account:'owner',data:{studentId:second}})).data;assert.equal(emailed.emailSent,false);assert.equal(emailed.emailStatus,'platform_only');
+ globalThis.fetch=async()=>new Response('{}',{status:503});const failed=(await request('/api/chat/students',{method:'POST',account:'owner',data:{studentId:second}})).data;assert.equal(failed.emailSent,false);assert.equal(failed.emailStatus,'platform_only');assert.equal(failed.code.length,48);
  assert.equal((await request('/api/chat/account',{method:'DELETE',cookie:latestCookie,data:{confirm:true}})).status,200);
  assert.equal(objects.size,1,'chat deletion removes its files, while separate verification record remains');
  assert.equal((await request(sent.data.file.url,{account:'owner'})).status,404);

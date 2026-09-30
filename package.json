@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node scripts/check-integrations.mjs && node scripts/check-platform.mjs && node scripts/check-chat.mjs && node scripts/check-preview-access.mjs && node scripts/check-auth.mjs && node scripts/check-settings.mjs && node scripts/check-admin-codes.mjs && node scripts/check-status.mjs && node scripts/check-account-menu.mjs && node scripts/check-overview.mjs && node scripts/check-square.mjs",
+    "test": "node scripts/check-integrations.mjs && node scripts/check-platform.mjs && node scripts/check-chat.mjs && node scripts/check-preview-access.mjs && node scripts/check-auth.mjs && node scripts/check-settings.mjs && node scripts/check-admin-codes.mjs && node scripts/check-status.mjs && node scripts/check-account-menu.mjs && node scripts/check-overview.mjs && node scripts/check-square.mjs && node scripts/check-chat-background.mjs && node scripts/check-security.mjs",
     "dev": "node scripts/dev.mjs",
     "maintenance": "node scripts/maintenance.mjs"
   },

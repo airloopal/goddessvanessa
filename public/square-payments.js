@@ -11,25 +11,54 @@ async function squareInit(){
  if(squareState.entry){entryId=squareState.entry.plan.id;entryReviewed=squareEntryPaid();}
  if(squareState.contract){contractId=squareState.contract.plan.id;screen='review';}
 }
-async function squareCheckout(stage){
- squareSaveDraft();const result=await eduAPI('payments/checkout','POST',{stage,planId:stage==='entry'?entryId:contractId,revision:configRevision});
- if(result.paid){squareState=await eduAPI('payments');entryReviewed=squareEntryPaid();renderLearning();return;}
- const target=new URL(result.url);if(target.protocol!=='https:'||!['square.link','sandbox.square.link'].includes(target.hostname))throw Error('Could not open Square checkout.');location.assign(target.href);
+let squareSDKPromise=null,squareCard=null,squareFormVersion=0;
+async function squareDisposeCard(){squareFormVersion++;const card=squareCard;squareCard=null;if(card)await card.destroy().catch(()=>{});}
+function squareLoadSDK(){
+ if(window.Square)return Promise.resolve();
+ if(!squareSDKPromise)squareSDKPromise=new Promise((resolve,reject)=>{const el=document.createElement('script');el.src=squareState.mode==='sandbox'?'https://sandbox.web.squarecdn.com/v1/square.js':'https://web.squarecdn.com/v1/square.js';el.onload=resolve;el.onerror=()=>{el.remove();squareSDKPromise=null;reject(Error('The secure card form could not load. Please close and reopen checkout.'));};document.head.append(el);});
+ return squareSDKPromise;
+}
+function squareCardHTML(){return '<div id="square-card-container" aria-label="Secure card details"></div><p class="muted">Secured by Square. Your card details stay with Square.</p>';}
+async function squareMountCard(stage,buttonId,statusId){
+ await squareDisposeCard();const version=squareFormVersion,button=document.getElementById(buttonId),message=document.getElementById(statusId);
+ if(!button||!message)return;button.disabled=true;message.textContent='Loading secure card form…';
+ try{
+  const prepared=await eduAPI('payments/prepare','POST',{stage,planId:stage==='entry'?entryId:contractId,revision:configRevision});
+  if(version!==squareFormVersion||!button.isConnected)return;
+  if(prepared.paid){await squareRefresh();if(stage==='entry')squareEntryDialog();return;}
+  let attemptId=prepared.resumeAttempt||null,pendingSource=null;
+  if(!attemptId){await squareLoadSDK();if(version!==squareFormVersion||!button.isConnected)return;const payments=window.Square.payments(prepared.applicationId,prepared.locationId);const card=await payments.card();if(version!==squareFormVersion||!button.isConnected){await card.destroy();return;}squareCard=card;await card.attach('#square-card-container');}
+  message.textContent=attemptId?'A previous payment is awaiting confirmation. Check it before paying again.':'';button.disabled=false;button.textContent=attemptId?'Retry confirmation':'Pay '+gbp(prepared.plan.amount);
+  button.onclick=async()=>{
+   if(button.disabled)return;button.disabled=true;message.textContent='Confirming your payment…';squareSaveDraft();
+   try{
+    let sourceId=pendingSource;
+    if(!attemptId){const result=await squareCard.tokenize({amount:(prepared.plan.amount/100).toFixed(2),currencyCode:'GBP',intent:'CHARGE',customerInitiated:true,sellerKeyedIn:false,billingContact:{...(learnerEmail?{email:learnerEmail}:{})}});if(result.status!=='OK')throw Error(result.status==='Cancel'?'Verification cancelled. No payment was submitted.':'Please check your card details and try again.');sourceId=result.token;pendingSource=sourceId;attemptId=crypto.randomUUID();}
+    const response=await fetch('/api/education/payments/charge',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({stage,planId:prepared.plan.id,revision:configRevision,attemptId,...(sourceId?{sourceId}:{})})});
+    const result=await response.json();
+    if(!result.paid){if(result.retryCard){attemptId=null;await squareMountCard(stage,buttonId,statusId);message.textContent=result.error;return;}throw Error(result.error||'Your payment is being checked. Retry confirmation.');}
+    await squareDisposeCard();squareState=await eduAPI('payments');entryReviewed=squareEntryPaid();
+    if(stage==='entry'){renderLearning();squareEntryDialog();}else squareContractPanel();
+   }catch(error){message.textContent=error.message||'Confirmation is delayed. Retry confirmation.';button.textContent=attemptId?'Retry confirmation':'Pay '+gbp(prepared.plan.amount);button.disabled=false;}
+  };
+ }catch(error){message.textContent=error.message;button.disabled=true;}
 }
 async function squareRefresh(){squareState=await eduAPI('payments/refresh','POST',{});entryReviewed=squareEntryPaid();renderLearning();}
 function squareLabel(){return squareState.mode==='sandbox'?'Sandbox test · No real payment':'Secured by Square';}
 function squareEntryDialog(){
- clearInterval(verificationPoll);entryDialogView='payment';const plan=entryPlan(),paid=squareEntryPaid();
- entryDialog.innerHTML='<div class="entry-lightbox-top"><span class="overline">'+squareLabel()+'</span><button class="quiet" id="lightbox-close" aria-label="Close entry checkout">×</button></div><h2 id="entry-lightbox-title" tabindex="-1">'+(paid?'Entry confirmed.':'Your entry fee.')+'</h2><section class="entry-payment-card"><span>'+eduEscape(plan?.name||'Select a plan')+'</span><strong>'+gbp(plan?.amount||0)+'</strong><small>One entry fee · Contract fee paid separately</small></section><p class="muted">'+(paid?'Square has confirmed this payment.':squareState.ready?'Continue to Square to complete your payment.':'Checkout is being configured. Please return shortly.')+'</p><p id="entry-lightbox-status" role="status"></p><div class="entry-lightbox-actions"><button class="quiet" id="lightbox-verification">Request verification</button><button class="p-button" id="square-entry-pay" '+(!paid&&!squareState.ready?'disabled':'')+'>'+(paid?'Continue':'Pay '+gbp(plan?.amount||0))+'</button></div>'+(squareState.entry&&!paid?'<button class="quiet" id="square-refresh">Check payment status</button>':'');
+ void squareDisposeCard();clearInterval(verificationPoll);entryDialogView='payment';const plan=entryPlan(),paid=squareEntryPaid();
+ entryDialog.innerHTML='<div class="entry-lightbox-top"><span class="overline">'+squareLabel()+'</span><button class="quiet" id="lightbox-close" aria-label="Close entry checkout">×</button></div><h2 id="entry-lightbox-title" tabindex="-1">'+(paid?'Entry confirmed.':'Your entry fee.')+'</h2><section class="entry-payment-card"><span>'+eduEscape(plan?.name||'Select a plan')+'</span><strong>'+gbp(plan?.amount||0)+'</strong><small>One entry fee · Contract fee paid separately</small></section><p class="muted">'+(paid?'Square has confirmed this payment.':squareState.ready?'Enter your card details below to confirm your entry.':'Checkout is being configured. Please return shortly.')+'</p>'+(!paid&&squareState.ready?squareCardHTML():'')+'<p id="entry-lightbox-status" role="status"></p><div class="entry-lightbox-actions"><button class="quiet" id="lightbox-verification">Request verification</button><button class="p-button" id="square-entry-pay" '+(!paid&&!squareState.ready?'disabled':'')+'>'+(paid?'Continue':'Pay '+gbp(plan?.amount||0))+'</button></div>'+(squareState.entry&&!paid?'<button class="quiet" id="square-refresh">Check payment status</button>':'');
  document.getElementById('lightbox-close').onclick=closeEntryLightbox;document.getElementById('lightbox-verification').onclick=showEntryVerification;
- document.getElementById('square-entry-pay').onclick=async e=>{if(paid){entryReviewed=true;closeEntryLightbox();move(screens()[screens().indexOf('intro')+1]);return;}e.currentTarget.disabled=true;try{await squareCheckout('entry');}catch(error){document.getElementById('entry-lightbox-status').textContent=error.message;document.getElementById('square-entry-pay').disabled=false;}};
+ document.getElementById('square-entry-pay').onclick=()=>{entryReviewed=true;closeEntryLightbox();move(screens()[screens().indexOf('intro')+1]);};
+ if(!paid&&squareState.ready)void squareMountCard('entry','square-entry-pay','entry-lightbox-status');
  document.getElementById('square-refresh')?.addEventListener('click',async e=>{e.currentTarget.disabled=true;try{await squareRefresh();squareEntryDialog();}catch(error){document.getElementById('entry-lightbox-status').textContent=error.message;e.target.disabled=false;}});
 }
 function squareContractPanel(){
+ void squareDisposeCard();
  const p=squareState.contract,paid=p?.status==='paid',expired=paid&&p.expiresAt&&Date.parse(p.expiresAt)<=Date.now();
- app.innerHTML='<main class="application-main"><span class="overline">'+squareLabel()+'</span><h1>'+(expired?'Your access period has ended.':paid?'Payment confirmed.':'Complete your contract payment.')+'</h1><p>'+(expired?'Contact the academy to arrange another access period.':paid?'Your application and payment are saved. The academy will issue your access code.':'Your signed application is saved. Continue to Square or check the status of a recent payment.')+'</p><section class="price-breakdown"><div><span>'+eduEscape(p?.plan.name||contractPlan()?.name||'Contract')+'</span><strong>'+gbp(p?.plan.amount||contractPlan()?.amount||0)+'</strong></div>'+(p?.expiresAt?'<p>Access ends: '+eduEscape(new Date(p.expiresAt).toLocaleString())+'</p>':'')+'</section><p id="learning-status" role="status"></p><div class="step-actions">'+(paid?'<a class="p-button" href="access.html">Open Sub Access</a>':'<button class="p-button" id="square-contract-pay">Continue to Square</button><button class="quiet" id="square-contract-refresh">Check payment status</button>')+'</div></main>';
+ app.innerHTML='<main class="application-main"><span class="overline">'+squareLabel()+'</span><h1>'+(expired?'Your access period has ended.':paid?'Payment confirmed.':'Complete your contract payment.')+'</h1><p>'+(expired?'Contact the academy to arrange another access period.':paid?'Your application and payment are saved. The academy will issue your access code.':'Your signed application is saved. Pay securely below to complete this step.')+'</p><section class="price-breakdown"><div><span>'+eduEscape(p?.plan.name||contractPlan()?.name||'Contract')+'</span><strong>'+gbp(p?.plan.amount||contractPlan()?.amount||0)+'</strong></div>'+(p?.expiresAt?'<p>Access ends: '+eduEscape(new Date(p.expiresAt).toLocaleString())+'</p>':'')+'</section>'+(!paid?squareCardHTML():'')+'<p id="learning-status" role="status"></p><div class="step-actions">'+(paid?'<a class="p-button" href="access.html">Open Sub Access</a>':'<button class="p-button" id="square-contract-pay">Pay securely</button><button class="quiet" id="square-contract-refresh">Check payment status</button>')+'</div></main>';
  if(p?.receiptUrl){try{const url=new URL(p.receiptUrl);if(url.protocol==='https:'&&url.hostname==='squareup.com'){const link=document.createElement('a');link.href=url.href;link.textContent='View Square receipt';link.className='quiet';link.target='_blank';link.rel='noopener';app.querySelector('.step-actions').append(link);}}catch{}}
- document.getElementById('square-contract-pay')?.addEventListener('click',async e=>{e.currentTarget.disabled=true;try{await squareCheckout('contract');}catch(error){status(error.message);e.target.disabled=false;}});
+ if(!paid)void squareMountCard('contract','square-contract-pay','learning-status');
  document.getElementById('square-contract-refresh')?.addEventListener('click',async e=>{e.currentTarget.disabled=true;try{await squareRefresh();}catch(error){status(error.message);e.target.disabled=false;}});
 }
 function squareDecorate(){if(!squareEnabled())return;

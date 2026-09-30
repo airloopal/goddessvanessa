@@ -23,6 +23,7 @@ function bindChatMedia(form){if(form.id==='floating-form'||form.dataset.mediaBou
  function stop(){discard=true;if(recorder?.state==='recording')recorder.stop();stream?.getTracks().forEach(t=>t.stop());clearTimeout(timer);}window.addEventListener('pagehide',stop,{once:true});const observer=new MutationObserver(()=>{if(!panel.isConnected){stop();observer.disconnect();}});observer.observe(document.body,{childList:true,subtree:true});
 }
 function renderChatLog(log,role){
+ applyChatBackground(log,PreviewChat.background());
  const bottom=log.scrollHeight-log.scrollTop-log.clientHeight<100,previousHeight=log.scrollHeight,previousTop=log.scrollTop;
  const template=document.createElement('template');template.innerHTML=previewThread(role);
  const existing=new Map([...log.querySelectorAll('[data-message-id]')].map(node=>[node.dataset.messageId,node]));
@@ -33,4 +34,13 @@ function renderChatLog(log,role){
   return saved;});
  for(let i=0;i<next.length;i++)if(log.children[i]!==next[i])log.insertBefore(next[i],log.children[i]||null);
  while(log.children.length>next.length)log.lastElementChild.remove();if(bottom)log.scrollTop=log.scrollHeight;else if(previousTop<100&&log.scrollHeight>previousHeight)log.scrollTop=previousTop+log.scrollHeight-previousHeight;
+}
+
+function applyChatBackground(host,background){
+ const color=background?.color;
+ if(!/^#[0-9a-f]{6}$/i.test(color||'')){for(const property of ['background-color','background-image','background-size','--chat-muted','--date-bg'])host.style.removeProperty(property);return;}
+ const rgb=[1,3,5].map(i=>parseInt(color.slice(i,i+2),16));const dark=(rgb[0]*299+rgb[1]*587+rgb[2]*114)/1000<145;
+ const line=dark?'rgba(255,255,255,.07)':'rgba(0,0,0,.06)';host.style.backgroundColor=color;
+ host.style.backgroundImage=background.pattern==='grid'?'linear-gradient('+line+' 1px,transparent 1px),linear-gradient(90deg,'+line+' 1px,transparent 1px)':background.pattern==='dots'?'radial-gradient('+line+' 1px,transparent 1px)':'none';
+ host.style.backgroundSize=background.pattern==='grid'?'32px 32px':'22px 22px';host.style.setProperty('--chat-muted',dark?'#c4cbd4':'#46515d');host.style.setProperty('--date-bg',dark?'#00000055':'#ffffffaa');
 }

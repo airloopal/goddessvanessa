@@ -95,7 +95,7 @@ async function chatCodeRequests(request,env,url,{owner,student,body,method,now,p
  if(!student||owner)return json({error:'Open your existing student chat to request a replacement code.'},403);
  const key='code-request:'+student.id;
  const read=async()=>{const row=await db(env).prepare('SELECT content FROM prototype_settings WHERE id=?').bind(key).first();return row?JSON.parse(row.content):null;};
- if(method==='GET')return json({request:await read()});
+ if(method==='GET'){const value=await read();if(value?.status==='issued'&&!student.code_hash)value.status='used';return json({request:value});}
  if(method!=='POST')return json({error:'Method not allowed'},405);
  if(body.action==='collect'){
   const existing=await read();

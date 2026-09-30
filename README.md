@@ -19,4 +19,4 @@ See `DEPLOYMENT.md` for the exact next steps and `MIGRATION.md` for implementati
 Use Node 24, then `npm ci`, `npm run build`, and `npm test`.
 `npm run dev` starts a local preview. Configure environment variables separately for real APIs. Secure login cookies require an HTTPS deployment.
 
-This package does not collect payments. Agreement amounts and accepted versions are recorded, with payment status `not_collected`.
+Square-hosted entry and contract checkout is available behind server environment configuration. With Square disabled, agreement reviews retain the existing `not_collected` preview behaviour. See `SQUARE_SETUP.md` for sandbox setup, required credentials, testing and production activation. Live payments are not enabled by this code change.

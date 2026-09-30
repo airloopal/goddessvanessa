@@ -15,6 +15,7 @@ async function educationAPI(request,env,url){
  }
  if(path==='/api/education/identity'&&request.method==='GET')return json({signedIn:!!(codeStudent||dispatchUser),application:!!user,owner,email:email||null});
  if(['/api/education/verification','/api/education/verifications'].includes(path))return educationVerificationAPI(request,env,url,{user,email,owner});
+ if(path.startsWith('/api/education/payments'))return squareAPI(request,env,url,{user,owner});
  const which=path.split('/').at(-1);
  if(path==='/api/education/published'||path==='/api/education/draft'){
   if(!(which==='published'&&request.method==='GET')&&!owner)return json({error:'Sign in with the Goddess account to edit or publish courses.'},403);
@@ -29,8 +30,8 @@ async function educationAPI(request,env,url){
  if(path==='/api/education/enrolments'){
   if(!owner)return json({error:'Only Goddess can view learner records.'},403);
   if(request.method!=='GET')return json({error:'Method not allowed'},405);
-  const rows=await db(env).prepare('SELECT reference,name,path_id,snapshot,completed,created_at,updated_at FROM education_enrolments ORDER BY updated_at DESC LIMIT 200').all();
-  return json({enrolments:(rows.results||[]).map(r=>({...r,snapshot:JSON.parse(r.snapshot),completed:JSON.parse(r.completed)}))});
+  const rows=await db(env).prepare('SELECT user_id,reference,name,path_id,snapshot,completed,created_at,updated_at FROM education_enrolments ORDER BY updated_at DESC LIMIT 200').all();
+  return json({enrolments:await Promise.all((rows.results||[]).map(async r=>{const {user_id,...record}=r;const payments=squareMode(env)==='off'?null:await squarePaymentState(env,user_id);return {...record,snapshot:JSON.parse(r.snapshot),completed:JSON.parse(r.completed),payments:payments?{entry:squarePublic(payments.entry),contract:squarePublic(payments.contract)}:null};}))});
  }
  if(path!=='/api/education/enrolment'&&path!=='/api/education/progress')return json({error:'Not found'},404);
  if(!user)return json({error:'Start your application in this browser before saving.'},401);
@@ -42,6 +43,7 @@ async function educationAPI(request,env,url){
  const {config,revision}=await educationConfig(env);
  const now=new Date().toISOString();
  if(path==='/api/education/progress'){
+  if(!owner&&!await squareAccessAllowed(env,user))return json({error:'Your paid access is unavailable or has expired.'},402);
   if(!config.features.progress)return json({error:'Lesson completion is currently turned off.'},400);
   if(typeof p.completed!=='boolean'||!config.lessons.some(l=>l.id===p.lessonId))return json({error:'Choose a current lesson.'},400);
   const existing=await read();if(!existing)return json({error:'Enrol before saving lesson progress.'},409);
@@ -55,12 +57,13 @@ async function educationAPI(request,env,url){
  const answerKeys=Object.keys(p.answers);if(answerKeys.some(k=>!config.questions.some(q=>q.id===k)))return json({error:'The questionnaire changed. Please reload and review your answers.'},409);
  if(config.features.questionnaire&&config.questions.some(q=>!q.options.includes(p.answers[q.id])))return json({error:'Answer each learning question using a current option.'},400);
  if(!config.features.questionnaire&&answerKeys.length)return json({error:'The questionnaire is currently disabled.'},400);
+ if(squareMode(env)!=='off'){const {entry,contract}=await squarePaymentState(env,user);if(entry?.status!=='paid'||entry.plan.id!==p.review.entryId)return json({error:'Complete your entry payment before submitting the application.'},402);if(contract)return json({error:'Your contract checkout is already saved. Complete that checkout or contact the academy to amend it.'},409);}
  const review=p.review;
  if(!review||review.revision!==revision)return json({error:'The agreement or rates changed. Reload and review the current version before confirming.'},409);
  const entry=config.agreement.entryPlans.find(x=>x.id===review.entryId),contract=config.agreement.contractPlans.find(x=>x.id===review.contractId);
  if(!entry||!contract||typeof review.email!=='string'||review.email.length>254||!/^\S+@[^\s@]+\.[^\s@]+$/.test(review.email)||typeof review.signature!=='string'||review.signature.trim()!==p.name.trim()||review.ageConfirmed!==true||review.aupAccepted!==true||review.read!==true||review.entryReviewed!==true)return json({error:'Confirm your email, scroll through the agreement, type your matching full name and accept the age and acceptable-use confirmations.'},400);
- const agreement={id:'REVIEW-'+crypto.randomUUID(),revision,title:config.agreement.title,body:config.agreement.body,acceptableUse:config.agreement.acceptableUse,entry,contract,email:review.email.trim(),signature:review.signature.trim(),ageConfirmed:true,aupAccepted:true,acknowledgedAt:now,paymentStatus:'not_collected',scope:'Educational review preview'};
- const snapshot={path:config.paths.find(x=>x.id===p.pathId),questions:config.features.questionnaire?config.questions.map(q=>({title:q.title,answer:p.answers[q.id]})):[],notice:'Educational review preview. No payment collected.',agreement};
+ const agreement={id:'REVIEW-'+crypto.randomUUID(),revision,title:config.agreement.title,body:config.agreement.body,acceptableUse:config.agreement.acceptableUse,entry,contract,email:review.email.trim(),signature:review.signature.trim(),ageConfirmed:true,aupAccepted:true,acknowledgedAt:now,paymentStatus:squareMode(env)==='off'?'not_collected':'entry_paid_contract_due',scope:squareMode(env)==='off'?'Educational review preview':'Educational application'};
+ const snapshot={path:config.paths.find(x=>x.id===p.pathId),questions:config.features.questionnaire?config.questions.map(q=>({title:q.title,answer:p.answers[q.id]})):[],notice:squareMode(env)==='off'?'Educational review preview. No payment collected.':'Entry payment confirmed. Contract payment is separate.',agreement};
  const enrolmentWrite=db(env).prepare('INSERT INTO education_enrolments (user_id,reference,name,path_id,answers,snapshot,completed,created_at,updated_at) VALUES (?,?,?,?,?,?,?, ?,?) ON CONFLICT(user_id) DO UPDATE SET name=excluded.name,path_id=excluded.path_id,answers=excluded.answers,snapshot=excluded.snapshot,updated_at=excluded.updated_at').bind(user,'LEARN-'+crypto.randomUUID(),p.name.trim(),p.pathId,JSON.stringify(p.answers),JSON.stringify(snapshot),'[]',now,now);
  const reviewWrite=db(env).prepare('INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?)').bind('education-review-'+agreement.id,JSON.stringify({userId:user,name:p.name.trim(),...agreement}),now);
  await db(env).batch([enrolmentWrite,reviewWrite]);

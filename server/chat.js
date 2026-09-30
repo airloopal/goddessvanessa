@@ -2,7 +2,7 @@
 const chatHash=async value=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(x=>x.toString(16).padStart(2,'0')).join('');
 const chatToken=()=>Array.from(crypto.getRandomValues(new Uint8Array(24))).map(x=>x.toString(16).padStart(2,'0')).join('');
 const chatCookie=(token,age)=>'vanessa_student='+token+'; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age='+age;
-async function chatStudent(request,env){const token=request.headers.get('cookie')?.match(/(?:^|;\s*)vanessa_student=([a-f0-9]{48})(?:;|$)/)?.[1];if(!token)return null;return db(env).prepare("SELECT s.* FROM chat_students s JOIN chat_sessions a ON a.student_id=s.id WHERE a.hash=? AND a.expires_at>? AND s.status='active'").bind(await chatHash(token),Date.now()).first();}
+async function chatStudent(request,env){const token=request.headers.get('cookie')?.match(/(?:^|;\s*)vanessa_student=([a-f0-9]{48})(?:;|$)/)?.[1];if(!token)return null;const student=await db(env).prepare("SELECT s.* FROM chat_students s JOIN chat_sessions a ON a.student_id=s.id WHERE a.hash=? AND a.expires_at>? AND s.status='active'").bind(await chatHash(token),Date.now()).first();return student&&await squareAccessAllowed(env,student.user_id)?student:null;}
 async function chatLimit(env,key,max,period){const now=Date.now();const row=await db(env).prepare('INSERT INTO chat_limits (key,count,expires) VALUES (?,1,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN chat_limits.expires<=? THEN 1 ELSE chat_limits.count+1 END,expires=CASE WHEN chat_limits.expires<=? THEN excluded.expires ELSE chat_limits.expires END RETURNING count').bind(key,now+period,now,now).first();return row.count<=max;}
 async function chatAPI(request,env,url){
  const path=url.pathname.slice('/api/chat/'.length),method=request.method,owner=!!request.headers.get('oai-authenticated-user-id')&&request.headers.get('oai-authenticated-user-email')?.toLowerCase()===EDUCATION_OWNER&&request.headers.get('x-chat-role')!=='student',now=Date.now();
@@ -16,6 +16,7 @@ async function chatAPI(request,env,url){
   // Atomic consumption prevents two requests from redeeming one code.
   const student=await db(env).prepare("UPDATE chat_students SET code_hash=NULL,code_expires=0 WHERE code_hash=? AND code_expires>? AND status='active' RETURNING id,name,user_id").bind(await chatHash(code),now).first();
   if(!student)return json({error:'This code is invalid or has expired. Ask Goddess for a new code.'},401);
+  if(!await squareAccessAllowed(env,student.user_id))return json({error:'Your contract payment is incomplete or access has expired.'},402);
   const token=chatToken();await db(env).batch([db(env).prepare('DELETE FROM chat_sessions WHERE student_id=? OR expires_at<=?').bind(student.id,now),db(env).prepare('INSERT INTO chat_sessions (hash,student_id,expires_at) VALUES (?,?,?)').bind(await chatHash(token),student.id,now+30*86400000)]);
   const response=json({student:{id:student.id,name:student.name}});response.headers.set('Set-Cookie',chatCookie(token,30*86400));return response;
  }
@@ -29,6 +30,7 @@ async function chatAPI(request,env,url){
    let record;if(body.reference)record=await db(env).prepare('SELECT user_id,name,snapshot FROM education_enrolments WHERE reference=?').bind(String(body.reference)).first();
    else if(body.studentId)record=await db(env).prepare('SELECT user_id,name,email FROM chat_students WHERE id=?').bind(String(body.studentId)).first();
    if(!record)return json({error:'Choose a saved application or student.'},404);
+   if(!await squareAccessAllowed(env,record.user_id))return json({error:'The contract payment is incomplete, refunded or expired.'},402);
    const email=record.email||JSON.parse(record.snapshot).agreement?.email;if(!email)return json({error:'This application needs an email address.'},400);
    const code=chatToken(),id=crypto.randomUUID();const result=await db(env).prepare("INSERT INTO chat_students (id,user_id,name,email,status,code_hash,code_expires,created_at) VALUES (?,?,?,?,'active',?,?,?) ON CONFLICT(user_id) DO UPDATE SET code_hash=excluded.code_hash,code_expires=excluded.code_expires,status='active',name=excluded.name,email=excluded.email RETURNING id").bind(id,record.user_id,record.name,email,await chatHash(code),now+86400000,now).first();
    await db(env).prepare('DELETE FROM chat_sessions WHERE student_id=?').bind(result.id).run();const delivery=await sendAccessEmail(env,{email,name:record.name,code,origin:url.origin});return json({studentId:result.id,code,expiresAt:now+86400000,email,...delivery});

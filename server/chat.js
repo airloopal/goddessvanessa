@@ -51,10 +51,13 @@ async function chatAPI(request,env,url){
   if(method==='GET')return json({background:await chatBackground(env,id)});
   if(method!=='PUT')return json({error:'Method not allowed'},405);
   if((body.color!==null&&(typeof body.color!=='string'||!/^#[0-9a-f]{6}$/i.test(body.color)))||!['plain','dots','grid'].includes(body.pattern)||!Number.isInteger(body.revision)||body.revision<0)return json({error:'Choose a colour and pattern.'},400);
-  const value=JSON.stringify({color:body.color,pattern:body.pattern}),key='chat-background:'+id,stamp=new Date(now).toISOString();
+  const imageId=body.imageId||null,overlay=body.overlay||'burgundy';
+  if(!['pink','burgundy'].includes(overlay))return json({error:'Choose a pink or burgundy overlay.'},400);
+  if(imageId){const file=typeof imageId==='string'&&await db(env).prepare("SELECT id FROM media_files WHERE id=? AND student_id=? AND scope='background' AND role='admin'").bind(imageId,id).first();if(!file)return json({error:'Upload an image for this conversation.'},400);}
+  const value=JSON.stringify({color:body.color,pattern:body.pattern,imageId,overlay}),key='chat-background:'+id,stamp=new Date(now).toISOString();
   const result=body.revision===0?await db(env).prepare('INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?) ON CONFLICT(id) DO NOTHING').bind(key,value,stamp).run():await db(env).prepare('UPDATE prototype_settings SET content=?,revision=revision+1,updated_at=? WHERE id=? AND revision=?').bind(value,stamp,key,body.revision).run();
   if(!result.meta?.changes)return json({error:'This background changed in another window. Close and reopen the background editor.'},409);
-  return json({background:{color:body.color,pattern:body.pattern,revision:body.revision+1}});
+  return json({background:{color:body.color,pattern:body.pattern,imageId,overlay,revision:body.revision+1}});
  }
  if(path==='messages'&&method==='GET'){
   const before=Number(url.searchParams.get('before')||Number.MAX_SAFE_INTEGER);if(!Number.isSafeInteger(before)||before<1)return json({error:'Invalid page.'},400);

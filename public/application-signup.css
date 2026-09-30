@@ -19,3 +19,6 @@ body.restored-application{background:radial-gradient(ellipse at 5% 10%,#f9deec 0
 
 /* Keep verification named and all checkout actions grouped in one row. */
 .entry-lightbox-actions:has(.square-action){justify-content:flex-start!important;gap:8px}.entry-lightbox-actions .p-button.square-action{margin-left:0;flex:1}.entry-lightbox-actions #lightbox-verification{padding:11px 13px;font-size:13px;flex:0 1 auto}.entry-lightbox-actions #square-refresh{margin:0}@media(max-width:480px){.entry-lightbox-actions #lightbox-verification{padding:10px 8px;font-size:11px;gap:5px}.entry-lightbox-actions .p-button.square-action{font-size:12px;padding:10px 8px}.entry-lightbox-actions .square-action-icon{width:18px;height:18px;flex-basis:18px}}
+
+/* Give standalone contract checkout the same breathing room as application steps. */
+.restored-application #education-app:has(>.square-contract-panel){padding:clamp(28px,4vw,48px) 24px 64px}.restored-application .square-contract-panel{margin:0 auto;min-width:0}.restored-application .square-contract-panel h1{scroll-margin-top:32px}.restored-application .square-contract-panel .step-actions{position:static;margin-top:24px}@media(max-width:600px){.restored-application #education-app:has(>.square-contract-panel){padding:24px 16px 40px}.restored-application .square-contract-panel{padding:26px 20px;border-radius:24px}}

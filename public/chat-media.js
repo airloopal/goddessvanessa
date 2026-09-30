@@ -38,9 +38,9 @@ function renderChatLog(log,role){
 
 function applyChatBackground(host,background){
  const color=background?.color;
- if(!/^#[0-9a-f]{6}$/i.test(color||'')){for(const property of ['background-color','background-image','background-size','--chat-muted','--date-bg'])host.style.removeProperty(property);return;}
+ if(!/^#[0-9a-f]{6}$/i.test(color||'')){for(const property of ['--conversation-color','--conversation-image','--conversation-size','--chat-muted','--date-bg'])host.style.removeProperty(property);host.removeAttribute('data-conversation-background');return;}
  const rgb=[1,3,5].map(i=>parseInt(color.slice(i,i+2),16));const dark=(rgb[0]*299+rgb[1]*587+rgb[2]*114)/1000<145;
- const line=dark?'rgba(255,255,255,.07)':'rgba(0,0,0,.06)';host.style.backgroundColor=color;
- host.style.backgroundImage=background.pattern==='grid'?'linear-gradient('+line+' 1px,transparent 1px),linear-gradient(90deg,'+line+' 1px,transparent 1px)':background.pattern==='dots'?'radial-gradient('+line+' 1px,transparent 1px)':'none';
- host.style.backgroundSize=background.pattern==='grid'?'32px 32px':'22px 22px';host.style.setProperty('--chat-muted',dark?'#c4cbd4':'#46515d');host.style.setProperty('--date-bg',dark?'#00000055':'#ffffffaa');
+ const line=dark?'rgba(255,255,255,.07)':'rgba(0,0,0,.06)';host.setAttribute('data-conversation-background','');host.style.setProperty('--conversation-color',color);
+ host.style.setProperty('--conversation-image',background.pattern==='grid'?'linear-gradient('+line+' 1px,transparent 1px),linear-gradient(90deg,'+line+' 1px,transparent 1px)':background.pattern==='dots'?'radial-gradient('+line+' 1px,transparent 1px)':'none');
+ host.style.setProperty('--conversation-size',background.pattern==='grid'?'32px 32px':'22px 22px');host.style.setProperty('--chat-muted',dark?'#c4cbd4':'#46515d');host.style.setProperty('--date-bg',dark?'#00000055':'#ffffffaa');
 }

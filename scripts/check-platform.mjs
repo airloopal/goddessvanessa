@@ -37,9 +37,13 @@ assert.equal((await call(complete.data.file.url,{cookie})).status,302);
 assert.equal((await call(complete.data.file.url,{user:stranger})).status,401);
 assert.equal((await call('/api/media/upload',{method:'POST',cookie})).status,410);
 const thread=await call('/api/chat/messages',{cookie});assert.equal(thread.data.messages.length,1);assert.equal(thread.data.messages[0].attachment.id,id);
+// Accept a high-resolution attachment above the old 25 MB cap, reject above 50 MB.
+const highRes=await call('/api/media/prepare',{method:'POST',cookie,data:{...params,id:crypto.randomUUID(),size:40*1024*1024}});assert.equal(highRes.status,200);
+assert.equal((await call('/api/media/prepare',{method:'POST',cookie,data:{...params,id:crypto.randomUUID(),size:50*1024*1024+1}})).status,400);
+await DB.prepare('DELETE FROM media_uploads WHERE id=?').bind(highRes.data.id).run();
 // Reservation SQL must reject an over-quota upload under the same per-user transaction lock.
-await DB.prepare("INSERT INTO media_uploads (id,actor,storage_key,user_id,scope,role,name,claimed_type,size,expires_at) SELECT 'reserved-'||n,'student:student-a','unused/'||n,'old-user','chat','client','x','image/png',26214400,? FROM generate_series(1,9) n").bind(Date.now()+100000).run();
-const big=await call('/api/media/prepare',{method:'POST',cookie,data:{...params,id:crypto.randomUUID(),size:26214400}});assert.equal(big.status,413);
+await DB.prepare("INSERT INTO media_uploads (id,actor,storage_key,user_id,scope,role,name,claimed_type,size,expires_at) SELECT 'reserved-'||n,'student:student-a','unused/'||n,'old-user','chat','client','x','image/png',52428800,? FROM generate_series(1,20) n").bind(Date.now()+100000).run();
+const big=await call('/api/media/prepare',{method:'POST',cookie,data:{...params,id:crypto.randomUUID(),size:52428800}});assert.equal(big.status,413);
 const invalidId=crypto.randomUUID();const invalid=await call('/api/media/prepare',{method:'POST',cookie,data:{...params,id:invalidId,size:8,type:'text/html'}});assert.equal(invalid.status,200);
 const badRow=await DB.prepare('SELECT * FROM media_uploads WHERE id=?').bind(invalidId).first();staged.set(badRow.storage_key,new Blob(['<script>']));assert.equal((await call('/api/media/complete',{method:'POST',cookie,data:{id:invalidId}})).status,415);
 assert.equal(safeReturn('//evil.test'),'/dashboard.html');assert.equal(safeReturn('/\\evil.test'),'/dashboard.html');assert.equal(safeReturn('/dashboard.html'),'/dashboard.html');

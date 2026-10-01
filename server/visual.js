@@ -22,7 +22,7 @@ async function visualAPI(request,env,url,userId){
 function normaliseLegacyEntry(config){
  for(const [key,edit] of Object.entries(config.edits||{})){
   if(key==='landing|#hero-cta'&&Array.isArray(edit.text)){
-   edit.text=edit.text.map(text=>/^(enter the kingdom|enter)$/i.test(text.trim())?'ENTER':text);
+   edit.text=edit.text.map(text=>/^(enter the kingdom|enter)$/i.test(text.trim())?'SIGN UP':text);
   }
  }
  return config;

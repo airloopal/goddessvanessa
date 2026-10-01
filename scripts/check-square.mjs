@@ -16,9 +16,9 @@ env.SQUARE_FETCH=async(url,options)=>{
  if(path.startsWith('/v2/payments/'))return Response.json({payment:payments.get(decodeURIComponent(path.split('/').at(-1)))});
  throw Error('Unexpected Square request '+url);
 };
-async function call(path,{method='GET',data,user='applicant',origin='https://academy.test',extraEnv={}}={}){
- const headers={origin,'oai-authenticated-user-id':user,'oai-authenticated-user-email':user==='owner'?'danielvernontp@gmail.com':'student@example.test',...(data?{'Content-Type':'application/json'}:{})};
- const r=await worker.fetch(new Request('https://academy.test'+(path.startsWith('/')?path:'/api/education/'+path),{method,headers,...(data?{body:JSON.stringify(data)}:{})}),{...env,...extraEnv});return {status:r.status,data:await r.json()};
+async function call(path,{method='GET',data,user='applicant',origin='https://academy.test',extraEnv={},cookie}={}){
+ const headers={...(cookie?{cookie}:{}),origin,'oai-authenticated-user-id':user,'oai-authenticated-user-email':user==='owner'?'danielvernontp@gmail.com':'student@example.test',...(data?{'Content-Type':'application/json'}:{})};
+ const r=await worker.fetch(new Request('https://academy.test'+(path.startsWith('/')?path:'/api/education/'+path),{method,headers,...(data?{body:JSON.stringify(data)}:{})}),{...env,...extraEnv});return {status:r.status,data:await r.json(),r};
 }
 async function webhook(id,{bad=false,type='payment.updated'}={}){const body=JSON.stringify({type,data:{object:type.startsWith('refund.')?{refund:{payment_id:id}}:{payment:{id}}}});const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SQUARE_WEBHOOK_SIGNATURE_KEY),{name:'HMAC',hash:'SHA-256'},false,['sign']);const signature=Buffer.from(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(env.SQUARE_WEBHOOK_URL+body))).toString('base64');const r=await worker.fetch(new Request(env.SQUARE_WEBHOOK_URL,{method:'POST',body,headers:{'x-square-hmacsha256-signature':bad?'bad':signature}}),env);return r.status;}
 function complete(orderId,amount){const id='payment-'+orderId,order=orders.get(orderId);const now=new Date().toISOString();payments.set(id,{id,order_id:orderId,location_id:'location',status:'COMPLETED',amount_money:{amount,currency:'GBP'},total_money:{amount,currency:'GBP'},updated_at:now,receipt_url:'https://squareup.com/receipt/example'});order.tenders=[{payment_id:id}];return id;}
@@ -51,6 +51,17 @@ const paid=(await call('payments')).data.contract;assert.ok(paid.expiresAt);cons
 const admin=(await call('enrolments',{user:'owner'})).data.enrolments;assert.equal(admin[0].payments.contract.status,'paid');assert.ok(!('user_id' in admin[0]));
 const issued=await call('/api/chat/students',{method:'POST',user:'owner',data:{reference:enrol.data.enrolment.reference}});assert.equal(issued.status,200);assert.ok(issued.data.code);
 const contractKey=orders.get('order-2').reference_id;const row=await env.DB.prepare('SELECT content FROM prototype_settings WHERE id=?').bind(contractKey).first();const stored=JSON.parse(row.content);await env.DB.prepare('UPDATE prototype_settings SET content=? WHERE id=?').bind(JSON.stringify({...stored,expiresAt:'2020-01-01T00:00:00Z'}),contractKey).run();assert.equal((await call('/api/chat/students',{method:'POST',user:'owner',data:{reference:enrol.data.enrolment.reference}})).status,402);await env.DB.prepare('UPDATE prototype_settings SET content=? WHERE id=?').bind(row.content,contractKey).run();
+// Codes and sessions must end with a near-expiry paid contract.
+const nearEnd=Date.now()+3600000;
+await env.DB.prepare('UPDATE prototype_settings SET content=? WHERE id=?').bind(JSON.stringify({...stored,expiresAt:new Date(nearEnd).toISOString()}),contractKey).run();
+const shortCode=await call('/api/chat/students',{method:'POST',user:'owner',data:{reference:enrol.data.enrolment.reference}});
+assert.equal(shortCode.data.expiresAt,nearEnd);
+const shortLogin=await call('/api/chat/session',{method:'POST',user:'',data:{code:shortCode.data.code}});assert.equal(shortLogin.status,200);
+const cookie=shortLogin.r.headers.get('set-cookie').split(';')[0];
+const session=await env.DB.prepare('SELECT expires_at FROM chat_sessions WHERE student_id=?').bind(shortCode.data.studentId).first();assert.equal(Number(session.expires_at),nearEnd);
+await env.DB.prepare('UPDATE prototype_settings SET content=? WHERE id=?').bind(JSON.stringify({...stored,expiresAt:new Date(Date.now()-1).toISOString()}),contractKey).run();
+assert.equal((await call('/api/chat/session',{user:'',cookie})).status,401);
+await env.DB.prepare('UPDATE prototype_settings SET content=? WHERE id=?').bind(row.content,contractKey).run();
 payments.get(contractId).refunded_money={amount:25000,currency:'GBP'};await webhook(contractId,{type:'refund.updated'});assert.equal((await call('payments')).data.contract.status,'refund_review');
 assert.equal((await call('progress',{method:'PUT',data:{lessonId:config.lessons[0].id,completed:true}})).status,402);
 // Verify calendar months clamp at month-end, never overflow into the following month.

@@ -52,3 +52,6 @@ function educationSettingsChanges(before,after){
  const other=c=>{const {agreement,questions,features,...rest}=c;return {...rest,progress:features.progress};};if(JSON.stringify(other(before))!==JSON.stringify(other(after)))changes.push('Course content or appearance updated.');
  return changes;
 }
+
+function educationAnswerOptions(answer){return Array.isArray(answer)?answer:typeof answer==='string'?[answer]:[];}
+function validEducationAnswer(question,answer){const choices=educationAnswerOptions(answer);return choices.length>0&&choices.length<=question.options.length&&new Set(choices).size===choices.length&&choices.every(choice=>typeof choice==='string'&&question.options.includes(choice));}

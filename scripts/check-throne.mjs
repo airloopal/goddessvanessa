@@ -29,6 +29,12 @@ await DB.prepare("INSERT INTO chat_students (id,user_id,name,email,status,create
 await DB.prepare('INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?)').bind('throne-ref:other-gift-student',JSON.stringify({studentId:'other-gift-student',reference:'Student: Gift Student',expiresAt:now+60000}),new Date(now).toISOString()).run();
 await deliver({...event,event_id:randomUUID(),data:{...event.data,message:'Student: Gift Student'}});
 assert.equal((await DB.prepare('SELECT body FROM chat_messages').all()).results.length,baseline+2);
+// New Sub references and old Student references both resolve after wording changes.
+await DB.prepare('UPDATE prototype_settings SET content=? WHERE id=?').bind(JSON.stringify({studentId:'gift-student',reference:'Sub: Gift Student',legacyReference:'Student: Gift Student',expiresAt:now+60000}),'throne-ref:gift-student').run();
+await DB.prepare('DELETE FROM prototype_settings WHERE id=?').bind('throne-ref:other-gift-student').run();
+await deliver({...event,event_id:randomUUID(),data:{...event.data,message:'Sub: Gift Student'}});
+await deliver({...event,event_id:randomUUID(),data:{...event.data,message:'Student: Gift Student'}});
+assert.equal((await DB.prepare('SELECT body FROM chat_messages').all()).results.length,baseline+4);
 const auth={client:{auth:{getUser:async()=>({data:{user:null},error:null})}},apply:r=>r};
 const r=await handle(new Request('https://academy.test/api/chat/gift-reference',{method:'POST',headers:{origin:'https://academy.test'},body:'{}'}),{},{DB,BUCKET:{},auth});assert.equal(r.status,401);
 console.log('Throne checks passed: signed delivery, wrong creator rejected, timestamp limit, body limit, concurrent duplicate protection, student isolation, unmatched gifts do not post, anonymous references rejected.');await sql.close();

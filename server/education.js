@@ -55,7 +55,7 @@ async function educationAPI(request,env,url){
  if(!p.review||p.review.revision!==revision)return json({error:'Application settings changed. Load the updated version and review it before confirming.',code:'settings_changed'},409);
  if(typeof p.name!=='string'||p.name.trim().length<2||p.name.length>100||!config.paths.some(x=>x.id===p.pathId)||p.accepted!==true||!p.answers||typeof p.answers!=='object'||Array.isArray(p.answers))return json({error:'Enter your name, choose a learning path and confirm your enrolment.'},400);
  const answerKeys=Object.keys(p.answers);if(answerKeys.some(k=>!config.questions.some(q=>q.id===k)))return json({error:'The questionnaire changed. Please reload and review your answers.'},409);
- if(config.features.questionnaire&&config.questions.some(q=>!q.options.includes(p.answers[q.id])))return json({error:'Answer each learning question using a current option.'},400);
+ if(config.features.questionnaire&&config.questions.some(q=>!validEducationAnswer(q,p.answers[q.id])))return json({error:'Choose at least one current option for each question.'},400);
  if(!config.features.questionnaire&&answerKeys.length)return json({error:'The questionnaire is currently disabled.'},400);
  if(squareMode(env)!=='off'){const {entry,contract}=await squarePaymentState(env,user);if(entry?.status!=='paid'||entry.plan.id!==p.review.entryId)return json({error:'Complete your entry payment before submitting the application.'},402);if(contract)return json({error:'Your contract checkout is already saved. Complete that checkout or contact the academy to amend it.'},409);}
  const review=p.review;

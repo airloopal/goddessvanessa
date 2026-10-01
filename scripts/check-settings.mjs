@@ -37,4 +37,25 @@ appContext.nextConfig=next;appContext.oldConfig=original;
 vm.runInContext("course=oldConfig;pathId='foundations';entryId='basic';contractId='day';learnerName='Kept Name';learnerEmail='keep@example.test';answers={goal:'Clear communication',pace:'Short regular sessions'};entryReviewed=true;reviewReached=true;ageConfirmed=true;aupAccepted=true;reviewSignature='Kept Name';updateReviewControls=()=>{};move=to=>screen=to;offerSettingsRefresh();",appContext);
 await button.onclick();
 assert.equal(vm.runInContext('learnerName',appContext),'Kept Name');assert.equal(vm.runInContext('learnerEmail',appContext),'keep@example.test');assert.equal(vm.runInContext('answers.pace',appContext),'Short regular sessions');assert.equal(vm.runInContext('answers.goal',appContext),undefined);assert.equal(vm.runInContext('configRevision',appContext),1);assert.equal(vm.runInContext('entryReviewed||reviewReached||ageConfirmed||aupAccepted',appContext),false);assert.equal(vm.runInContext('reviewSignature',appContext),'');assert.equal(vm.runInContext('screen',appContext),'intro');
+// Multiple selections survive validation and saved agreement snapshots.
+const multi=structuredClone(current);multi.answers=Object.fromEntries(next.questions.map(q=>[q.id,q.options.slice(0,2)]));
+const multiSaved=await call('enrolment','PUT',multi,'student');assert.equal(multiSaved.status,200);
+assert.deepEqual(multiSaved.data.enrolment.answers,multi.answers);
+assert.deepEqual(multiSaved.data.enrolment.snapshot.questions.map(q=>q.answer),Object.values(multi.answers));
+for(const bad of [[],['not a current choice'],[next.questions[0].options[0],next.questions[0].options[0]],{},[null]]){const invalid=structuredClone(multi);invalid.answers[next.questions[0].id]=bad;assert.equal((await call('enrolment','PUT',invalid,'student')).status,400);}
+// The actual question renderer permits multiple checks, unchecks, and restores selections after Back.
+const uiElements=new Map();let uiInputs=[];
+const uiHost={innerHTML:'',querySelectorAll(selector){if(selector==='[data-path-id]')return [];if(selector==='.questions input')return uiInputs;return [];}};
+const uiDocument={getElementById(id){if(id==='education-app')return uiHost;if(!uiElements.has(id))uiElements.set(id,{addEventListener(){},textContent:''});return uiElements.get(id);}};
+const ui=vm.createContext({structuredClone,URLSearchParams,document:uiDocument,location:{search:'?preview=1'},parent:{postMessage(){}},window:{addEventListener(){}}});
+vm.runInContext(fs.readFileSync('public/education-config.js','utf8'),ui);
+vm.runInContext("const educationPreview=true;const eduTheme=()=>{};const eduEscape=s=>String(s);const squareEnabled=()=>false;const bindReview=()=>{};const bindEntryLightbox=()=>{};const squareDecorate=()=>{};let entryReviewed=false;",ui);
+vm.runInContext(fs.readFileSync('public/education-app.js','utf8'),ui);ui.currentConfig=original;
+const question=original.questions[0];uiInputs=question.options.map((_,index)=>({name:question.id,value:String(index),checked:false}));
+vm.runInContext("course=currentConfig;screen='questions';renderLearning();",ui);
+assert(uiHost.innerHTML.includes('type="checkbox"'));assert(uiHost.innerHTML.includes('Select all that apply'));
+uiInputs[0].checked=true;uiInputs[0].onchange();uiInputs[1].checked=true;uiInputs[1].onchange();
+assert.deepEqual(JSON.parse(vm.runInContext('JSON.stringify(answers)',ui))[question.id],question.options.slice(0,2));
+vm.runInContext('renderLearning();',ui);assert.equal((uiHost.innerHTML.match(/checked/g)||[]).length,2);
+uiInputs[0].checked=false;uiInputs[0].onchange();assert.deepEqual(JSON.parse(vm.runInContext('JSON.stringify(answers)',ui))[question.id],[question.options[1]]);
 await sql.close();console.log('Settings checks passed: exact pence, invalid settings rejected, draft isolation, publish conflicts, renamed plans and changed options, historical snapshots, server-derived rates, and student refresh retaining valid details while requiring new consent.');

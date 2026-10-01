@@ -13,13 +13,16 @@ const squareKey=async(env,user,stage)=>'sq-'+squareMode(env)+'-'+stage[0]+'-'+(a
 function squarePublic(r){return r?{stage:r.stage,plan:r.plan,status:r.status,receiptUrl:r.receiptUrl||null,paidAt:r.paidAt||null,expiresAt:r.expiresAt||null}:null;}
 function squareExpiry(plan,start){const d=new Date(start);if(plan==='infinite')return null;if(plan==='day')return new Date(d.getTime()+86400000).toISOString();const day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+(plan==='quarter'?3:1));const last=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();d.setUTCDate(Math.min(day,last));return d.toISOString();}
 async function squarePaymentState(env,user){const [entry,contract]=await Promise.all(['entry','contract'].map(async stage=>squareRecord(env,await squareKey(env,user,stage))));return {entry,contract};}
-async function squareAccessAllowed(env,user){
- if(squareMode(env)==='off')return true;
+async function squareAccessDeadline(env,user){
+ if(squareMode(env)==='off')return Infinity;
  const {entry,contract}=await squarePaymentState(env,user);
- // Existing manually approved learners without a checkout retain their existing access.
- if(!entry&&!contract)return true;
- return entry?.status==='paid'&&contract?.status==='paid'&&(!contract.expiresAt||Date.parse(contract.expiresAt)>Date.now());
+ // Preserve manually approved learners who have no checkout records.
+ if(!entry&&!contract)return Infinity;
+ if(entry?.status!=='paid'||contract?.status!=='paid')return 0;
+ const end=contract.expiresAt?Date.parse(contract.expiresAt):Infinity;
+ return end>Date.now()?end:0;
 }
+async function squareAccessAllowed(env,user){return (await squareAccessDeadline(env,user))>Date.now();}
 async function squareApplyPayment(env,paymentId){
  const {payment:p}=await squareCall(env,'payments/'+encodeURIComponent(paymentId));if(!p?.order_id)return;
  const {order}=await squareCall(env,'orders/'+encodeURIComponent(p.order_id));const key=order?.reference_id;

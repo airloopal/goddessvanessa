@@ -13,12 +13,15 @@ async function chatAPI(request,env,url){
   const ip=request.headers.get('cf-connecting-ip')||'unknown';if(!await chatLimit(env,'login:'+await chatHash(ip),20,15*60*1000))return json({error:'Too many attempts. Try again in 15 minutes.'},429);
   const code=typeof body.code==='string'?body.code.trim().toLowerCase():'';
   if(!/^[a-f0-9]{48}$/.test(code))return json({error:'This code is invalid or has expired. Ask Goddess for a new code.'},401);
-  // Atomic consumption prevents two requests from redeeming one code.
-  const student=await db(env).prepare("UPDATE chat_students SET code_hash=NULL,code_expires=0 WHERE code_hash=? AND code_expires>? AND status='active' RETURNING id,name,user_id").bind(await chatHash(code),now).first();
+  // Check contract access before atomically consuming the single-use code.
+  const student=await db(env).prepare("SELECT id,name,user_id FROM chat_students WHERE code_hash=? AND code_expires>? AND status='active'").bind(await chatHash(code),now).first();
   if(!student)return json({error:'This code is invalid or has expired. Ask Goddess for a new code.'},401);
-  if(!await squareAccessAllowed(env,student.user_id))return json({error:'Your contract payment is incomplete or access has expired.'},402);
-  const token=chatToken();await db(env).batch([db(env).prepare('DELETE FROM chat_sessions WHERE student_id=? OR expires_at<=?').bind(student.id,now),db(env).prepare('INSERT INTO chat_sessions (hash,student_id,expires_at) VALUES (?,?,?)').bind(await chatHash(token),student.id,now+30*86400000)]);
-  const response=json({student:{id:student.id,name:student.name}});response.headers.set('Set-Cookie',chatCookie(token,30*86400));return response;
+  const deadline=await squareAccessDeadline(env,student.user_id);if(deadline<=now)return json({error:'Your contract payment is incomplete or access has expired.'},402);
+  const consumed=await db(env).prepare("UPDATE chat_students SET code_hash=NULL,code_expires=0 WHERE id=? AND code_hash=? AND code_expires>? AND status='active' RETURNING id").bind(student.id,await chatHash(code),now).first();
+  if(!consumed)return json({error:'This code is invalid or has expired. Ask Goddess for a new code.'},401);
+  const sessionExpires=Math.min(now+30*86400000,deadline);
+  const token=chatToken();await db(env).batch([db(env).prepare('DELETE FROM chat_sessions WHERE student_id=? OR expires_at<=?').bind(student.id,now),db(env).prepare('INSERT INTO chat_sessions (hash,student_id,expires_at) VALUES (?,?,?)').bind(await chatHash(token),student.id,sessionExpires)]);
+  const response=json({student:{id:student.id,name:student.name}});response.headers.set('Set-Cookie',chatCookie(token,Math.max(0,Math.floor((sessionExpires-now)/1000))));return response;
  }
  if(path==='session'&&method==='DELETE'){const token=request.headers.get('cookie')?.match(/(?:^|;\s*)__Host-vanessa_student=([a-f0-9]{48})(?:;|$)/)?.[1];if(token)await db(env).prepare('DELETE FROM chat_sessions WHERE hash=?').bind(await chatHash(token)).run();const response=json({ok:true});response.headers.set('Set-Cookie',chatCookie('',0));return response;}
  const student=await chatStudent(request,env);
@@ -31,10 +34,11 @@ async function chatAPI(request,env,url){
    let record;if(body.reference)record=await db(env).prepare('SELECT user_id,name,snapshot FROM education_enrolments WHERE reference=?').bind(String(body.reference)).first();
    else if(body.studentId)record=await db(env).prepare('SELECT user_id,name,email FROM chat_students WHERE id=?').bind(String(body.studentId)).first();
    if(!record)return json({error:'Choose a saved application or student.'},404);
-   if(!await squareAccessAllowed(env,record.user_id))return json({error:'The contract payment is incomplete, refunded or expired.'},402);
+   const deadline=await squareAccessDeadline(env,record.user_id);if(deadline<=now)return json({error:'The contract payment is incomplete, refunded or expired.'},402);
+   const codeExpires=Math.min(now+86400000,deadline);
    const email=record.email||JSON.parse(record.snapshot).agreement?.email;if(!email)return json({error:'This application needs an email address.'},400);
-   const code=chatToken(),id=crypto.randomUUID();const result=await db(env).prepare("INSERT INTO chat_students (id,user_id,name,email,status,code_hash,code_expires,created_at) VALUES (?,?,?,?,'active',?,?,?) ON CONFLICT(user_id) DO UPDATE SET code_hash=excluded.code_hash,code_expires=excluded.code_expires,status='active',name=excluded.name,email=excluded.email RETURNING id").bind(id,record.user_id,record.name,email,await chatHash(code),now+86400000,now).first();
-   await db(env).prepare('DELETE FROM chat_sessions WHERE student_id=?').bind(result.id).run();await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind('code-request:'+result.id).run();return json({studentId:result.id,code,expiresAt:now+86400000,email,emailSent:false,emailStatus:'platform_only'});
+   const code=chatToken(),id=crypto.randomUUID();const result=await db(env).prepare("INSERT INTO chat_students (id,user_id,name,email,status,code_hash,code_expires,created_at) VALUES (?,?,?,?,'active',?,?,?) ON CONFLICT(user_id) DO UPDATE SET code_hash=excluded.code_hash,code_expires=excluded.code_expires,status='active',name=excluded.name,email=excluded.email RETURNING id").bind(id,record.user_id,record.name,email,await chatHash(code),codeExpires,now).first();
+   await db(env).prepare('DELETE FROM chat_sessions WHERE student_id=?').bind(result.id).run();await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind('code-request:'+result.id).run();return json({studentId:result.id,code,expiresAt:codeExpires,email,emailSent:false,emailStatus:'platform_only'});
   }
   if(method==='PATCH'&&['active','suspended'].includes(body.status)){const r=await db(env).prepare('UPDATE chat_students SET status=?,code_hash=NULL,code_expires=0 WHERE id=? RETURNING id').bind(body.status,String(body.studentId||'')).first();if(!r)return json({error:'Student not found.'},404);await db(env).prepare('DELETE FROM chat_sessions WHERE student_id=?').bind(r.id).run();return json({ok:true});}
   return json({error:'Method not allowed'},405);
@@ -115,7 +119,7 @@ async function chatCodeRequests(request,env,url,{owner,student,body,method,now,p
   if(!existing||!['approved','issued'].includes(existing.status))return json({error:'Your replacement request needs approval first.'},409);
   if(now-existing.reviewedAt>=86400000)return json({error:'This approval expired. Request another code.'},410);
   const token=request.headers.get('cookie').match(/(?:^|;\s*)__Host-vanessa_student=([a-f0-9]{48})(?:;|$)/)[1];
-  const code=(await chatHash('replacement-code:'+token+':'+existing.id)).slice(0,48),hash=await chatHash(code),expiresAt=existing.reviewedAt+86400000;
+  const code=(await chatHash('replacement-code:'+token+':'+existing.id)).slice(0,48),hash=await chatHash(code),expiresAt=Math.min(existing.reviewedAt+86400000,await squareAccessDeadline(env,student.user_id));
   const result=await db(env).prepare("WITH approved AS (UPDATE prototype_settings SET content=(content::jsonb || jsonb_build_object('status','issued','expiresAt',?::bigint))::text,revision=revision+1 WHERE id=? AND content::jsonb->>'id'=? AND content::jsonb->>'status'='approved' RETURNING id) UPDATE chat_students SET code_hash=?,code_expires=? WHERE id=? AND status='active' AND EXISTS(SELECT 1 FROM approved) RETURNING id").bind(expiresAt,key,existing.id,hash,expiresAt,student.id).first();
   if(!result){const current=await db(env).prepare('SELECT code_hash,code_expires FROM chat_students WHERE id=?').bind(student.id).first();if(current?.code_hash!==hash||current.code_expires<=now)return json({error:'This code has been used or replaced. Request another code.'},409);}
   return json({code,expiresAt});

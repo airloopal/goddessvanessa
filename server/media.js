@@ -1,4 +1,4 @@
-const MEDIA_MAX=25*1024*1024;
+const MEDIA_MAX=50*1024*1024;
 function mediaType(bytes,claimed){const b=new Uint8Array(bytes),str=(a,n)=>String.fromCharCode(...b.slice(a,a+n));
  if(b[0]===0xff&&b[1]===0xd8&&b[2]===0xff)return 'image/jpeg';
  if(b[0]===137&&str(1,3)==='PNG'&&b[4]===13&&b[5]===10)return 'image/png';
@@ -11,7 +11,7 @@ function mediaType(bytes,claimed){const b=new Uint8Array(bytes),str=(a,n)=>Strin
  if(b[0]===26&&b[1]===69&&b[2]===223&&b[3]===163)return claimed.startsWith('audio/')?'audio/webm':'video/webm';
  if(str(0,5)==='%PDF-')return 'application/pdf';return null;
 }
-async function mediaBytes(request){const reader=request.body?.getReader();if(!reader)throw Error('Choose a file.');const chunks=[];let size=0;while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>MEDIA_MAX){await reader.cancel();throw Error('Files must be 25 MB or smaller.');}chunks.push(value);}const out=new Uint8Array(size);let offset=0;for(const part of chunks){out.set(part,offset);offset+=part.byteLength;}return out;}
+async function mediaBytes(request){const reader=request.body?.getReader();if(!reader)throw Error('Choose a file.');const chunks=[];let size=0;while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>MEDIA_MAX){await reader.cancel();throw Error('Files must be 50 MB or smaller.');}chunks.push(value);}const out=new Uint8Array(size);let offset=0;for(const part of chunks){out.set(part,offset);offset+=part.byteLength;}return out;}
 const mediaDescriptor=file=>({id:file.id,name:file.name,mime:file.mime,size:file.size,url:'/api/media/'+file.id});
 async function mediaDeleteStudent(env,id){if(env.BUCKET?.deleteStaged){const pending=await db(env).prepare('SELECT storage_key FROM media_uploads WHERE student_id=?').bind(id).all();for(const row of pending.results)await env.BUCKET.deleteStaged(row.storage_key);}const rows=await db(env).prepare('SELECT storage_key FROM media_files WHERE student_id=?').bind(id).all();if(rows.results.length&&!env.BUCKET)throw Error('File storage unavailable.');for(let i=0;i<rows.results.length;i+=100)await env.BUCKET.delete(rows.results.slice(i,i+100).map(f=>f.storage_key));await db(env).prepare('DELETE FROM media_files WHERE student_id=?').bind(id).run();}
 async function mediaAPI(request,env,url){
@@ -27,11 +27,11 @@ async function mediaAPI(request,env,url){
   else return json({error:'Upload unavailable.'},403);
   const old=await db(env).prepare('SELECT * FROM media_files WHERE id=?').bind(id).first();if(old){if(old.user_id!==userId||old.scope!==scope||old.role!==role||old.student_id!==(target?.id||null))return json({error:'Upload identifier conflict.'},409);return json({file:mediaDescriptor(old)});}
   if(!await chatLimit(env,'upload:'+userId+':'+role,20,3600000))return json({error:'Upload limit reached. Please try again in an hour.'},429);
-  if(Number(request.headers.get('content-length'))>MEDIA_MAX)return json({error:'Files must be 25 MB or smaller.'},413);
+  if(Number(request.headers.get('content-length'))>MEDIA_MAX)return json({error:'Files must be 50 MB or smaller.'},413);
   let bytes;try{bytes=await mediaBytes(request);}catch(error){return json({error:error.message},413);}if(!bytes.byteLength)return json({error:'Choose a non-empty file.'},400);
   const mime=mediaType(bytes,request.headers.get('content-type')||'');if(!mime||scope==='verification'&&!mime.startsWith('video/'))return json({error:scope==='verification'?'Choose an MP4 or WebM video.':'Use a JPG, PNG, GIF, WebP, MP4, WebM, MP3, WAV, OGG, M4A or PDF file.'},415);
   if(scope==='background'&&(!['image/jpeg','image/png','image/webp'].includes(mime)||bytes.byteLength>8*1024*1024))return json({error:'Choose a JPG, PNG or WebP image up to 8 MB.'},415);
-  const used=await db(env).prepare('SELECT COALESCE(SUM(size),0) AS size FROM media_files WHERE user_id=?').bind(userId).first();if(used.size+bytes.byteLength>250*1024*1024)return json({error:'This student’s 250 MB file allowance is full.'},413);
+  const used=await db(env).prepare('SELECT COALESCE(SUM(size),0) AS size FROM media_files WHERE user_id=?').bind(userId).first();if(used.size+bytes.byteLength>1024*1024*1024)return json({error:'This student’s 1 GB file allowance is full.'},413);
   let name;try{name=decodeURIComponent(request.headers.get('x-file-name')||'Attachment');}catch{return json({error:'Invalid file name.'},400);}name=name.replace(/[\x00-\x1f\x7f/\\]/g,'_').slice(0,150)||'Attachment';
   const key=scope+'/'+(target?.id||await chatHash(userId))+'/'+id,now=Date.now();await env.BUCKET.put(key,bytes,{httpMetadata:{contentType:mime}});
   try{const writes=[db(env).prepare('INSERT INTO media_files (id,storage_key,student_id,user_id,scope,role,name,mime,size,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)').bind(id,key,target?.id||null,userId,scope,role,name,mime,bytes.byteLength,now)];if(scope==='chat')writes.push(db(env).prepare('INSERT INTO chat_messages (id,student_id,sender,body,attachment_id,created_at) VALUES (?,?,?,?,?,?)').bind(id,target.id,role,name,id,now));await db(env).batch(writes);}catch(error){const concurrent=await db(env).prepare('SELECT id FROM media_files WHERE id=?').bind(id).first();if(!concurrent)await env.BUCKET.delete(key);throw error;}

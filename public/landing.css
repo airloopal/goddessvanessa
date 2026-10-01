@@ -73,3 +73,10 @@ html:has(body.landing){scroll-snap-type:y mandatory;scroll-behavior:smooth}
 @media(prefers-reduced-motion:reduce){.landing #homepage-notice[open]{animation:none}}
 
 .landing #homepage-notice-close>.fluid-icon{display:none}.landing #homepage-notice-continue>.fluid-icon{order:2;flex-shrink:0}
+
+/* Compact mobile access control; retain its accessible name. */
+@media(max-width:600px){
+ .landing #sub-access-link{width:44px;min-width:44px;height:44px;min-height:44px;padding:10px;gap:0;flex:0 0 44px;justify-content:center;align-items:center}
+ .landing #sub-access-link>span{display:none}
+ .landing #sub-access-link>svg{display:block;width:22px;height:22px;flex:0 0 22px}
+}

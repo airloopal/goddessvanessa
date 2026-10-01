@@ -71,3 +71,5 @@ html:has(body.landing){scroll-snap-type:y mandatory;scroll-behavior:smooth}
 @keyframes notice-arrive{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:480px){.landing #homepage-notice{padding:32px 24px;border-radius:20px}.landing #homepage-notice-copy{font-size:15px}.landing #homepage-notice-open{left:12px;bottom:12px}}
 @media(prefers-reduced-motion:reduce){.landing #homepage-notice[open]{animation:none}}
+
+.landing #homepage-notice-close>.fluid-icon{display:none}.landing #homepage-notice-continue>.fluid-icon{order:2;flex-shrink:0}

@@ -11,7 +11,7 @@
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",
     "drizzle-kit": "0.31.4",
-    "drizzle-orm": "0.44.5"
+    "drizzle-orm": "0.45.3"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",
@@ -20,5 +20,8 @@
   },
   "engines": {
     "node": "24.x"
+  },
+  "overrides": {
+    "esbuild": "0.25.12"
   }
 }

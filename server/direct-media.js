@@ -24,7 +24,8 @@ async function directMediaAPI(request,env,url){
  if(url.pathname!=='/api/media/prepare')return json({error:'Not found.'},404);
  if(!Number.isSafeInteger(body.size)||body.size<1||body.size>MEDIA_MAX||typeof body.name!=='string'||body.name.length>200||typeof body.type!=='string'||body.type.length>100)return json({error:'Choose a file of up to 25 MB.'},400);
  let target=null,userId;
- if(body.scope==='chat'){
+ if(body.scope==='background'&&(body.size>8*1024*1024||!['image/jpeg','image/png','image/webp'].includes(body.type)))return json({error:'Choose a JPG, PNG or WebP image up to 8 MB.'},400);
+ if(body.scope==='chat'||body.scope==='background'&&owner){
   const sid=owner?body.student:student?.id;if(!sid||(!owner&&body.student!==sid))return json({error:'Conversation unavailable.'},403);
   target=await db(env).prepare("SELECT id,user_id FROM chat_students WHERE id=? AND status='active'").bind(sid).first();if(!target)return json({error:'Conversation unavailable.'},403);userId=target.user_id;
  }else if(body.scope==='verification'&&owner){

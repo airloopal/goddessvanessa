@@ -58,4 +58,44 @@ const source=fs.readFileSync('server/square.js','utf8');const expiry=new Functio
 assert.equal(expiry('month','2027-01-31T12:00:00Z'),'2027-02-28T12:00:00.000Z');assert.equal(expiry('quarter','2026-11-30T12:00:00Z'),'2027-02-28T12:00:00.000Z');assert.equal(expiry('day','2026-09-30T12:00:00Z'),'2026-10-01T12:00:00.000Z');assert.equal(expiry('infinite',paidAt),null);
 // Simultaneous first attempts reserve one record and reuse one Square idempotency key.
 const simultaneous=await Promise.all([post('entry','advanced',{user:'concurrent'}),post('entry','advanced',{user:'concurrent'})]);assert.equal(simultaneous[0].status,200);assert.equal(simultaneous[0].data.url,simultaneous[1].data.url);assert.equal(creations,3);
+// Embedded checkout: server amounts, idempotent retries, decline recovery and legacy safety.
+const hostedFetch=env.SQUARE_FETCH,cardResults=new Map(),orderResults=new Map();let charges=0,dropResponse=false;
+env.SQUARE_APPLICATION_ID='sandbox-app';
+env.SQUARE_FETCH=async(url,options)=>{
+ const path=new URL(url).pathname,body=options.body?JSON.parse(options.body):null;
+ if(path==='/v2/orders'){
+  if(!orderResults.has(body.idempotency_key)){const order={...body.order,id:'embedded-order-'+orderResults.size,tenders:[]};orderResults.set(body.idempotency_key,order);orders.set(order.id,order);}
+  return Response.json({order:orderResults.get(body.idempotency_key)});
+ }
+ if(path==='/v2/payments'){
+  if(body.source_id==='cnon:declined')return Response.json({errors:[{code:'CARD_DECLINED'}]},{status:400});
+  if(!cardResults.has(body.idempotency_key)){
+   charges++;const payment={id:'embedded-payment-'+charges,order_id:body.order_id,location_id:'location',amount_money:body.amount_money,total_money:body.amount_money,status:'COMPLETED',updated_at:new Date().toISOString()};
+   payments.set(payment.id,payment);cardResults.set(body.idempotency_key,payment);orders.get(body.order_id).tenders=[{payment_id:payment.id}];
+  }
+  if(dropResponse){dropResponse=false;throw Error('Simulated lost network response');}
+  return Response.json({payment:cardResults.get(body.idempotency_key)});
+ }
+ return hostedFetch(url,options);
+};
+const embedded=(route,user,data={})=>call('payments/'+route,{method:'POST',user,data:{stage:'entry',planId:'basic',revision:0,...data}});
+assert.equal((await embedded('prepare','card-user',{extra:'ignored'})).status,200);
+assert.equal((await embedded('charge','card-user',{attemptId:crypto.randomUUID(),sourceId:'CASH'})).status,400);
+const cardBody={attemptId:crypto.randomUUID(),sourceId:'cnon:valid',amount:1};
+const charged=await embedded('charge','card-user',cardBody);assert.equal(charged.data.paid,true,JSON.stringify(charged));assert.equal(charged.data.payment.plan.amount,8500);
+assert.equal((await embedded('charge','card-user',cardBody)).data.paid,true);assert.equal(charges,1);
+const savedRow=await env.DB.prepare('SELECT content FROM prototype_settings WHERE id=?').bind(orders.get('embedded-order-0').reference_id).first();assert.ok(!savedRow.content.includes('cnon:valid'));
+const declineBody={attemptId:crypto.randomUUID(),sourceId:'cnon:declined'};
+assert.equal((await embedded('charge','decline-user',declineBody)).data.retryCard,true);
+assert.equal((await embedded('charge','decline-user',declineBody)).status,402);
+assert.equal((await embedded('charge','decline-user',{attemptId:crypto.randomUUID(),sourceId:'cnon:valid'})).data.paid,true);
+dropResponse=true;const uncertain={attemptId:crypto.randomUUID(),sourceId:'cnon:valid'};
+assert.equal((await embedded('charge','timeout-user',uncertain)).data.retrySame,true);
+assert.equal((await embedded('charge','timeout-user',uncertain)).data.paid,true);assert.equal(charges,3);
+assert.equal((await embedded('prepare','concurrent',{planId:'advanced'})).status,409);
+assert.equal((await embedded('prepare','no-entry',{stage:'contract',planId:'month'})).status,409);
+assert.equal((await embedded('prepare','card-user',{planId:'advanced'})).status,409);
+const countBefore=charges;const race=await Promise.all([embedded('charge','card-race',{attemptId:crypto.randomUUID(),sourceId:'cnon:valid'}),embedded('charge','card-race',{attemptId:crypto.randomUUID(),sourceId:'cnon:valid'})]);
+assert.ok(race.some(x=>x.data.paid));assert.equal(charges,countBefore+1);
+console.log('Embedded checks passed: charged once, server prices, token removal, decline recovery, unknown-response recovery, legacy protection, contract gating and concurrent attempts.');
 await sql.close();console.log('Square checks passed: server prices, duplicate checkout, stage gates, isolated users/environments, webhook signatures, amount checks, reconciliation, refunds, admin visibility and calendar expiry.');

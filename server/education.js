@@ -1,6 +1,6 @@
 const EDUCATION_OWNER='danielvernontp@gmail.com';
 // A private browser capability for applications, never a chat login.
-async function applicationUser(request){const token=request.headers.get('cookie')?.match(/(?:^|;\s*)vanessa_application=([a-f0-9]{48})(?:;|$)/)?.[1];return token?'application:'+await chatHash(token):null;}
+async function applicationUser(request){const token=request.headers.get('cookie')?.match(/(?:^|;\s*)__Host-vanessa_application=([a-f0-9]{48})(?:;|$)/)?.[1];return token?'application:'+await chatHash(token):null;}
 async function educationConfig(env,which='published'){const row=await db(env).prepare('SELECT content,revision,updated_at FROM prototype_settings WHERE id = ?').bind('education-'+which).first();return {config:educationWithAgreement(row?JSON.parse(row.content):EDUCATION_DEFAULTS),revision:row?.revision||0,updatedAt:row?.updated_at||null};}
 async function educationAPI(request,env,url){
  const path=url.pathname,dispatchUser=request.headers.get('oai-authenticated-user-id'),dispatchEmail=request.headers.get('oai-authenticated-user-email'),owner=!!dispatchUser&&dispatchEmail?.toLowerCase()===EDUCATION_OWNER;
@@ -10,7 +10,7 @@ async function educationAPI(request,env,url){
   const body=await educationBody(request,url,1000);if(body instanceof Response)return body;
   if(!await chatLimit(env,'application-session:'+await chatHash(request.headers.get('cf-connecting-ip')||'unknown'),30,3600000))return json({error:'Too many requests. Try again later.'},429);
   const response=json({ok:true});response.headers.set('Cache-Control','private, no-store');
-  if(!user)response.headers.set('Set-Cookie','vanessa_application='+chatToken()+'; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=2592000');
+  if(!user)response.headers.set('Set-Cookie','__Host-vanessa_application='+chatToken()+'; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=2592000');
   return response;
  }
  if(path==='/api/education/identity'&&request.method==='GET')return json({signedIn:!!(codeStudent||dispatchUser),application:!!user,owner,email:email||null});
@@ -69,4 +69,4 @@ async function educationAPI(request,env,url){
  await db(env).batch([enrolmentWrite,reviewWrite]);
  return json({enrolment:await read(),access:{status:'awaiting_admin',codeIssued:false}});
 }
-async function educationBody(request,url,limit){if(request.headers.get('origin')!==url.origin)return json({error:'Request origin rejected'},403);if(!request.headers.get('content-type')?.startsWith('application/json'))return json({error:'JSON required'},415);const raw=await request.text();if(raw.length>limit)return json({error:'Request too large'},413);try{const p=JSON.parse(raw);return p&&typeof p==='object'&&!Array.isArray(p)?p:json({error:'Invalid JSON object'},400);}catch{return json({error:'Invalid JSON'},400);}}
+async function educationBody(request,url,limit){if(request.headers.get('origin')!==url.origin)return json({error:'Request origin rejected'},403);if(!request.headers.get('content-type')?.startsWith('application/json'))return json({error:'JSON required'},415);let raw;try{raw=await boundedText(request,limit);}catch(error){return json({error:error.status===413?'Request too large':'Invalid request body'},error.status===413?413:400);}try{const p=JSON.parse(raw);return p&&typeof p==='object'&&!Array.isArray(p)?p:json({error:'Invalid JSON object'},400);}catch{return json({error:'Invalid JSON'},400);}}

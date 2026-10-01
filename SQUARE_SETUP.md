@@ -1,3 +1,11 @@
+## Embedded checkout update
+
+The square-sandbox branch now uses Square Web Payments SDK card fields inside the application. Add `SQUARE_APPLICATION_ID` from Square Sandbox Credentials to Vercel Preview. This identifier is returned to the browser; the access token and webhook signature key remain server-only. Existing paid hosted checkouts remain valid. An unpaid legacy hosted checkout must be completed and refreshed before changing checkout methods; it is never silently replaced with another payable order.
+
+Preview application records use private `academy_sandbox` tables inside the existing Supabase project. This shares database credentials and storage services with production, but routes application queries to the separate schema. No separate database subscription was created. Do not use real student details in Sandbox. Production stays off until separately approved.
+
+The card tokenization step uses Square buyer verification. Amounts come from the server and each charge reserves one persistent attempt. Unknown responses retry the same Square request; only a confirmed card decline enables a new card attempt. On confirmation, the one-use payment token is removed from the saved attempt. Test entry and contract payments, declines, interrupted responses, bank verification, refunds and phone layouts before enabling live payments.
+
 # Square payment setup
 
 This branch adds two separate Square-hosted checkouts to the existing application. It does not activate live payments by itself. Prices are read server-side from the published academy settings: entry £85 / £125; contract £100 / £250 / £750 / £5,000. All are one-off payments.

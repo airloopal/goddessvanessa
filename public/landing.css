@@ -80,3 +80,13 @@ html:has(body.landing){scroll-snap-type:y mandatory;scroll-behavior:smooth}
  .landing #sub-access-link>span{display:none}
  .landing #sub-access-link>svg{display:block;width:22px;height:22px;flex:0 0 22px}
 }
+
+/* Keep all header actions on one row, including narrow phones. */
+@media(max-width:600px){
+ .landing #landing-header{height:52px;grid-template-columns:auto minmax(0,1fr) auto;gap:4px;row-gap:0;align-items:center}
+ .landing #landing-brand{grid-column:1;grid-row:1}
+ .landing #landing-header .scene-nav{grid-column:2;grid-row:1;justify-self:center;flex-wrap:nowrap;gap:0;padding:0;min-width:0}
+ .landing .scene-button{width:32px;min-width:32px;flex:0 0 32px;height:44px;padding:7px}
+ .landing #sub-access-link{margin-left:0}
+ .landing #hero-cta{grid-column:3;grid-row:1;width:auto;min-width:68px;white-space:nowrap;padding:10px 6px;font-size:10px;letter-spacing:.08em}
+}

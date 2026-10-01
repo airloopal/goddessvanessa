@@ -22,7 +22,7 @@ async function directMediaAPI(request,env,url){
   return result;
  }
  if(url.pathname!=='/api/media/prepare')return json({error:'Not found.'},404);
- if(!Number.isSafeInteger(body.size)||body.size<1||body.size>MEDIA_MAX||typeof body.name!=='string'||body.name.length>200||typeof body.type!=='string'||body.type.length>100)return json({error:'Choose a file of up to 25 MB.'},400);
+ if(!Number.isSafeInteger(body.size)||body.size<1||body.size>MEDIA_MAX||typeof body.name!=='string'||body.name.length>200||typeof body.type!=='string'||body.type.length>100)return json({error:'Choose a file of up to 50 MB.'},400);
  let target=null,userId;
  if(body.scope==='background'&&(body.size>8*1024*1024||!['image/jpeg','image/png','image/webp'].includes(body.type)))return json({error:'Choose a JPG, PNG or WebP image up to 8 MB.'},400);
  if(body.scope==='chat'||body.scope==='background'&&owner){
@@ -46,8 +46,8 @@ async function directMediaAPI(request,env,url){
  // Serialize quota reservations per student. Pending files count toward the allowance.
  const out=await db(env).batch([
   db(env).prepare('SELECT pg_advisory_xact_lock(hashtextextended(?::text,0))').bind(userId),
-  db(env).prepare('INSERT INTO media_uploads (id,actor,storage_key,student_id,user_id,scope,role,name,claimed_type,size,expires_at) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE (SELECT COALESCE(SUM(size),0) FROM media_files WHERE user_id=?) + (SELECT COALESCE(SUM(u.size),0) FROM media_uploads u LEFT JOIN media_files f ON f.id=u.id WHERE u.user_id=? AND u.expires_at>? AND f.id IS NULL) + ?::bigint <= 262144000 RETURNING id').bind(id,actor,key,target?.id||null,userId,body.scope,owner?'admin':'client',name,body.type,body.size,Date.now()+2*3600000,userId,userId,Date.now(),body.size)
+  db(env).prepare('INSERT INTO media_uploads (id,actor,storage_key,student_id,user_id,scope,role,name,claimed_type,size,expires_at) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE (SELECT COALESCE(SUM(size),0) FROM media_files WHERE user_id=?) + (SELECT COALESCE(SUM(u.size),0) FROM media_uploads u LEFT JOIN media_files f ON f.id=u.id WHERE u.user_id=? AND u.expires_at>? AND f.id IS NULL) + ?::bigint <= 1073741824 RETURNING id').bind(id,actor,key,target?.id||null,userId,body.scope,owner?'admin':'client',name,body.type,body.size,Date.now()+2*3600000,userId,userId,Date.now(),body.size)
  ]);
- if(!out[1].meta.changes)return json({error:'This student’s 250 MB file allowance is full.'},413);
+ if(!out[1].meta.changes)return json({error:'This student’s 1 GB file allowance is full.'},413);
  try{return json({id,uploadUrl:await env.BUCKET.signUpload(key)});}catch(error){await db(env).prepare('DELETE FROM media_uploads WHERE id=?').bind(id).run();throw error;}
 }

@@ -1,3 +1,32 @@
+# Security sweep — 1 October 2026
+
+Scope: main release cb3b9f5, deployed production site, academy and academy_sandbox database structure, private storage, Vercel firewall, application and student access, Square and Throne. This is an engineering review and bounded negative testing, not an independent penetration test or DDoS load test.
+
+## Results
+
+- Full automated suite passed: application, agreement records, visual editor authorization, uploads, student isolation, secure sessions, code rotation/revocation, payment amount and stage validation, refund handling, concurrent retries, and authenticator/recovery-code behavior. Additional Throne signature/replay/isolation and replacement-code request tests passed.
+- Live negative tests: anonymous admin overview/status, visual draft, education draft and student list returned 403; chat messages/session and gift reference returned 401; unsigned Square and Throne webhooks returned 403; cross-origin application-session creation returned 403. Forged identity headers did not grant access. No actual charges, gifts, emails or agreement submissions were made.
+- Public environment/server source paths returned 404 or retired-route 410. Live CSP, HTTPS enforcement, framing restrictions, nosniff and same-origin referrer headers are present. Public payment capability confirms production mode, ready and embeddedReady.
+- All 22 application tables have RLS enabled. No anon/authenticated/PUBLIC table grants and no security-definer functions exist in public/academy/academy_sandbox. Both media buckets remain private with a 25 MB limit. Policy-free private tables intentionally deny direct browser access; application authorization is enforced by the server.
+- Supabase advisory: leaked-password protection is disabled in Supabase Auth. The platform currently uses its separate private-code authentication, not Supabase password sign-in. Revisit before adding Supabase password authentication.
+- Vercel system mitigations active; no system bypasses. Bot Protection off. One prior draft rule logs /.env probes and has not been published. No new firewall rule was applied during this sweep.
+
+## Dependency patch
+
+Production-only npm audit initially reported zero vulnerabilities. Full development audit identified one high and four moderate findings in historic database tools. Upgraded drizzle-orm from 0.44.5 to 0.45.3 and pinned esbuild to 0.25.12 through an override; regenerated the lockfile. Clean npm ci --ignore-scripts, full npm audit (zero findings), build, patched identifier escaping and Vercel API boundary tests passed. Runtime database access uses parameterized pg queries; the development tools are not called by production payment/chat handlers.
+
+References: https://github.com/advisories/GHSA-gpj5-g38j-94v9 and https://github.com/advisories/GHSA-67mh-4wv8-2f99.
+
+## Launch checks still required
+
+- Administrator personally replaces any code previously disclosed in chat and enrolls an authenticator if not already done. Enrollment/credential state was not inspected; no credential was read or changed.
+- Confirm recoverable database and separately stored media backups; a restore drill was not performed.
+- Connect the final domain, then verify HTTPS, session behavior, Square site/return/webhook URL configuration and Throne callback configuration. Square signs callbacks using the configured webhook URL exactly.
+- Run the final application → sandbox entry → agreement → sandbox contract → platform code → private chat walkthrough on a Preview deployment using academy_sandbox. Never use sandbox test cards on the production-mode site. Production intentionally rejects a sandbox database/payment configuration.
+- Real Square/Throne transactions remain user-run acceptance tests. Throne confirmations require the student's gift reference; unsupported cancellation/failure events are not claimed.
+
+## Previous review (historical)
+
 # Security review — 30 September 2026
 
 Scope: application, student chat, Vanessa dashboard, private uploads, Square sandbox and Vercel boundary. Changes published to square-sandbox; this is not an independent penetration test or a guarantee of complete security.

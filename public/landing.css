@@ -56,3 +56,18 @@ html:has(body.landing){scroll-snap-type:y mandatory;scroll-behavior:smooth}
 .landing .video-scene{width:100%;padding:0;border:0;margin:0;overflow:hidden}
 .landing .video-scene .hero-video{display:block;inset:0;width:100%;max-width:none;height:100%;object-fit:cover;object-position:50% 50%;border:0;border-radius:0}
 @media(max-aspect-ratio:4/5){.landing .video-scene .hero-video{object-position:50% 45%}}
+
+/* Homepage notice: native modal focus handling and editable content. */
+.landing #homepage-notice{width:min(520px,calc(100vw - 32px));max-width:520px;max-height:calc(100svh - 40px);margin:auto;padding:40px;border:1px solid #bd668a80;border-radius:24px;background:radial-gradient(ellipse at top left,#652039 0%,#30101d 55%,#210d16 100%);color:#fff4ef;box-shadow:0 30px 100px #0009;overflow:auto}
+.landing #homepage-notice::backdrop{background:#140912b8;backdrop-filter:blur(9px)}
+.landing #homepage-notice[open]{animation:notice-arrive .3s ease-out}
+.landing #homepage-notice-close{position:absolute;right:14px;top:14px;display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid #ffffff26;border-radius:50%;background:#ffffff08;color:#f5d7e3;font:400 25px/1 Arial,sans-serif}
+.homepage-notice-symbol{display:grid;place-items:center;width:56px;height:56px;border:1px solid #efa1c44d;border-radius:16px;background:#f1a5c31a;color:#f5bad4;margin-bottom:26px}.homepage-notice-symbol svg{width:30px;height:30px}
+.landing #homepage-notice-label{margin:0 0 14px;color:#f2accb;font:600 11px/1.5 Arial,sans-serif;letter-spacing:.18em}
+.landing #homepage-notice-title{margin:0 0 20px;font:400 clamp(28px,5vw,38px)/1.2 LibreBaskerville,Georgia,serif;letter-spacing:-.035em}
+.landing #homepage-notice-copy{margin:0 0 30px;font:400 16px/1.8 Arial,sans-serif;color:#ead5dd;white-space:pre-line;overflow-wrap:anywhere}
+.landing #homepage-notice-continue{display:flex;justify-content:space-between;align-items:center;gap:16px;width:100%;min-height:52px;padding:14px 18px;border:0;border-radius:12px;background:#f6c5db;color:#29121e;font:600 14px/1.5 Arial,sans-serif;box-shadow:0 4px 18px #0002}
+.landing #homepage-notice-continue:hover{background:#fbd9e9}.landing #homepage-notice-open{position:fixed;left:20px;bottom:20px;z-index:3;min-height:44px;padding:10px 16px;border:1px solid #ffffff40;border-radius:30px;background:#200b1bc4;backdrop-filter:blur(8px);color:#f9e4ee;font:500 12px/1.5 Arial,sans-serif}
+@keyframes notice-arrive{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:480px){.landing #homepage-notice{padding:32px 24px;border-radius:20px}.landing #homepage-notice-copy{font-size:15px}.landing #homepage-notice-open{left:12px;bottom:12px}}
+@media(prefers-reduced-motion:reduce){.landing #homepage-notice[open]{animation:none}}

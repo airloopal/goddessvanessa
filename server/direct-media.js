@@ -48,6 +48,6 @@ async function directMediaAPI(request,env,url){
   db(env).prepare('SELECT pg_advisory_xact_lock(hashtextextended(?::text,0))').bind(userId),
   db(env).prepare('INSERT INTO media_uploads (id,actor,storage_key,student_id,user_id,scope,role,name,claimed_type,size,expires_at) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE (SELECT COALESCE(SUM(size),0) FROM media_files WHERE user_id=?) + (SELECT COALESCE(SUM(u.size),0) FROM media_uploads u LEFT JOIN media_files f ON f.id=u.id WHERE u.user_id=? AND u.expires_at>? AND f.id IS NULL) + ?::bigint <= 1073741824 RETURNING id').bind(id,actor,key,target?.id||null,userId,body.scope,owner?'admin':'client',name,body.type,body.size,Date.now()+2*3600000,userId,userId,Date.now(),body.size)
  ]);
- if(!out[1].meta.changes)return json({error:'This student’s 1 GB file allowance is full.'},413);
+ if(!out[1].meta.changes)return json({error:'This sub’s 1 GB file allowance is full.'},413);
  try{return json({id,uploadUrl:await env.BUCKET.signUpload(key)});}catch(error){await db(env).prepare('DELETE FROM media_uploads WHERE id=?').bind(id).run();throw error;}
 }

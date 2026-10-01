@@ -33,14 +33,14 @@ async function chatAPI(request,env,url){
   if(method==='POST'){
    let record;if(body.reference)record=await db(env).prepare('SELECT user_id,name,snapshot FROM education_enrolments WHERE reference=?').bind(String(body.reference)).first();
    else if(body.studentId)record=await db(env).prepare('SELECT user_id,name,email FROM chat_students WHERE id=?').bind(String(body.studentId)).first();
-   if(!record)return json({error:'Choose a saved application or student.'},404);
+   if(!record)return json({error:'Choose a saved application or sub.'},404);
    const deadline=await squareAccessDeadline(env,record.user_id);if(deadline<=now)return json({error:'The contract payment is incomplete, refunded or expired.'},402);
    const codeExpires=Math.min(now+86400000,deadline);
    const email=record.email||JSON.parse(record.snapshot).agreement?.email;if(!email)return json({error:'This application needs an email address.'},400);
    const code=chatToken(),id=crypto.randomUUID();const result=await db(env).prepare("INSERT INTO chat_students (id,user_id,name,email,status,code_hash,code_expires,created_at) VALUES (?,?,?,?,'active',?,?,?) ON CONFLICT(user_id) DO UPDATE SET code_hash=excluded.code_hash,code_expires=excluded.code_expires,status='active',name=excluded.name,email=excluded.email RETURNING id").bind(id,record.user_id,record.name,email,await chatHash(code),codeExpires,now).first();
    await db(env).prepare('DELETE FROM chat_sessions WHERE student_id=?').bind(result.id).run();await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind('code-request:'+result.id).run();return json({studentId:result.id,code,expiresAt:codeExpires,email,emailSent:false,emailStatus:'platform_only'});
   }
-  if(method==='PATCH'&&['active','suspended'].includes(body.status)){const r=await db(env).prepare('UPDATE chat_students SET status=?,code_hash=NULL,code_expires=0 WHERE id=? RETURNING id').bind(body.status,String(body.studentId||'')).first();if(!r)return json({error:'Student not found.'},404);await db(env).prepare('DELETE FROM chat_sessions WHERE student_id=?').bind(r.id).run();return json({ok:true});}
+  if(method==='PATCH'&&['active','suspended'].includes(body.status)){const r=await db(env).prepare('UPDATE chat_students SET status=?,code_hash=NULL,code_expires=0 WHERE id=? RETURNING id').bind(body.status,String(body.studentId||'')).first();if(!r)return json({error:'Sub not found.'},404);await db(env).prepare('DELETE FROM chat_sessions WHERE student_id=?').bind(r.id).run();return json({ok:true});}
   return json({error:'Method not allowed'},405);
  }
  if(path==='presence'&&method==='PUT'){if(!owner)return json({error:'Goddess access required.'},403);await db(env).prepare("INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES ('chat-presence',?,1,?) ON CONFLICT(id) DO UPDATE SET content=excluded.content,updated_at=excluded.updated_at").bind(JSON.stringify({online:body.online===true,until:now+60000}),new Date(now).toISOString()).run();return json({ok:true});}
@@ -104,12 +104,12 @@ async function chatCodeRequests(request,env,url,{owner,student,body,method,now,p
   }
   if(method!=='PATCH'||!['approved','declined'].includes(body.decision))return json({error:'Choose Approve or Decline.'},400);
   const target=await db(env).prepare('SELECT id,user_id,status FROM chat_students WHERE id=?').bind(String(body.studentId||'')).first();
-  if(!target)return json({error:'Student not found.'},404);
-  if(body.decision==='approved'&&(target.status!=='active'||!await squareAccessAllowed(env,target.user_id)))return json({error:'This student needs active paid contract access before a replacement can be approved.'},402);
+  if(!target)return json({error:'Sub not found.'},404);
+  if(body.decision==='approved'&&(target.status!=='active'||!await squareAccessAllowed(env,target.user_id)))return json({error:'This sub needs active paid contract access before a replacement can be approved.'},402);
   const row=await db(env).prepare("UPDATE prototype_settings SET content=(content::jsonb || jsonb_build_object('status',?::text,'reviewedAt',?::bigint))::text,revision=revision+1,updated_at=? WHERE id=? AND content::jsonb->>'id'=? AND content::jsonb->>'status'='pending' RETURNING content").bind(body.decision,now,new Date(now).toISOString(),'code-request:'+target.id,String(body.requestId||'')).first();
   return row?json({request:JSON.parse(row.content)}):json({error:'This request has already been reviewed. Refresh the list.'},409);
  }
- if(!student||owner)return json({error:'Open your existing student chat to request a replacement code.'},403);
+ if(!student||owner)return json({error:'Open your existing sub chat to request a replacement code.'},403);
  const key='code-request:'+student.id;
  const read=async()=>{const row=await db(env).prepare('SELECT content FROM prototype_settings WHERE id=?').bind(key).first();return row?JSON.parse(row.content):null;};
  if(method==='GET'){const value=await read();if(value?.status==='issued'&&!student.code_hash)value.status='used';return json({request:value});}

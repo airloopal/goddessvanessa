@@ -18,7 +18,7 @@ export async function throneWebhook(request,DB,options={}){
  if(event.contract_version!=='1'||!types.includes(event.event_type)||!/^[a-f0-9-]{36}$/i.test(event.event_id||'')||!d||d.creator_id!=='BJk2DI5LvAPbA3keyUw2z0T6ooR2'||d.creator_username!=='vvannessa')return giftResponse({error:'Unexpected event'},400);
  const amount=event.event_type==='contribution_purchased'?d.amount:d.price;
  if(!Number.isSafeInteger(amount)||amount<0||! /^[A-Z]{3}$/.test(d.currency||'')||typeof d.item_name!=='string'||!d.item_name.trim()||d.item_name.length>300||typeof d.message!=='undefined'&&typeof d.message!=='string'||(d.message?.length||0)>4000)return giftResponse({error:'Invalid gift details'},400);
- const legacy=d.message?.match(/\bGV-[A-F0-9]{24}\b/g)||[],names=(d.message||'').split(/\r?\n/).map(line=>line.trim().normalize('NFKC')).filter(line=>/^Student: .{1,180}$/.test(line));
+ const legacy=d.message?.match(/\bGV-[A-F0-9]{24}\b/g)||[],names=(d.message||'').split(/\r?\n/).map(line=>line.trim().normalize('NFKC')).filter(line=>/^(?:Student|Sub): .{1,180}$/.test(line));
  const refs=[...new Set([...legacy,...names])];
  const ref=refs.length===1?refs[0]:null,key='throne-event:'+event.event_id,now=Date.now();
  const info={eventId:event.event_id,type:event.event_type,item:d.item_name,amount,currency:d.currency,receivedAt:now};
@@ -36,11 +36,11 @@ async function giftReference(request,runtime,context){
  const {student}=await session.json(),now=Date.now(),id='throne-ref:'+student.id;
  const record=await runtime.DB.prepare('SELECT content FROM prototype_settings WHERE id=?').bind(id).first();
  const existing=record?JSON.parse(record.content):null;
- if(existing?.expiresAt>now&&existing.reference.startsWith('Student: '))return giftResponse({reference:existing.reference,displayReference:existing.reference,expiresAt:existing.expiresAt});
- const name=String(student.name||'Student').normalize('NFKC').replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim().slice(0,120);
+ if(existing?.expiresAt>now&&existing.reference.startsWith('Sub: '))return giftResponse({reference:existing.reference,displayReference:existing.reference,expiresAt:existing.expiresAt});
+ const name=String(student.name||'Sub').normalize('NFKC').replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim().slice(0,120);
  const duplicate=await runtime.DB.prepare("SELECT COUNT(*) AS count FROM chat_students WHERE status='active' AND LOWER(TRIM(name))=LOWER(?) AND id<>?").bind(name,student.id).first();
- const reference='Student: '+name+(Number(duplicate.count)>0?' ('+student.id.slice(-8)+')':''),expiresAt=now+7*86400000;
- const value={studentId:student.id,reference,expiresAt,...(existing?.expiresAt>now&&existing.reference.startsWith('GV-')?{legacyReference:existing.reference}:{})};
+ const reference='Sub: '+name+(Number(duplicate.count)>0?' ('+student.id.slice(-8)+')':''),expiresAt=now+7*86400000;
+ const value={studentId:student.id,reference,expiresAt,...(existing?.expiresAt>now&&/^(?:GV-|Student: )/.test(existing.reference)?{legacyReference:existing.reference}:{})};
  const row=await runtime.DB.prepare("INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?) ON CONFLICT(id) DO UPDATE SET content=CASE WHEN (prototype_settings.content::jsonb->>'expiresAt')::bigint<=? OR prototype_settings.content::jsonb->>'reference' LIKE 'GV-%' THEN excluded.content ELSE prototype_settings.content END,revision=prototype_settings.revision+1,updated_at=excluded.updated_at RETURNING content").bind(id,JSON.stringify(value),new Date(now).toISOString(),now).first();
  const saved=JSON.parse(row.content);return giftResponse({reference:saved.reference,displayReference:saved.reference,expiresAt:saved.expiresAt});
 }

@@ -27,12 +27,12 @@ selectVideoFiles();
 portraitViewport.addEventListener('change',()=>{selectVideoFiles();syncPlayback();});
 
 let activeScene=0,manualPause=reduced.matches;
-const colours=['#f071b4','#e8bc68','#bc8cff','#8bd9e6'];
+const titleGlow='#f071b4';
 function syncPlayback(){
  scenes.forEach((scene,i)=>{const v=scene.querySelector('video');v.muted=true;if(i===activeScene&&!manualPause&&!document.hidden)v.play().catch(()=>{});else v.pause();});
  const v=scenes[activeScene].querySelector('video');motionButton.textContent=v.paused?'Play video':'Pause video';motionButton.setAttribute('aria-label',v.paused?'Play background video':'Pause background video');
 }
-function setScene(index){activeScene=index;document.body.style.setProperty('--scene-glow',colours[index]);sceneButtons.forEach((b,i)=>b.setAttribute('aria-pressed',String(i===index)));syncPlayback();}
+function setScene(index){activeScene=index;document.body.style.setProperty('--scene-glow',titleGlow);sceneButtons.forEach((b,i)=>b.setAttribute('aria-pressed',String(i===index)));syncPlayback();}
 sceneButtons.forEach((b,i)=>b.addEventListener('click',()=>scenes[i].scrollIntoView({behavior:reduced.matches?'instant':'smooth',block:'start'})));
 const observer=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting&&entry.intersectionRatio>=.55)setScene(Number(entry.target.dataset.scene));},{threshold:[.55,.75]});
 scenes.forEach(scene=>{observer.observe(scene);const v=scene.querySelector('video');for(const event of ['play','pause'])v.addEventListener(event,()=>{if(scene===scenes[activeScene]){motionButton.textContent=v.paused?'Play video':'Pause video';motionButton.setAttribute('aria-label',v.paused?'Play background video':'Pause background video');}});});

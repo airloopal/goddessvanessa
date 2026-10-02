@@ -109,4 +109,36 @@ assert.equal((await embedded('prepare','card-user',{planId:'advanced'})).status,
 const countBefore=charges;const race=await Promise.all([embedded('charge','card-race',{attemptId:crypto.randomUUID(),sourceId:'cnon:valid'}),embedded('charge','card-race',{attemptId:crypto.randomUUID(),sourceId:'cnon:valid'})]);
 assert.ok(race.some(x=>x.data.paid));assert.equal(charges,countBefore+1);
 console.log('Embedded checks passed: charged once, server prices, token removal, decline recovery, unknown-response recovery, legacy protection, contract gating and concurrent attempts.');
+
+// SUB50 is validated on the server and remains consistent in the signed snapshot and charge.
+const promoQuote=await call('payments/promo',{method:'POST',user:'promo-user',data:{promoCode:' sub50 '}});
+assert.equal(promoQuote.status,200);assert.deepEqual(promoQuote.data.entryPlans.map(p=>p.amount),[4250,6250]);assert.deepEqual(promoQuote.data.contractPlans.map(p=>p.amount),[5000,12500,37500,250000]);
+assert.equal((await call('payments/promo',{method:'POST',user:'promo-user',data:{promoCode:'FAKE'}})).status,400);
+assert.equal((await embedded('prepare','promo-user',{promoCode:'SUB50'})).data.plan.amount,4250);
+assert.equal((await embedded('charge','promo-user',{promoCode:'SUB50',attemptId:crypto.randomUUID(),sourceId:'cnon:valid',amount:1})).data.payment.plan.amount,4250);
+const discounted=await call('enrolment',{method:'PUT',user:'promo-user',data:{...payload,review:{...payload.review,promoCode:'SUB50'}}});
+assert.equal(discounted.status,200,JSON.stringify(discounted.data));assert.equal(discounted.data.enrolment.snapshot.agreement.entry.amount,4250);assert.equal(discounted.data.enrolment.snapshot.agreement.contract.amount,12500);
+const discountContract=await embedded('charge','promo-user',{stage:'contract',planId:'month',attemptId:crypto.randomUUID(),sourceId:'cnon:valid',amount:1});
+assert.equal(discountContract.data.payment.plan.amount,12500);assert.equal(discountContract.data.payment.plan.originalAmount,25000);
+assert.equal((await embedded('prepare','promo-user',{promoCode:'FAKE'})).status,400);
+// Pausing is owner-only, blocks text and both upload paths, and retains the existing session.
+await env.DB.prepare('UPDATE prototype_settings SET content=? WHERE id=?').bind(row.content,contractKey).run();
+assert.equal((await call('/api/chat/students',{method:'PATCH',user:'intruder',data:{studentId:shortCode.data.studentId,conversationEnabled:false}})).status,403);
+const pause=await call('/api/chat/students',{method:'PATCH',user:'owner',data:{studentId:shortCode.data.studentId,conversationEnabled:false}});assert.equal(pause.status,200);
+assert.equal((await call('/api/chat/session',{user:'',cookie})).status,200);
+assert.equal((await call('/api/chat/messages',{user:'',cookie})).data.conversationEnabled,false);
+assert.equal((await call('/api/chat/messages',{method:'POST',user:'',cookie,data:{id:crypto.randomUUID(),text:'blocked'}})).status,403);
+const uploadId=crypto.randomUUID(),bucket={signUpload:async()=>{throw Error('Paused uploads must not get a signed URL');}};
+assert.equal((await call('/api/media/prepare',{method:'POST',user:'',cookie,extraEnv:{BUCKET:bucket},data:{id:uploadId,scope:'chat',student:shortCode.data.studentId,name:'photo.png',type:'image/png',size:100}})).status,403);
+const mediaRequest=new Request('https://academy.test/api/media/upload?scope=chat&student='+shortCode.data.studentId,{method:'POST',headers:{origin:'https://academy.test',cookie,'x-upload-id':uploadId,'content-type':'image/png'},body:new Uint8Array([137,80,78,71,13,10,26,10])});
+assert.equal((await worker.fetch(mediaRequest,{...env,BUCKET:bucket})).status,403);
+await call('/api/chat/students',{method:'PATCH',user:'owner',data:{studentId:shortCode.data.studentId,conversationEnabled:true}});
+const sent=await call('/api/chat/messages',{method:'POST',user:'',cookie,data:{id:crypto.randomUUID(),text:'Resumed'}});assert.equal(sent.status,200);
+// Notifications contain only incoming activity, and no unauthorised reader can fetch it.
+assert.equal((await call('/api/chat/notifications',{user:'',cookie})).status,403);
+const events=await call('/api/chat/notifications?after=0',{user:'owner'});assert.equal(events.status,200);assert.ok(events.data.events.some(e=>e.text==='Resumed'&&e.student_id===shortCode.data.studentId));
+assert.equal((await call('/api/chat/notifications?after=-1',{user:'owner'})).status,400);
+assert.equal((await call('/api/chat/notifications',{user:'owner'})).data.events.length,0);
+console.log('Launch checks passed: SUB50 prices/signed agreement/charge, invalid codes, pause/resume session preservation, blocked uploads and private notification feed.');
+
 await sql.close();console.log('Square checks passed: server prices, duplicate checkout, stage gates, isolated users/environments, webhook signatures, amount checks, reconciliation, refunds, admin visibility and calendar expiry.');

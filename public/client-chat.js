@@ -20,7 +20,7 @@
  const atBottom=()=>log.scrollHeight-log.scrollTop-log.clientHeight<100;
  const updateScroll=()=>{jump.hidden=atBottom();if(atBottom()&&!window.ChatDiscreet)PreviewChat.read();};
  jump.onclick=()=>{log.scrollTop=log.scrollHeight;updateScroll();};log.addEventListener('scroll',updateScroll,{passive:true});
- window.refreshClientChat=()=>{renderChatLog(log,'client');const typing=PreviewChat.typing('admin');document.querySelector('.presence-status').textContent=PreviewChat.error()?'Reconnecting…':typing?'typing…':PreviewChat.online()?'online':'offline';document.querySelector('.presence-dot').classList.toggle('is-online',PreviewChat.online());updateScroll();};
+ window.refreshClientChat=()=>{syncConversationComposers();renderChatLog(log,'client');const typing=PreviewChat.typing('admin');document.querySelector('.presence-status').textContent=PreviewChat.error()?'Reconnecting…':typing?'typing…':PreviewChat.online()?'online':'offline';document.querySelector('.presence-dot').classList.toggle('is-online',PreviewChat.online());updateScroll();};
  await PreviewChat.select(student.id);PreviewChat.subscribe(refreshClientChat);refreshClientChat();bindPreviewComposer(document.getElementById('client-composer'),'client',refreshClientChat);
  document.dispatchEvent(new Event('student-chat-ready'));
 })();

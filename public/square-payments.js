@@ -1,14 +1,16 @@
 'use strict';
+let squarePromoCode='';
+function squareDisplayPlan(plan,stage){if(!plan)return plan;const saved=squareState[stage]?.plan;if(saved?.id===plan.id)return saved;return squarePromoCode?{...plan,originalAmount:plan.amount,amount:Math.round(plan.amount/2),promoCode:squarePromoCode}:plan;}
 let squareState={mode:'off',ready:false,entry:null,contract:null};
 const squareEnabled=()=>!educationPreview&&squareState.mode!=='off';
 const squareEntryPaid=()=>squareState.entry?.status==='paid'&&squareState.entry.plan.id===entryId;
 const squareDraftKey='vanessa-square-application';
-function squareSaveDraft(){sessionStorage.setItem(squareDraftKey,JSON.stringify({pathId,entryId,contractId,answers,learnerName,learnerEmail,screen}));}
+function squareSaveDraft(){sessionStorage.setItem(squareDraftKey,JSON.stringify({pathId,entryId,contractId,answers,learnerName,learnerEmail,screen,squarePromoCode}));}
 async function squareInit(){
  squareState=await eduAPI('payments');if(!squareEnabled())return;
- try{const d=JSON.parse(sessionStorage.getItem(squareDraftKey)||'null');if(d&&!enrolment){pathId=d.pathId||'';entryId=d.entryId||'';contractId=d.contractId||'';answers=d.answers||{};learnerName=d.learnerName||'';learnerEmail=d.learnerEmail||'';screen=d.screen||'paths';}}catch{}
+ try{const d=JSON.parse(sessionStorage.getItem(squareDraftKey)||'null');if(d&&!enrolment){squarePromoCode=d.squarePromoCode==='SUB50'?'SUB50':'';pathId=d.pathId||'';entryId=d.entryId||'';contractId=d.contractId||'';answers=d.answers||{};learnerName=d.learnerName||'';learnerEmail=d.learnerEmail||'';screen=d.screen||'paths';}}catch{}
  if(new URLSearchParams(location.search).has('payment')&&squareState.ready){try{squareState=await eduAPI('payments/refresh','POST',{});}catch{/* Keep the saved status and provide a retry control. */}history.replaceState(null,'',location.pathname);screen=squareState.contract?'review':'intro';}
- if(squareState.entry){entryId=squareState.entry.plan.id;entryReviewed=squareEntryPaid();}
+ if(squareState.entry){squarePromoCode=squareState.entry.plan.promoCode||'';entryId=squareState.entry.plan.id;entryReviewed=squareEntryPaid();}
  if(squareState.contract){contractId=squareState.contract.plan.id;screen='review';}
 }
 let squareSDKPromise=null,squareCard=null,squareFormVersion=0;
@@ -45,7 +47,7 @@ async function squareMountCard(stage,buttonId,statusId){
  await squareDisposeCard();const version=squareFormVersion,button=document.getElementById(buttonId),message=document.getElementById(statusId);
  if(!button||!message)return;button.disabled=true;squareNotice(message,'loading','Preparing secure checkout','Your card form will appear here.');
  try{
-  const prepared=await eduAPI('payments/prepare','POST',{stage,planId:stage==='entry'?entryId:contractId,revision:configRevision});
+  const prepared=await eduAPI('payments/prepare','POST',{stage,planId:stage==='entry'?entryId:contractId,revision:configRevision,promoCode:squarePromoCode});
   if(version!==squareFormVersion||!button.isConnected)return;
   if(prepared.paid){await squareRefresh();if(stage==='entry')squareEntryDialog();return;}
   let attemptId=prepared.resumeAttempt||null,pendingSource=null;
@@ -56,7 +58,7 @@ async function squareMountCard(stage,buttonId,statusId){
    try{
     let sourceId=pendingSource;
     if(!attemptId){const result=await squareCard.tokenize({amount:(prepared.plan.amount/100).toFixed(2),currencyCode:'GBP',intent:'CHARGE',customerInitiated:true,sellerKeyedIn:false,billingContact:{...(learnerEmail?{email:learnerEmail}:{})}});if(result.status!=='OK')throw Error(result.status==='Cancel'?'Verification cancelled. No payment was submitted.':'Please check your card details and try again.');sourceId=result.token;pendingSource=sourceId;attemptId=crypto.randomUUID();}
-    const response=await fetch('/api/education/payments/charge',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({stage,planId:prepared.plan.id,revision:configRevision,attemptId,...(sourceId?{sourceId}:{})})});
+    const response=await fetch('/api/education/payments/charge',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({stage,planId:prepared.plan.id,revision:configRevision,promoCode:squarePromoCode,attemptId,...(sourceId?{sourceId}:{})})});
     const result=await response.json();
     if(!result.paid){if(result.retryCard){attemptId=null;await squareMountCard(stage,buttonId,statusId);squareNotice(message,'retry','Please try again',result.error||'Check your card details and retry.');return;}throw Error(result.error||'Your payment is being checked. Retry confirmation.');}
     await squareDisposeCard();squareState=await eduAPI('payments');entryReviewed=squareEntryPaid();
@@ -68,7 +70,7 @@ async function squareMountCard(stage,buttonId,statusId){
 async function squareRefresh(){squareState=await eduAPI('payments/refresh','POST',{});entryReviewed=squareEntryPaid();renderLearning();}
 function squareLabel(){return squareState.mode==='sandbox'?'Sandbox test · No real payment':'Secured by Square';}
 function squareEntryDialog(){
- void squareDisposeCard();clearInterval(verificationPoll);entryDialogView='payment';const plan=entryPlan(),paid=squareEntryPaid();if(paid){squareEntrySuccess(plan);return;}
+ void squareDisposeCard();clearInterval(verificationPoll);entryDialogView='payment';const plan=entryPlan(),paid=squareEntryPaid();if(paid){squareEntrySuccess(squareState.entry.plan);return;}
  entryDialog.innerHTML='<div class="entry-lightbox-top"><span class="overline">'+squareLabel()+'</span><button class="quiet" id="lightbox-close" aria-label="Close entry checkout">×</button></div><h2 id="entry-lightbox-title" tabindex="-1">'+(paid?'Entry confirmed.':'Your entry fee.')+'</h2><section class="entry-payment-card"><span>'+eduEscape(plan?.name||'Select a plan')+'</span><strong>'+gbp(plan?.amount||0)+'</strong><small>One entry fee · Contract fee paid separately</small></section><p class="muted">'+(paid?'Square has confirmed this payment.':squareState.ready?'Enter your card details below to confirm your entry.':'Checkout is being configured. Please return shortly.')+'</p>'+(!paid&&squareState.ready?squareCardHTML():'')+'<div id="entry-lightbox-status" role="status"></div><div class="entry-lightbox-actions"><button class="quiet" id="lightbox-verification">Request verification</button><button class="p-button" id="square-entry-pay" '+(!paid&&!squareState.ready?'disabled':'')+'>'+(paid?'Continue':'Pay '+gbp(plan?.amount||0))+'</button></div>'+(squareState.entry&&!paid?'<button class="quiet" id="square-refresh">Check payment status</button>':'');
  document.getElementById('lightbox-close').onclick=closeEntryLightbox;document.getElementById('lightbox-verification').onclick=showEntryVerification;
  document.getElementById('square-entry-pay').onclick=()=>{entryReviewed=true;closeEntryLightbox();move(screens()[screens().indexOf('intro')+1]);};
@@ -88,6 +90,8 @@ function squareContractPanel(){
  document.getElementById('square-contract-refresh')?.addEventListener('click',async e=>{e.currentTarget.disabled=true;try{await squareRefresh();}catch(error){status(error.message);e.target.disabled=false;}});
 }
 function squareDecorate(){if(!squareEnabled())return;
+ if(!squareState.entry&&['entry','intro'].includes(screen)){const host=document.createElement('section');host.className='promo-code-panel';host.innerHTML='<label for="square-promo">Have a promo code?</label><div><input id="square-promo" maxlength="32" autocomplete="off" autocapitalize="characters" value="'+eduEscape(squarePromoCode)+'" placeholder="Enter code"><button class="quiet" type="button" id="square-promo-apply">Apply</button></div><p role="status">'+(squarePromoCode?'SUB50 applied · 50% off your entry and contract fees.':'Apply before opening payment.')+'</p>';const anchor=document.getElementById('open-entry-payment')?.closest('section')||app.querySelector('.step-actions');if(anchor)anchor.before(host);else app.append(host);host.querySelector('button').onclick=async()=>{const b=host.querySelector('button');b.disabled=true;try{const result=await eduAPI('payments/promo','POST',{promoCode:host.querySelector('input').value});squarePromoCode=result.promoCode;invalidateAgreement();squareSaveDraft();renderLearning();}catch(e){host.querySelector('p').textContent=e.message;b.disabled=false;}};}
+ if(squarePromoCode&&!app.querySelector('.promo-code-panel')){const note=document.createElement('p');note.className='promo-applied';note.textContent='SUB50 applied · 50% off entry and contract fees.';app.querySelector('h1')?.after(note);}
  app.querySelectorAll('[name="entry-plan"]').forEach(el=>{if(squareState.entry)el.disabled=el.value!==squareState.entry.plan.id;});
  const statusEl=app.querySelector('.entry-payment-status');if(statusEl)statusEl.textContent=squareEntryPaid()?'Paid':'Not paid';
  const next=document.getElementById('enrol-now');if(next)squareButton(next,'sign','Confirm & Pay');

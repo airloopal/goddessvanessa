@@ -34,3 +34,5 @@
  body.dashboard .admin-chat-heading{flex-wrap:wrap;gap:12px}body.dashboard .admin-chat-heading .chat-header-actions{margin-left:0;display:flex;gap:6px;flex-wrap:wrap}body.dashboard .admin-media-actions{flex-wrap:wrap}body.dashboard .admin-chat-bottom{padding:12px}body.dashboard .chat-composer input{min-width:0;font-size:16px}
 }
 @media(prefers-reduced-motion:no-preference){#mobile-admin-tools[open]{animation:mobile-sheet-in .2s ease-out}@keyframes mobile-sheet-in{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}}
+
+.mobile-tool-symbol svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}

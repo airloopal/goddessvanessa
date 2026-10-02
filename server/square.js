@@ -94,7 +94,8 @@ async function squareAPI(request,env,url,{user,owner}){
  let r=await squareRecord(env,key);
  if(!r){
   const initial={method:embedded?'embedded':'hosted',user,stage:body.stage,plan,agreementId,mode,status:'pending',idempotencyKey:crypto.randomUUID(),createdAt:new Date().toISOString()};
-  const returnURL=new URL('/application.html',env.SQUARE_SITE_URL);returnURL.searchParams.set('payment',body.stage);
+  // Return to the same site that owns the host-only application cookie.
+  const returnURL=new URL('/application.html',url.origin);returnURL.searchParams.set('payment',body.stage);
   initial.request={idempotency_key:initial.idempotencyKey,order:{location_id:env.SQUARE_LOCATION_ID,reference_id:key,line_items:[{name:(body.stage==='entry'?'Entry fee — ':'Contract — ')+plan.name,quantity:'1',base_price_money:{amount:plan.amount,currency:'GBP'}}]},checkout_options:{redirect_url:returnURL.href,allow_tipping:false,ask_for_shipping_address:false},...(email?{pre_populated_data:{buyer_email:email}}:{})};
   await db(env).prepare('INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?) ON CONFLICT(id) DO NOTHING').bind(key,JSON.stringify(initial),initial.createdAt).run();r=await squareRecord(env,key);
  }

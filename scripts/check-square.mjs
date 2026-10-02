@@ -8,7 +8,7 @@ const orders=new Map(),payments=new Map(),links=new Map();let creations=0;
 const env={DB:database(sql),SQUARE_ENVIRONMENT:'sandbox',SQUARE_ACCESS_TOKEN:'test-only',SQUARE_LOCATION_ID:'location',SQUARE_WEBHOOK_SIGNATURE_KEY:'test-signature',SQUARE_WEBHOOK_URL:'https://academy.test/api/education/payments/webhook',SQUARE_SITE_URL:'https://academy.test'};
 env.SQUARE_FETCH=async(url,options)=>{
  const path=new URL(url).pathname;
- if(path.endsWith('/online-checkout/payment-links')){const body=JSON.parse(options.body);assert.ok(body.order.reference_id.length<=40);assert.equal(body.order.line_items[0].base_price_money.currency,'GBP');
+ if(path.endsWith('/online-checkout/payment-links')){const body=JSON.parse(options.body);assert.ok(body.order.reference_id.length<=40);assert.equal(body.order.line_items[0].base_price_money.currency,'GBP');assert.equal(new URL(body.checkout_options.redirect_url).origin,'https://academy.test');assert.equal(new URL(body.checkout_options.redirect_url).pathname,'/application.html');
   if(!links.has(body.idempotency_key)){const id='order-'+(++creations),link={id:'link-'+creations,order_id:id,url:'https://sandbox.square.link/u/'+creations};orders.set(id,{...body.order,id,tenders:[]});links.set(body.idempotency_key,link);}
   return Response.json({payment_link:links.get(body.idempotency_key)});
  }
@@ -26,7 +26,7 @@ const post=(stage,planId,extras={})=>call('payments/checkout',{method:'POST',dat
 assert.equal((await post('entry','basic',{origin:'https://evil.test'})).status,403);
 assert.equal((await post('contract','month')).status,409);
 assert.equal((await post('entry','basic',{extraEnv:{SQUARE_ENVIRONMENT:'production'}})).status,503);
-const first=await post('entry','basic');assert.equal(first.status,200);assert.match(first.data.url,/sandbox.square.link/);
+const first=await post('entry','basic',{extraEnv:{SQUARE_SITE_URL:'https://old-academy.test'}});assert.equal(first.status,200);assert.match(first.data.url,/sandbox.square.link/);
 assert.equal((await post('entry','basic')).data.url,first.data.url);assert.equal(creations,1);
 assert.equal((await post('entry','advanced')).status,409);
 assert.equal(orders.get('order-1').line_items[0].base_price_money.amount,8500);

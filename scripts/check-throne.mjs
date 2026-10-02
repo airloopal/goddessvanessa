@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {generateKeyPairSync,sign,randomUUID} from 'node:crypto';
+import {generateKeyPairSync,sign,randomUUID,randomBytes,createHash} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
 import {database} from '../server/platform/database.js';
 import {throneWebhook,handle} from '../api/index.js';
@@ -36,5 +36,13 @@ await deliver({...event,event_id:randomUUID(),data:{...event.data,message:'Sub: 
 await deliver({...event,event_id:randomUUID(),data:{...event.data,message:'Student: Gift Student'}});
 assert.equal((await DB.prepare('SELECT body FROM chat_messages').all()).results.length,baseline+4);
 const auth={client:{auth:{getUser:async()=>({data:{user:null},error:null})}},apply:r=>r};
+// Migrating an existing Student reference must update the database, not only the response copy.
+const token=randomBytes(24).toString('hex');
+await DB.prepare('INSERT INTO chat_sessions (hash,student_id,expires_at) VALUES (?,?,?)').bind(createHash('sha256').update(token).digest('hex'),'gift-student',now+60000).run();
+await DB.prepare('UPDATE prototype_settings SET content=? WHERE id=?').bind(JSON.stringify({studentId:'gift-student',reference:'Student: Gift Student',expiresAt:now+60000}),'throne-ref:gift-student').run();
+const referenceRequest=()=>new Request('https://academy.test/api/chat/gift-reference',{method:'POST',headers:{origin:'https://academy.test',cookie:'__Host-vanessa_student='+token},body:'{}'});
+const migrated=await handle(referenceRequest(),{},{DB,BUCKET:{},auth});assert.equal(migrated.status,200);const migratedBody=await migrated.json();assert(migratedBody.reference.startsWith('Sub: '));
+const stored=JSON.parse((await DB.prepare('SELECT content FROM prototype_settings WHERE id=?').bind('throne-ref:gift-student').first()).content);assert.equal(stored.reference,migratedBody.reference);assert.equal(stored.legacyReference,'Student: Gift Student');
+const repeat=await handle(referenceRequest(),{},{DB,BUCKET:{},auth});assert.equal((await repeat.json()).reference,migratedBody.reference);
 const r=await handle(new Request('https://academy.test/api/chat/gift-reference',{method:'POST',headers:{origin:'https://academy.test'},body:'{}'}),{},{DB,BUCKET:{},auth});assert.equal(r.status,401);
 console.log('Throne checks passed: signed delivery, wrong creator rejected, timestamp limit, body limit, concurrent duplicate protection, student isolation, unmatched gifts do not post, anonymous references rejected.');await sql.close();

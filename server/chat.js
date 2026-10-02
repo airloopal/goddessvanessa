@@ -1,3 +1,6 @@
+// Only the authenticated Goddess can share links; keep the destination list explicit.
+const chatLinkCandidates=text=>text.match(/(?:https?:\/\/|www\.)[^\s<>]+|\b(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}(?:\/[^\s<>]*)?/gi)||[];
+function chatSafeLink(value){try{const u=new URL(value.replace(/[.,!?;:)]+$/,''));return u.protocol==='https:'&&!u.username&&!u.password&&(!u.port||u.port==='443')&&['throne.com','www.throne.com','houseofvanessa.com','www.houseofvanessa.com'].includes(u.hostname.toLowerCase());}catch{return false;}}
 // Private learning-support conversations. Codes are random, single-use and stored only as hashes.
 const chatHash=async value=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(x=>x.toString(16).padStart(2,'0')).join('');
 const chatToken=()=>Array.from(crypto.getRandomValues(new Uint8Array(24))).map(x=>x.toString(16).padStart(2,'0')).join('');
@@ -77,6 +80,9 @@ async function chatAPI(request,env,url){
   if(!await chatConversationEnabled(env,id))return json({error:'This conversation is paused. Vanessa will enable it when ready.'},403);
   if(target.status!=='active')return json({error:'This account is suspended.'},403);
   if(typeof body.text!=='string'||!body.text.trim()||body.text.length>1000||typeof body.id!=='string'||!/^[a-f0-9-]{36}$/.test(body.id))return json({error:'Write a message of up to 1,000 characters.'},400);
+  const links=chatLinkCandidates(body.text);
+  if(role==='client'&&links.length)return json({error:'Links are disabled for Sub messages. Please send plain text.'},400);
+  if(role==='admin'&&links.some(link=>!chatSafeLink(link)))return json({error:'Use a full HTTPS link to Throne or House of Vanessa. Other link destinations are not allowed.'},400);
   if(!await chatLimit(env,'send:'+id+':'+role,60,60000))return json({error:'Please wait a moment before sending more messages.'},429);
   const r=await db(env).prepare('INSERT INTO chat_messages (id,student_id,sender,body,created_at) VALUES (?,?,?,?,?) ON CONFLICT(id) DO NOTHING').bind(body.id,id,role,body.text.trim(),now).run();
   const message=await db(env).prepare('SELECT seq,id,sender AS "from",body AS text,created_at AS at,attachment_id FROM chat_messages WHERE id=? AND student_id=? AND sender=?').bind(body.id,id,role).first();

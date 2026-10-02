@@ -23,7 +23,7 @@ window.PreviewChat=(()=>{
   let local=messages.find(m=>m.id===messageId);if(local?.pending)return;if(local?.seq)return;
   if(!local){local={id:messageId,text,from:who,at:Date.now(),pending:true};messages.push(local);}else{local.pending=true;local.failed=false;}emit();
   try{const d=await chatAPI('messages','POST',{studentId:target,id:messageId,text:local.text});if(current===generation){messages=messages.filter(m=>m.id!==messageId);messages.push(d.message);sort();emit();api.setTyping(who,false);}}
-  catch(e){if(current===generation){const m=messages.find(m=>m.id===messageId);if(m&&!m.seq){m.pending=false;m.failed=true;}emit();}throw e;}
+  catch(e){if(current===generation){const m=messages.find(m=>m.id===messageId);if(e.status===400){messages=messages.filter(m=>m.id!==messageId);}else if(m&&!m.seq){m.pending=false;m.failed=true;}emit();}throw e;}
  },
  async retry(id){const m=messages.find(m=>m.id===id);if(m?.failed)return api.send(role,m.text,id);},
  async setTyping(who,active){if(!selected||active&&Date.now()-lastTyping<2000||window.ChatDiscreet&&active)return;lastTyping=active?Date.now():0;try{await chatAPI('state','PUT',{studentId:selected,typing:active});}catch{}},
@@ -46,7 +46,7 @@ function bindPreviewComposer(form,role,refresh){
  const grow=()=>{if(input.tagName==='TEXTAREA'){input.style.height='auto';input.style.height=Math.min(input.scrollHeight,130)+'px';}};grow();
  input.addEventListener('input',()=>{previewDrafts.set(key,input.value);PreviewChat.setTyping(role,!!input.value.trim());grow();});input.addEventListener('blur',()=>PreviewChat.setTyping(role,false));
  input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&(input.tagName!=='TEXTAREA'||window.matchMedia?.('(pointer:fine)').matches)){e.preventDefault();form.requestSubmit();}});
- form.onsubmit=async e=>{e.preventDefault();const text=input.value.trim();if(!text)return;input.value='';previewDrafts.delete(key);grow();status.textContent='';const promise=PreviewChat.send(role,text);const log=document.getElementById(role==='client'?'messages':form.id==='floating-form'?'floating-thread':'admin-thread');if(log)log.scrollTop=log.scrollHeight;input.focus();try{await promise;refresh();}catch{status.textContent='Message not sent. Use Retry on the message.';}};
+ form.onsubmit=async e=>{e.preventDefault();const text=input.value.trim();if(!text)return;input.value='';previewDrafts.delete(key);grow();status.textContent='';const promise=PreviewChat.send(role,text);const log=document.getElementById(role==='client'?'messages':form.id==='floating-form'?'floating-thread':'admin-thread');if(log)log.scrollTop=log.scrollHeight;input.focus();try{await promise;refresh();}catch(error){if(error.status===400){input.value=text;previewDrafts.set(key,text);grow();status.textContent=error.message;}else status.textContent='Message not sent. Use Retry on the message.';}};
 }
 document.addEventListener('click',async e=>{const older=e.target.closest('.load-older'),retry=e.target.closest('[data-retry-message]');if(older){try{await PreviewChat.older();}catch{older.textContent='Could not load messages · Retry';}}if(retry){retry.disabled=true;try{await PreviewChat.retry(retry.dataset.retryMessage);}catch{retry.disabled=false;}}});
 

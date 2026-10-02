@@ -19,7 +19,7 @@ function selectVideoFiles(){
   // Preserve an independently chosen video from the visual editor.
   const current=video.getAttribute('src');
   if(!file||(current&&current!==video.dataset.mobile&&current!==video.dataset.desktop))return;
-  video.poster=file.replace(/\.mp4$/,'.jpg');
+  video.poster=file.replace(/\.mp4(?:\?.*)?$/,'.jpg?v=20261002');
   if(current!==file){video.src=file;video.load();}
  });
 }

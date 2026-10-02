@@ -41,7 +41,7 @@ async function giftReference(request,runtime,context){
  const duplicate=await runtime.DB.prepare("SELECT COUNT(*) AS count FROM chat_students WHERE status='active' AND LOWER(TRIM(name))=LOWER(?) AND id<>?").bind(name,student.id).first();
  const reference='Sub: '+name+(Number(duplicate.count)>0?' ('+student.id.slice(-8)+')':''),expiresAt=now+7*86400000;
  const value={studentId:student.id,reference,expiresAt,...(existing?.expiresAt>now&&/^(?:GV-|Student: )/.test(existing.reference)?{legacyReference:existing.reference}:{})};
- const row=await runtime.DB.prepare("INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?) ON CONFLICT(id) DO UPDATE SET content=CASE WHEN (prototype_settings.content::jsonb->>'expiresAt')::bigint<=? OR prototype_settings.content::jsonb->>'reference' LIKE 'GV-%' THEN excluded.content ELSE prototype_settings.content END,revision=prototype_settings.revision+1,updated_at=excluded.updated_at RETURNING content").bind(id,JSON.stringify(value),new Date(now).toISOString(),now).first();
+ const row=await runtime.DB.prepare("INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?) ON CONFLICT(id) DO UPDATE SET content=CASE WHEN (prototype_settings.content::jsonb->>'expiresAt')::bigint<=? OR prototype_settings.content::jsonb->>'reference' LIKE 'GV-%' OR prototype_settings.content::jsonb->>'reference' LIKE 'Student: %' THEN excluded.content ELSE prototype_settings.content END,revision=prototype_settings.revision+1,updated_at=excluded.updated_at RETURNING content").bind(id,JSON.stringify(value),new Date(now).toISOString(),now).first();
  const saved=JSON.parse(row.content);return giftResponse({reference:saved.reference,displayReference:saved.reference,expiresAt:saved.expiresAt});
 }
 

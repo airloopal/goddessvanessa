@@ -28,6 +28,6 @@ assert.equal((await call('admin/status')).body.events[0].message,'A request was 
 await DB.prepare('INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?)').bind('diagnostic:old','{}','2000-01-01').run();
 for(let i=0;i<105;i++)await recordFailure(DB,{path:'/api/chat',status:503,requestId:crypto.randomUUID()});
 assert.equal(Number((await DB.prepare("SELECT COUNT(*) n FROM prototype_settings WHERE id LIKE 'diagnostic:%'").first()).n),100);assert.equal(await DB.prepare("SELECT id FROM prototype_settings WHERE id='diagnostic:old'").first(),null);assert.equal((await call('admin/status')).body.events.length,50);
-for(const file of fs.readdirSync('public').filter(f=>f.endsWith('.html')))assert.match(fs.readFileSync('public/'+file,'utf8'),/href="\/favicon.svg"/);
+for(const file of fs.readdirSync('public').filter(f=>f.endsWith('.html')))assert.match(fs.readFileSync('public/'+file,'utf8'),/href="\/images\/brand\/vanessa-mark.png\?v=20261002"/);
 for(const file of ['favicon.svg','favicon.ico','apple-touch-icon.png','status.html','status.css','status.js'])assert.ok(fs.statSync('dist/public/'+file).size>0);
 await sql.close();console.log('Status checks passed: verified owner only, safe degraded checks, changelog independence, curated errors, request references, bounded history and favicon assets.');

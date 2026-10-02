@@ -8,3 +8,6 @@ p, .terms-box p, .message, .helper, .note, .intro-text{font-family:Poppins,Arial
 body :is(.p-header,.login-header) .p-brand{display:inline-flex!important;flex-direction:column;align-items:flex-start;gap:2px!important;flex-shrink:0;font-family:Poppins,Arial,sans-serif!important;font-size:22px!important;font-weight:900!important;line-height:.94!important;letter-spacing:-.8px!important;text-transform:uppercase;text-decoration:none}
 body :is(.p-header,.login-header) .p-brand>span{display:block!important;margin:0!important;padding:0!important;font:inherit!important;font-size:22px!important;font-weight:900!important;line-height:.94!important;letter-spacing:-.8px!important}
 @media(max-width:700px){body :is(.p-header,.login-header) .p-brand,body :is(.p-header,.login-header) .p-brand>span{font-size:20px!important;letter-spacing:-.7px!important}}
+
+body :is(.p-header,.login-header) .p-brand .vanessa-wordmark{display:block;width:120px;height:52px;object-fit:contain;flex-shrink:0}
+@media(max-width:700px){body :is(.p-header,.login-header) .p-brand .vanessa-wordmark{width:108px;height:46px}}

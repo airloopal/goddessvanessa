@@ -98,3 +98,6 @@ html:has(body.landing){scroll-snap-type:y mandatory;scroll-behavior:smooth}
 .landing .hero-policy{position:fixed;right:24px;bottom:8px;z-index:10;display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 14px;border:1px solid #ffffff50;border-radius:24px;background:#170b1766;backdrop-filter:blur(12px);color:#fff;text-decoration:none;font:12px Poppins,Arial,sans-serif}
 .landing .hero-policy:hover{background:#35152a99;border-color:#f6c5db}
 @media(max-width:600px){.landing .hero-policy{right:16px;bottom:8px}}
+
+#landing-brand .vanessa-mark{display:block;width:46px;height:58px;object-fit:contain;filter:drop-shadow(0 0 8px #ff84b580)}
+@media(max-width:700px){#landing-brand .vanessa-mark{width:34px;height:44px}}

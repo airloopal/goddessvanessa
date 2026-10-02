@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 let interval,stored=[],requests=[],fail=false,serverStates=[],release;
 const window={};
-const context={window,parent:window,location:{search:''},URLSearchParams,crypto,document:{body:{classList:{contains:()=>false}},hidden:false,addEventListener(){}},setInterval:fn=>interval=fn,Date,Map,Set,Number,eduEscape:s=>s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;'),fetch:async(path,options)=>{
+const context={window,parent:window,location:{search:''},URL,URLSearchParams,crypto,document:{body:{classList:{contains:()=>false}},hidden:false,addEventListener(){}},setInterval:fn=>interval=fn,Date,Map,Set,Number,eduEscape:s=>s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;'),fetch:async(path,options)=>{
  requests.push({path,options});if(fail)return {ok:false,status:503,json:async()=>({error:'Try again'})};let data={};
  if(path.includes('/messages')&&options.method==='GET')data={messages:stored,states:serverStates,online:true,hasMore:false};
  if(path.endsWith('/messages')&&options.method==='POST'){if(release)await new Promise(resolve=>release=resolve);const b=JSON.parse(options.body),m={id:b.id,text:b.text,seq:stored.length+1,from:'client',at:Date.now()};stored.push(m);data={message:m};}
@@ -22,3 +22,6 @@ const before=requests.length;window.ChatDiscreet=true;await chat.read();await ch
 await chat.read();await chat.read();assert.equal(requests.filter(r=>r.path.endsWith('/state')&&JSON.parse(r.options.body||'{}').readSeq===2).length,1,'read receipts are not sent repeatedly');
 stored=[];await chat.select('student-b');assert.equal(chat.all().length,0);
 console.log('Chat checks passed: immediate pending bubbles, sent/read states, typing, escaped text, retry with original ID, deduplicated polling, private cover, read throttling and conversation isolation.');
+
+const adminLink=vm.runInContext('chatMessageText({from:"admin",text:"Gift https://throne.com/vvannessa"})',context);assert.match(adminLink,/target="_blank"/);assert.match(adminLink,/noopener noreferrer/);assert.doesNotMatch(vm.runInContext('chatMessageText({from:"client",text:"https://throne.com/vvannessa"})',context),/<a /);assert.doesNotMatch(vm.runInContext('chatMessageText({from:"admin",text:"https://throne.com.evil.example/x"})',context),/<a /);
+const policy=fs.readFileSync('server/chat.js','utf8').split('// Private learning-support')[0];const guard={URL};vm.createContext(guard);vm.runInContext(policy,guard);for(const url of ['http://throne.com/x','https://throne.com.evil.example/x','https://user@throne.com/x','javascript:alert(1)','https://throne.com:444/x'])assert.equal(vm.runInContext('chatSafeLink('+JSON.stringify(url)+')',guard),false);assert.equal(vm.runInContext('chatSafeLink("https://throne.com/vvannessa")',guard),true);for(const text of ['https://evil.example/x','www.evil.example','evil.example/path'])assert.ok(vm.runInContext('chatLinkCandidates('+JSON.stringify(text)+').length',guard));console.log('Chat link checks passed: sender separation, HTTPS allowlist, lookalikes, credentials, ports and plain-text Sub rendering.');

@@ -33,6 +33,7 @@ async function directMediaAPI(request,env,url){
   if(!await db(env).prepare('SELECT id FROM prototype_settings WHERE id=?').bind(body.request).first())return json({error:'Request not found.'},404);
   userId=body.request.slice('education-verification:'.length);
  }else return json({error:'Upload unavailable.'},403);
+ if(body.scope==='chat'&&!await chatConversationEnabled(env,target.id))return json({error:'This conversation is paused.'},403);
  const previous=await db(env).prepare('SELECT * FROM media_uploads WHERE id=?').bind(id).first();
  if(previous){
   if(previous.actor!==actor||previous.user_id!==userId||previous.scope!==body.scope||previous.size!==body.size)return json({error:'Upload identifier conflict.'},409);

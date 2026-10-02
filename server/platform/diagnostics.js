@@ -33,7 +33,9 @@ export async function statusAPI(request,env,{database,storage}){
  checks.push({id:'email',name:'Goddess-issued code emails',state:emailConfigured?'unverified':'attention',detail:emailConfigured?'Sender settings are present. Delivery has not been tested; check the result when Vanessa issues a code.':'Email delivery is not configured. Vanessa can copy and share codes privately.'});
  checks.push({id:'admin',name:'Goddess sign-in',state:'ok',detail:'Your private Goddess code session is verified. New sign-ins use your access code.'});
  checks.push({id:'access',name:'Sub access',state:'info',detail:'Only Goddess issues codes. An application session does not open chat.'});
- checks.push({id:'payments',name:'Payments',state:'attention',detail:'Not connected. Displayed entry and contract amounts do not collect money.'});
+ const mode=['production','sandbox'].includes(env.SQUARE_ENVIRONMENT)?env.SQUARE_ENVIRONMENT:'off';
+ const paymentReady=mode!=='off'&&!!(env.SQUARE_ACCESS_TOKEN&&env.SQUARE_LOCATION_ID&&env.SQUARE_WEBHOOK_SIGNATURE_KEY&&env.SQUARE_WEBHOOK_URL&&env.SQUARE_SITE_URL)&&(mode!=='production'||env.SQUARE_LIVE_ENABLED==='true');
+ checks.push({id:'payments',name:'Square payments',state:paymentReady?'ok':'attention',detail:paymentReady?(mode==='production'?'Live':'Sandbox')+' checkout is configured'+(env.SQUARE_APPLICATION_ID?' with on-page card payments.':'.')+' This checks configuration; no charge is made.':'Square checkout is unavailable. Check the payment settings.'});
  const commit=/^[a-f0-9]{7,40}$/i.test(env.VERCEL_GIT_COMMIT_SHA||'')?env.VERCEL_GIT_COMMIT_SHA.slice(0,7):null;
  return json({release,checkedAt:new Date().toISOString(),durationMs:Date.now()-started,environment:env.VERCEL_ENV==='production'?'Production':env.VERCEL_ENV==='preview'?'Preview':'Local / unspecified',commit,checks,counts,events,historyAvailable,historyNote:'Up to 50 recorded server failures and rate limits from the last 7 days. Recording begins with this release. No message text, names, email addresses, codes or keys are stored. Browser errors and provider logs are not included.'});
 }

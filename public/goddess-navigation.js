@@ -16,3 +16,20 @@
  });}
  decorate();let queued=false;new MutationObserver(()=>{if(queued)return;queued=true;queueMicrotask(()=>{queued=false;decorate();});}).observe(document.body,{childList:true,subtree:true});
 })();
+
+// Mobile navigation uses the existing authenticated dashboard routes.
+(()=>{
+ const nav=document.getElementById('dashboard-nav');if(!nav)return;
+ const labels={overview:'Home',chats:'Chats',applications:'All Subs',content:'Edit'};
+ for(const [key,label] of Object.entries(labels))nav.querySelector('[data-tab="'+key+'"]').dataset.mobileLabel=label;
+ const more=document.createElement('button');more.id='mobile-admin-more';more.type='button';more.dataset.mobileLabel='More';more.setAttribute('aria-label','More admin tools');more.setAttribute('aria-haspopup','dialog');more.innerHTML='<svg class="goddess-action-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>More';nav.append(more);
+ const sheet=document.createElement('dialog');sheet.id='mobile-admin-tools';sheet.setAttribute('aria-labelledby','mobile-admin-tools-title');sheet.innerHTML='<div class="mobile-sheet-handle" aria-hidden="true"></div><header><div><small>VANESSA’S SPACE</small><h2 id="mobile-admin-tools-title">More</h2></div><button type="button" class="quiet" data-mobile-close aria-label="Close admin tools">×</button></header><p class="mobile-sheet-note">Everything else, one tap away.</p><div class="mobile-admin-tool-list"><button type="button" data-mobile-tab="verifications"><span class="mobile-tool-symbol">✓</span><span><strong>Verification requests</strong><small>Review requests and send replies</small></span><span aria-hidden="true">›</span></button><a href="status.html"><span class="mobile-tool-symbol">⌁</span><span><strong>System status</strong><small>Monitor connections and resolve issues</small></span><span aria-hidden="true">›</span></a><button type="button" data-mobile-tab="settings"><span class="mobile-tool-symbol">⚙</span><span><strong>Settings & security</strong><small>Access code and two-step verification</small></span><span aria-hidden="true">›</span></button><a href="status.html#changelog"><span class="mobile-tool-symbol">↺</span><span><strong>What’s changed</strong><small>View platform updates</small></span><span aria-hidden="true">›</span></a></div>';document.body.append(sheet);
+ more.onclick=()=>{if(!sheet.open)sheet.showModal();};
+ sheet.querySelector('[data-mobile-close]').onclick=()=>sheet.close();
+ sheet.addEventListener('click',event=>{if(event.target===sheet){const r=sheet.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)sheet.close();}});
+ sheet.querySelectorAll('[data-mobile-tab]').forEach(button=>button.onclick=()=>{sheet.close();nav.querySelector('[data-tab="'+button.dataset.mobileTab+'"]').click();});
+ const sync=()=>{const active=nav.querySelector('[data-tab][aria-current="page"]');const value=active&&!labels[active.dataset.tab]?'page':'false';if(more.getAttribute('aria-current')!==value)more.setAttribute('aria-current',value);document.body.dataset.mobileAdminTab=active?.dataset.tab||'overview';};
+ new MutationObserver(sync).observe(nav,{attributes:true,attributeFilter:['aria-current'],subtree:true});sync();
+ // Use visualViewport so the keyboard does not cover the navigation or reply field.
+ const viewport=window.visualViewport;const keyboard=()=>{const raised=!!viewport&&innerHeight-viewport.height>150;document.body.classList.toggle('admin-keyboard-open',raised);};viewport?.addEventListener('resize',keyboard);keyboard();
+})();

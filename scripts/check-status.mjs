@@ -7,9 +7,9 @@ import {recordFailure} from '../server/platform/diagnostics.js';
 const sql=new PGlite();await sql.exec('CREATE ROLE anon;CREATE ROLE authenticated;');await sql.exec(fs.readFileSync('supabase/schema.sql','utf8'));const DB=database(sql);
 const owner={id:'owner',email:'danielvernontp@gmail.com',email_confirmed_at:'2026-01-01'};
 let probes=0;
-async function call(path,{user=owner,method='GET',db=DB,bucket={health:async()=>{probes++;}},headers={},data,otp}={}){
+async function call(path,{user=owner,method='GET',db=DB,bucket={health:async()=>{probes++;}},headers={},data,otp,extraEnv={}}={}){
  const auth={client:{auth:{getUser:async()=>({data:{user},error:null}),signInWithOtp:async()=>({error:otp})}},apply:r=>r};
- const response=await handle(new Request('https://academy.test/api/'+path,{method,headers:{origin:'https://academy.test',...headers},body:data?JSON.stringify(data):undefined}),{VERCEL_ENV:'production',VERCEL_GIT_COMMIT_SHA:'abcdef1234567'}, {DB:db,BUCKET:bucket,auth});return {status:response.status,headers:response.headers,body:await response.json()};
+ const response=await handle(new Request('https://academy.test/api/'+path,{method,headers:{origin:'https://academy.test',...headers},body:data?JSON.stringify(data):undefined}),{VERCEL_ENV:'production',VERCEL_GIT_COMMIT_SHA:'abcdef1234567',...extraEnv}, {DB:db,BUCKET:bucket,auth});return {status:response.status,headers:response.headers,body:await response.json()};
 }
 for(const user of [null,{id:'student',email:'student@example.test',email_confirmed_at:'2026-01-01'},{...owner,email_confirmed_at:null}]){
  for(const path of ['admin/status','admin/changelog'])assert.equal((await call(path,{user,headers:{'oai-authenticated-user-id':'owner','oai-authenticated-user-email':owner.email}})).status,403);
@@ -30,4 +30,9 @@ for(let i=0;i<105;i++)await recordFailure(DB,{path:'/api/chat',status:503,reques
 assert.equal(Number((await DB.prepare("SELECT COUNT(*) n FROM prototype_settings WHERE id LIKE 'diagnostic:%'").first()).n),100);assert.equal(await DB.prepare("SELECT id FROM prototype_settings WHERE id='diagnostic:old'").first(),null);assert.equal((await call('admin/status')).body.events.length,50);
 for(const file of fs.readdirSync('public').filter(f=>f.endsWith('.html')))assert.match(fs.readFileSync('public/'+file,'utf8'),/href="\/images\/brand\/vanessa-mark.png\?v=20261002"/);
 for(const file of ['favicon.svg','favicon.ico','apple-touch-icon.png','status.html','status.css','status.js'])assert.ok(fs.statSync('dist/public/'+file).size>0);
+const squareEnv={SQUARE_ENVIRONMENT:'sandbox',SQUARE_ACCESS_TOKEN:'test-only',SQUARE_LOCATION_ID:'location',SQUARE_WEBHOOK_SIGNATURE_KEY:'test',SQUARE_WEBHOOK_URL:'https://academy.test/webhook',SQUARE_SITE_URL:'https://academy.test',SQUARE_FETCH:async(url,options)=>{assert.equal(options.method,undefined);assert.equal(url,'https://connect.squareupsandbox.com/v2/locations/location');return Response.json({location:{id:'location',status:'ACTIVE',currency:'GBP'}});}};
+r=await call('admin/status',{extraEnv:squareEnv});assert.equal(r.body.checks.find(c=>c.id==='payments').state,'ok');assert.equal(r.body.checks.find(c=>c.id==='bank-authentication').state,'unverified');
+r=await call('admin/status',{extraEnv:{...squareEnv,SQUARE_FETCH:async()=>Response.json({secret:'SECRET_PROVIDER_DETAIL'},{status:401})}});assert.equal(r.body.checks.find(c=>c.id==='payments').state,'error');assert.ok(!JSON.stringify(r.body).includes('SECRET_PROVIDER_DETAIL'));
+await DB.prepare('INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?)').bind('diagnostic:'+crypto.randomUUID(),JSON.stringify({at:new Date().toISOString(),requestId:crypto.randomUUID(),area:'payments',status:408,source:'browser',issue:'bank_verification_timeout'}),new Date().toISOString()).run();
+r=await call('admin/status');assert.equal(r.body.checks.find(c=>c.id==='bank-authentication').state,'attention');assert.ok(r.body.events.some(e=>e.area==='payments'&&e.source==='browser'));assert.match(r.body.release.version,/2026.10.04/);
 await sql.close();console.log('Status checks passed: verified owner only, safe degraded checks, changelog independence, curated errors, request references, bounded history and favicon assets.');

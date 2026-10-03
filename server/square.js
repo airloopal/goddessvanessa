@@ -74,6 +74,16 @@ async function squareAPI(request,env,url,{user,owner}){
  const body=await educationBody(request,url,4000);if(body instanceof Response)return body;
  if(!ready)return json({error:'Payments are not available yet. Please try again later.'},503);
  if(!await chatLimit(env,'square:'+await chatHash(user),30,60000))return json({error:'Please wait before trying again.'},429);
+ if(url.pathname==='/api/education/payments/diagnostic'){
+  const issues=['bank_verification_timeout','bank_policy_blocked','bank_verification_failed'];
+  if(!['entry','contract'].includes(body.stage)||!issues.includes(body.issue)||Object.keys(body).some(k=>!['stage','issue'].includes(k)))return json({error:'Invalid diagnostic.'},400);
+  if(!await squareRecord(env,await squareKey(env,user,body.stage)))return json({error:'Checkout unavailable.'},404);
+  if(!await chatLimit(env,'square-diagnostic:'+await chatHash(user),4,3600000))return json({error:'Diagnostic limit reached.'},429);
+  const at=new Date().toISOString(),requestId=crypto.randomUUID();
+  await db(env).prepare('INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?)').bind('diagnostic:'+requestId,JSON.stringify({at,area:'payments',status:408,requestId,issue:body.issue,source:'browser'}),at).run();
+  await db(env).prepare("DELETE FROM prototype_settings WHERE id IN (SELECT id FROM prototype_settings WHERE id LIKE 'diagnostic:%' ORDER BY updated_at DESC,id DESC OFFSET 100) OR (id LIKE 'diagnostic:%' AND updated_at<?)").bind(new Date(Date.now()-7*86400000).toISOString()).run();
+  return json({ok:true});
+ }
  if(url.pathname==='/api/education/payments/refresh'){
   const state=await squarePaymentState(env,user);for(const r of [state.entry,state.contract])await squareReconcile(env,r);
   const fresh=await squarePaymentState(env,user);return json({mode,ready,entry:squarePublic(fresh.entry),contract:squarePublic(fresh.contract)});
@@ -81,7 +91,7 @@ async function squareAPI(request,env,url,{user,owner}){
  if(url.pathname==='/api/education/payments/promo'){const promo=squarePromo(body.promoCode);if(!promo)return json({error:'This promo code is not valid.'},400);const {config}=await educationConfig(env);return json({promoCode:promo,entryPlans:config.agreement.entryPlans.map(p=>squarePriced(p,promo)),contractPlans:config.agreement.contractPlans.map(p=>squarePriced(p,promo))});}
  const embedded=['/api/education/payments/prepare','/api/education/payments/charge'].includes(url.pathname);
  if(embedded&&!env.SQUARE_APPLICATION_ID)return json({error:'Card checkout is being configured. Please return shortly.'},503);
- if(!embedded&&url.pathname!=='/api/education/payments/checkout')return json({error:'Not found'},404);
+ if(!embedded&&!['/api/education/payments/checkout','/api/education/payments/fallback'].includes(url.pathname))return json({error:'Not found'},404);
  if(!['entry','contract'].includes(body.stage))return json({error:'Choose a payment stage.'},400);
  const {config,revision}=await educationConfig(env);
  if(body.revision!==revision)return json({error:'Rates changed. Reload the application before paying.',code:'settings_changed'},409);
@@ -121,7 +131,16 @@ async function squareAPI(request,env,url,{user,owner}){
  await squareReconcile(env,r);r=await squareRecord(env,key);
  if(r.status==='paid')return json({paid:true,payment:squarePublic(r)});
  if(r.status==='refund_review')return json({error:'This payment needs an administrator review.'},409);
- if(embedded)return squareEmbedded(request,env,url,body,key,r);
+ if(url.pathname==='/api/education/payments/fallback'&&r.method==='embedded'){
+  // Switch only when no charge request has ever been recorded. A concurrent
+  // charge and fallback compete on the same revision; only one can win.
+  if(r.status!=='pending'||r.cardAttempt||r.paymentId)return json({error:'A payment is already being checked. Use Check payment status before another checkout.'},409);
+  const idempotencyKey=crypto.randomUUID();
+  await squareWrite(env,key,{...r,method:'hosted',orderId:null,idempotencyKey,request:{...r.request,idempotency_key:idempotencyKey}},r._revision);
+  r=await squareRecord(env,key);
+  if(r.method!=='hosted')return json({error:'Checkout changed. Check payment status before continuing.'},409);
+ }
+ if(embedded){if(r.method==='hosted'&&url.pathname.endsWith('/prepare'))return json({hosted:true,plan:r.plan,mode});return squareEmbedded(request,env,url,body,key,r);}
  if(r.method==='embedded')return json({error:'Please use the on-page card form.'},409);
  if(!r.checkoutUrl){
   const result=await squareCall(env,'online-checkout/payment-links',r.request),link=result.payment_link;
@@ -153,7 +172,7 @@ async function squareEmbedded(request,env,url,body,key,r){
   const attempt={id:body.attemptId,request:{source_id:body.sourceId,idempotency_key:crypto.randomUUID(),amount_money:{amount:r.plan.amount,currency:'GBP'},location_id:env.SQUARE_LOCATION_ID,order_id:r.orderId,reference_id:key,autocomplete:true}};
   await squareWrite(env,key,{...r,cardAttempt:attempt},r._revision);r=await squareRecord(env,key);
  }
- if(r.cardAttempt.id!==body.attemptId)return json({error:'Another payment is being checked. Refresh its status before trying again.'},409);
+ if(r.method!=='embedded'||!r.cardAttempt||r.cardAttempt.id!==body.attemptId)return json({error:'Another payment is being checked. Refresh its status before trying again.'},409);
  let result;
  try{result=await squareCall(env,'payments',r.cardAttempt.request);}catch(e){
   const declines=['CARD_DECLINED','CVV_FAILURE','ADDRESS_VERIFICATION_FAILURE','CARD_EXPIRED','GENERIC_DECLINE','INSUFFICIENT_FUNDS','CARD_TOKEN_EXPIRED','CARD_TOKEN_USED','CARD_DECLINED_VERIFICATION_REQUIRED'];

@@ -121,6 +121,21 @@ assert.equal(discounted.status,200,JSON.stringify(discounted.data));assert.equal
 const discountContract=await embedded('charge','promo-user',{stage:'contract',planId:'month',attemptId:crypto.randomUUID(),sourceId:'cnon:valid',amount:1});
 assert.equal(discountContract.data.payment.plan.amount,12500);assert.equal(discountContract.data.payment.plan.originalAmount,25000);
 assert.equal((await embedded('prepare','promo-user',{promoCode:'FAKE'})).status,400);
+// Opening checkout must not freeze an untouched entry price before applying SUB50.
+const beforePromo=await embedded('prepare','late-promo');assert.equal(beforePromo.data.plan.amount,8500);
+const beforeOrders=orderResults.size;
+const repriced=await embedded('prepare','late-promo',{promoCode:'SUB50'});assert.equal(repriced.data.plan.amount,4250);assert.equal(orderResults.size,beforeOrders+1);
+assert.equal((await call('payments',{user:'late-promo'})).data.entry.canChangePromo,true);
+const repricedPaid=await embedded('charge','late-promo',{promoCode:'SUB50',attemptId:crypto.randomUUID(),sourceId:'cnon:valid'});assert.equal(repricedPaid.data.payment.plan.amount,4250);
+assert.equal((await embedded('prepare','late-promo')).status,409);
+assert.equal((await call('payments',{user:'late-promo'})).data.entry.canChangePromo,false);
+assert(!JSON.stringify((await call('payments',{user:'late-promo'})).data).includes('cnon:'));
+// Unknown outcomes retain their original order, amount and idempotency identity.
+dropResponse=true;const waitingAttempt={attemptId:crypto.randomUUID(),sourceId:'cnon:valid'};
+assert.equal((await embedded('charge','promo-pending',waitingAttempt)).data.retrySame,true);
+assert.equal((await embedded('prepare','promo-pending',{promoCode:'SUB50'})).status,409);
+assert.equal((await embedded('charge','promo-pending',waitingAttempt)).data.paid,true);
+console.log('Promo recovery checks passed: untouched checkout repriced, paid/uncertain attempts preserved and tokens remain private.');
 // Pausing is owner-only, blocks text and both upload paths, and retains the existing session.
 await env.DB.prepare('UPDATE prototype_settings SET content=? WHERE id=?').bind(row.content,contractKey).run();
 assert.equal((await call('/api/chat/students',{method:'PATCH',user:'intruder',data:{studentId:shortCode.data.studentId,conversationEnabled:false}})).status,403);

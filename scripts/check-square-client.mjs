@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+const listeners=new Map();const context=vm.createContext({setTimeout,clearTimeout,window:{addEventListener:(type,fn)=>listeners.set(type,fn),removeEventListener:(type,fn)=>{if(listeners.get(type)===fn)listeners.delete(type);}}});
+vm.runInContext(fs.readFileSync('public/square-payments.js','utf8')+';globalThis.testAPI={squareTokenize,squareAwait,squareDisplayPlan,setState:(s,p)=>{squareState=s;squarePromoCode=p;}}',context);const api=context.testAPI;
+const token=await api.squareTokenize({tokenize:async()=>({status:'OK',token:'test-only'})},{},50);assert.equal(token.status,'OK');assert.equal(listeners.size,0);
+let release;const stuck=api.squareTokenize({tokenize:()=>new Promise(r=>{release=r;})},{},5);await assert.rejects(stuck,/No payment was submitted/);assert.equal(listeners.size,0);release({status:'OK',token:'late-token'});
+const blocked=api.squareTokenize({tokenize:()=>new Promise(()=>{})},{},50);listeners.get('securitypolicyviolation')({effectiveDirective:'form-action'});await assert.rejects(blocked,/could not open securely/);assert.equal(listeners.size,0);
+const plan={id:'basic',amount:8500};api.setState({entry:{plan,canChangePromo:true}},'SUB50');assert.equal(api.squareDisplayPlan(plan,'entry').amount,4250);
+api.setState({entry:{plan,canChangePromo:false}},'SUB50');assert.equal(api.squareDisplayPlan(plan,'entry').amount,8500);
+const config=JSON.parse(fs.readFileSync('vercel.json','utf8'));const base=config.headers[0].headers.find(h=>h.key==='Content-Security-Policy').value;const payment=config.headers.filter(r=>r.source==='/application.html').flatMap(r=>r.headers).find(h=>h.key==='Content-Security-Policy').value;
+assert(base.includes("form-action 'self';"));assert(!base.includes("frame-src 'self' https:;"));assert(payment.includes("form-action 'self' https:;"));assert(payment.includes("frame-src 'self' https:;"));assert(!payment.includes("script-src 'self' https:;"));assert(!payment.includes("'unsafe-eval'"));assert(payment.includes("object-src 'none'"));
+console.log('Payment client checks passed: stalled verification, blocked bank form, late tokens ignored, listener cleanup, promo display and checkout-only bank authentication CSP.');

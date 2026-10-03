@@ -116,3 +116,17 @@ body.chat-view{background:#0e1218;padding:0;color:#e8eaf0}body.chat-view>.p-head
 [data-conversation-background]{background-color:var(--conversation-color)!important;background-image:var(--conversation-image)!important;background-size:var(--conversation-size)!important}
 
 [data-conversation-background]{background-position:center!important;background-repeat:var(--conversation-repeat,repeat)!important}.background-photo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px}.background-photo label{font-size:12px;display:flex;align-items:center;gap:8px}.background-photo select{padding:8px;border:1px solid #ddcbd4;border-radius:8px;background:white;color:#53414c}.background-photo small{flex-basis:100%;color:#75616d;font-size:11px}.background-photo button{font-size:12px}.background-photo [hidden]{display:none!important}
+
+/* Mobile chat: fixed visible viewport, bounded header actions and account menu. */
+body.chat-view{overflow:hidden}
+.chat-view #client-chat{position:fixed;inset:auto 0 auto;top:var(--chat-viewport-top,0px);height:var(--chat-viewport-height,100dvh);overflow:hidden}
+.chat-view #client-chat .telegram-chat{height:100%;min-height:0}
+.chat-view .telegram-chat .chat-person{flex:1 1 0;min-width:0;margin:0;overflow:hidden}
+.chat-view .telegram-chat .chat-person strong,.chat-view .telegram-chat .chat-person small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chat-view .telegram-chat .chat-header-actions{flex:0 0 auto;flex-basis:auto;margin-left:auto;justify-content:flex-end}
+.chat-view .telegram-chat .chat-portrait{flex-shrink:0}
+.chat-view .telegram-chat .account-options{box-sizing:border-box;width:240px;max-width:calc(100vw - 24px);max-height:calc(var(--chat-viewport-height,100dvh) - 90px);overflow:auto;right:0;left:auto}
+.chat-view .telegram-chat .chat-attachment-controls [data-send-file]{width:auto;min-width:0;min-height:36px;padding:8px 12px;flex:0 0 auto;background:var(--chat-accent);color:white}
+.chat-view .telegram-chat .attachment-status{overflow-wrap:anywhere}
+.chat-view #client-chat.keyboard-open .chat-compose-hint{display:none}
+@media(max-width:600px){.chat-view .telegram-chat .chat-header{gap:8px;padding:10px 12px}.chat-view .telegram-chat .chat-header-actions{gap:0}.chat-view .telegram-chat .chat-header-actions .chat-icon{width:36px;min-width:36px;height:38px;padding:8px}.chat-view .telegram-chat .chat-person strong{font-size:16px}.chat-view .telegram-chat .chat-person small{font-size:12px}.chat-view .telegram-chat .chat-composer textarea{font-size:16px}}

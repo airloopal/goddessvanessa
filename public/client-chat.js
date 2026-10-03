@@ -9,14 +9,17 @@
  installThroneCatalog(clientHost,icon);
  document.title='Messages';
  const shell=clientHost.querySelector('.chat-shell'),log=document.getElementById('messages'),jump=document.getElementById('chat-jump-latest'),cover=document.getElementById('work-cover');
+ installChatViewport(clientHost,log);
  let tone='dark';try{tone=localStorage.getItem('chat-appearance')||'dark';}catch{}if(!['dark','light','pink'].includes(tone))tone='dark';
  const theme=()=>{shell.className='chat-shell telegram-chat '+tone;document.getElementById('mobile-theme').setAttribute('title','Appearance: '+({dark:'Midnight',light:'Pearl',pink:'Rose'}[tone]));};theme();
  document.getElementById('mobile-theme').onclick=()=>{tone=['dark','light','pink'][(['dark','light','pink'].indexOf(tone)+1)%3];theme();try{localStorage.setItem('chat-appearance',tone);}catch{}};
- function conceal(){if(CHAT_EDITOR)return;document.getElementById('throne-gift-dialog')?.close();document.getElementById('student-account-dialog')?.close();document.querySelectorAll('#messages audio,#messages video').forEach(media=>media.pause());window.ChatDiscreet=true;document.title='Workspace';if(!cover.open)cover.showModal();PreviewChat.setTyping('client',false);}
- function resume(){cover.close();window.ChatDiscreet=false;document.title='Messages';PreviewChat.refresh();}
+ let coverReason=null;
+ function conceal(reason='manual'){if(typeof reason!=='string')reason='manual';if(!cover.open||reason==='manual')coverReason=reason;if(CHAT_EDITOR)return;document.getElementById('throne-gift-dialog')?.close();document.getElementById('student-account-dialog')?.close();document.querySelectorAll('#messages audio,#messages video').forEach(media=>media.pause());window.ChatDiscreet=true;document.title='Workspace';if(!cover.open)cover.showModal();PreviewChat.setTyping('client',false);}
+ function resume(){coverReason=null;cover.close();window.ChatDiscreet=false;document.title='Messages';PreviewChat.refresh();}
  document.getElementById('work-mode').onclick=conceal;document.getElementById('resume-chat').onclick=resume;cover.addEventListener('cancel',e=>e.preventDefault());
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!document.querySelector('dialog[open]'))conceal();});
- document.addEventListener('visibilitychange',()=>{if(document.hidden)conceal();});
+ window.ChatPickerPrivacy=createChatPickerPrivacy({hidden:()=>document.hidden,covered:()=>cover.open,conceal,resume,reason:()=>coverReason});
+ document.addEventListener('visibilitychange',()=>window.ChatPickerPrivacy.visibility());
  const atBottom=()=>log.scrollHeight-log.scrollTop-log.clientHeight<100;
  const updateScroll=()=>{jump.hidden=atBottom();if(atBottom()&&!window.ChatDiscreet)PreviewChat.read();};
  jump.onclick=()=>{log.scrollTop=log.scrollHeight;updateScroll();};log.addEventListener('scroll',updateScroll,{passive:true});
@@ -46,4 +49,28 @@ function installThroneCatalog(host,icon){
  document.body.append(dialog);const grid=dialog.querySelector('.throne-gift-grid');
  function render(query=''){grid.replaceChildren();const list=gifts.filter(g=>g.name.toLocaleLowerCase().includes(query.toLocaleLowerCase()));for(const gift of list){const card=document.createElement('article'),link=document.createElement('a'),image=document.createElement('img'),caption=document.createElement('div'),name=document.createElement('h3'),price=document.createElement('span'),brand=document.createElement('small'),amount=document.createElement('span');card.className='throne-gift-card';link.className='throne-gift-card-link';link.href=gift.url;link.target='_blank';link.rel='noopener noreferrer';link.setAttribute('aria-label','Gift '+gift.name+' on Throne (opens in a new tab)'+(gift.price?' · '+gift.price+' USD':''));image.src=gift.image;image.alt='';image.loading='lazy';image.width=400;image.height=400;image.referrerPolicy='no-referrer';image.onerror=()=>{image.removeAttribute('src');image.alt=gift.name;image.onerror=null;};caption.className='throne-gift-card-caption';name.textContent=gift.name;price.className='throne-gift-card-price';brand.textContent='Throne';amount.textContent=gift.price?gift.price+' USD':'View price';price.append(brand,amount);caption.append(name,price);link.append(image,caption);card.append(link);grid.append(card);}if(!list.length){const empty=document.createElement('p');empty.className='throne-gift-empty';empty.textContent='No matching gifts. Try another name.';grid.append(empty);}}
  button.onclick=async()=>{if(!dialog.open){dialog.showModal();dialog.querySelector('.throne-gift-close').focus();render(dialog.querySelector('.throne-gift-search').value);const status=dialog.querySelector('#throne-reference-status'),copy=dialog.querySelector('#throne-copy-reference'),field=dialog.querySelector('#throne-reference');try{const r=await fetch('/api/chat/gift-reference',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}),d=await r.json();if(!r.ok)throw Error(d.error||'Could not prepare your gift reference.');field.value=d.displayReference||d.reference;copy.disabled=false;status.textContent='Copy it into the gift message at checkout. Then return here for confirmation.';}catch(e){field.value='';status.textContent=e.message;}}};dialog.querySelector('#throne-copy-reference').onclick=async()=>{const field=dialog.querySelector('#throne-reference'),status=dialog.querySelector('#throne-reference-status');try{await navigator.clipboard.writeText(field.value);status.textContent='Copied. Paste this into your Throne gift message.';}catch{field.focus();field.select();status.textContent='Select and copy the reference above.';}};dialog.querySelector('.throne-gift-close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>button.focus());dialog.querySelector('.throne-gift-search').oninput=e=>render(e.target.value);dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();}});render();
+}
+
+// Native keyboards change the visual viewport without reliably resizing the layout viewport.
+function installChatViewport(host,log){
+ const viewport=window.visualViewport;let scheduled=false;
+ function update(){scheduled=false;if(viewport&&viewport.scale!==1)return;
+  const follow=log.scrollHeight-log.scrollTop-log.clientHeight<100||document.activeElement?.id==='client-message';
+  const height=viewport?.height||window.innerHeight,top=viewport?.offsetTop||0;
+  host.style.setProperty('--chat-viewport-height',height+'px');host.style.setProperty('--chat-viewport-top',top+'px');
+  host.classList.toggle('keyboard-open',window.innerHeight-height>150);
+  if(follow)log.scrollTop=log.scrollHeight;
+ }
+ const schedule=()=>{if(!scheduled){scheduled=true;requestAnimationFrame(update);}};
+ viewport?.addEventListener('resize',schedule,{passive:true});viewport?.addEventListener('scroll',schedule,{passive:true});window.addEventListener('resize',schedule,{passive:true});update();
+}
+// Auto-return only after a picker completion event, never merely after switching tabs.
+function createChatPickerPrivacy({hidden,covered,conceal,resume,reason}){
+ let active=false,restore=false,startedCovered=false,timer;
+ const reset=()=>{active=false;restore=false;clearTimeout(timer);};
+ return {
+  begin(){reset();active=true;startedCovered=covered();timer=setTimeout(reset,120000);},
+  finish(){if(!active)return;active=false;clearTimeout(timer);restore=!startedCovered&&reason()==='picker';if(restore&&!hidden()){restore=false;resume();}},
+  visibility(){if(hidden()){restore=false;conceal(active&&!startedCovered?'picker':'background');}else if(restore&&reason()==='picker'){restore=false;resume();}},
+ };
 }

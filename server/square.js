@@ -13,7 +13,7 @@ const squareKey=async(env,user,stage)=>'sq-'+squareMode(env)+'-'+stage[0]+'-'+(a
 function squarePromo(code){return typeof code==='string'&&code.trim().toUpperCase()==='SUB50'?'SUB50':null;}
 function squaredAmountMismatch(plan,signed,promo){return signed.amount!==squarePriced(plan,promo).amount||(promo&&promo!=='SUB50');}
 function squarePriced(plan,promo){return promo?{...plan,originalAmount:plan.amount,amount:Math.round(plan.amount/2),promoCode:promo}:plan;}
-function squarePublic(r){return r?{stage:r.stage,plan:r.plan,status:r.status,receiptUrl:r.receiptUrl||null,paidAt:r.paidAt||null,expiresAt:r.expiresAt||null}:null;}
+function squarePublic(r){return r?{stage:r.stage,plan:r.plan,status:r.status,receiptUrl:r.receiptUrl||null,paidAt:r.paidAt||null,expiresAt:r.expiresAt||null,canChangePromo:r.stage==='entry'&&r.method==='embedded'&&r.status==='pending'&&!r.cardAttempt&&!r.paymentId}:null;}
 function squareExpiry(plan,start){const d=new Date(start);if(plan==='infinite')return null;if(plan==='day')return new Date(d.getTime()+86400000).toISOString();const day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+(plan==='quarter'?3:1));const last=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();d.setUTCDate(Math.min(day,last));return d.toISOString();}
 async function squarePaymentState(env,user){const [entry,contract]=await Promise.all(['entry','contract'].map(async stage=>squareRecord(env,await squareKey(env,user,stage))));return {entry,contract};}
 async function squareAccessDeadline(env,user){
@@ -106,6 +106,16 @@ async function squareAPI(request,env,url,{user,owner}){
   const returnURL=new URL('/application.html',url.origin);returnURL.searchParams.set('payment',body.stage);
   initial.request={idempotency_key:initial.idempotencyKey,order:{location_id:env.SQUARE_LOCATION_ID,reference_id:key,line_items:[{name:(body.stage==='entry'?'Entry fee — ':'Contract — ')+plan.name,quantity:'1',base_price_money:{amount:plan.amount,currency:'GBP'}}]},checkout_options:{redirect_url:returnURL.href,allow_tipping:false,ask_for_shipping_address:false},...(email?{pre_populated_data:{buyer_email:email}}:{})};
   await db(env).prepare('INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?) ON CONFLICT(id) DO NOTHING').bind(key,JSON.stringify(initial),initial.createdAt).run();r=await squareRecord(env,key);
+ }
+ // Reprice only an untouched embedded entry checkout. Reconcile first so a paid
+ // order can never be replaced; preserve all attempts and hosted payment links.
+ if(body.stage==='entry'&&embedded&&r.method==='embedded'&&r.status==='pending'&&!r.cardAttempt&&!r.paymentId&&r.plan.id===plan.id&&r.plan.amount!==plan.amount){
+  await squareReconcile(env,r);r=await squareRecord(env,key);
+  if(r.status==='pending'&&!r.cardAttempt&&!r.paymentId){
+   const next={...r,plan,idempotencyKey:crypto.randomUUID(),orderId:null};
+   next.request={...r.request,idempotency_key:next.idempotencyKey,order:{...r.request.order,line_items:[{name:'Entry fee — '+plan.name,quantity:'1',base_price_money:{amount:plan.amount,currency:'GBP'}}]}};
+   await squareWrite(env,key,next,r._revision);r=await squareRecord(env,key);
+  }
  }
  if(r.plan.id!==plan.id||r.plan.amount!==plan.amount||(body.stage==='contract'&&r.agreementId!==agreementId))return json({error:'A checkout already exists for your earlier selection. Return to that selection or contact the academy before changing it.'},409);
  await squareReconcile(env,r);r=await squareRecord(env,key);

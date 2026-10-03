@@ -103,7 +103,7 @@ assert.equal((await embedded('charge','decline-user',{attemptId:crypto.randomUUI
 dropResponse=true;const uncertain={attemptId:crypto.randomUUID(),sourceId:'cnon:valid'};
 assert.equal((await embedded('charge','timeout-user',uncertain)).data.retrySame,true);
 assert.equal((await embedded('charge','timeout-user',uncertain)).data.paid,true);assert.equal(charges,3);
-assert.equal((await embedded('prepare','concurrent',{planId:'advanced'})).status,409);
+assert.equal((await embedded('prepare','concurrent',{planId:'advanced'})).data.hosted,true);
 assert.equal((await embedded('prepare','no-entry',{stage:'contract',planId:'month'})).status,409);
 assert.equal((await embedded('prepare','card-user',{planId:'advanced'})).status,409);
 const countBefore=charges;const race=await Promise.all([embedded('charge','card-race',{attemptId:crypto.randomUUID(),sourceId:'cnon:valid'}),embedded('charge','card-race',{attemptId:crypto.randomUUID(),sourceId:'cnon:valid'})]);
@@ -136,6 +136,34 @@ assert.equal((await embedded('charge','promo-pending',waitingAttempt)).data.retr
 assert.equal((await embedded('prepare','promo-pending',{promoCode:'SUB50'})).status,409);
 assert.equal((await embedded('charge','promo-pending',waitingAttempt)).data.paid,true);
 console.log('Promo recovery checks passed: untouched checkout repriced, paid/uncertain attempts preserved and tokens remain private.');
+// Safe recovery is allowed only before a charge attempt; preserve price, owner and redirect.
+const noCharge=charges;
+await embedded('prepare','fallback-user',{promoCode:'SUB50'});
+const fallback=await embedded('fallback','fallback-user',{promoCode:'SUB50',amount:1});assert.equal(fallback.status,200);assert.match(fallback.data.url,/^https:\/\/sandbox.square.link\//);
+assert.equal(charges,noCharge);assert.equal((await embedded('fallback','fallback-user',{promoCode:'SUB50'})).data.url,fallback.data.url);
+assert.equal((await embedded('prepare','fallback-user',{promoCode:'SUB50'})).data.hosted,true);
+assert.equal((await embedded('charge','fallback-user',{promoCode:'SUB50',attemptId:crypto.randomUUID(),sourceId:'cnon:valid'})).status,409);
+const fallbackRecord=(await env.DB.prepare("SELECT content FROM prototype_settings WHERE content::jsonb->>'user'='fallback-user'").first());const fallbackSaved=JSON.parse(fallbackRecord.content);assert.equal(fallbackSaved.plan.amount,4250);assert.equal(fallbackSaved.method,'hosted');assert.equal(fallbackSaved.cardAttempt,undefined);
+assert.equal((await embedded('fallback','fallback-user',{promoCode:'FAKE'})).status,400);assert.equal((await embedded('fallback','fallback-user',{revision:999})).status,409);
+complete(fallbackSaved.orderId,4250);assert.equal((await call('payments/refresh',{method:'POST',user:'fallback-user',data:{}})).data.entry.status,'paid');
+assert.equal((await embedded('fallback','fallback-user',{stage:'contract',planId:'month',promoCode:'SUB50'})).status,409);
+// A recorded uncertain charge must never turn into another checkout.
+await embedded('prepare','fallback-uncertain');const original=env.SQUARE_FETCH;
+env.SQUARE_FETCH=async(url,options)=>{if(new URL(url).pathname==='/v2/payments')throw Error('Unknown payment outcome');return original(url,options);};
+const pending=await embedded('charge','fallback-uncertain',{attemptId:crypto.randomUUID(),sourceId:'cnon:valid'});assert.equal(pending.data.retrySame,true);env.SQUARE_FETCH=original;
+assert.equal((await embedded('fallback','fallback-uncertain')).status,409);
+// Race fallback against a charge: never authorize both paths.
+await embedded('prepare','fallback-race');const raceBefore=charges;
+const recoveryRace=await Promise.all([embedded('fallback','fallback-race'),embedded('charge','fallback-race',{attemptId:crypto.randomUUID(),sourceId:'cnon:valid'})]);
+assert.ok(recoveryRace.some(r=>r.status===409));assert.ok(charges-raceBefore<=1);
+const diagnostic=issue=>call('payments/diagnostic',{method:'POST',user:'fallback-user',data:{stage:'entry',issue}});
+assert.equal((await diagnostic('bank_verification_timeout')).status,200);
+assert.equal((await diagnostic('arbitrary private text')).status,400);
+assert.equal((await call('payments/diagnostic',{method:'POST',user:'fallback-user',data:{stage:'entry',issue:'bank_verification_timeout',token:'secret'}})).status,400);
+assert.equal((await call('payments/diagnostic',{method:'POST',user:'',data:{stage:'entry',issue:'bank_verification_timeout'}})).status,401);
+assert.equal((await call('payments/fallback',{method:'POST',user:'',data:{stage:'entry',planId:'basic',revision:0}})).status,401);
+for(let i=0;i<3;i++)assert.equal((await diagnostic('bank_verification_timeout')).status,200);assert.equal((await diagnostic('bank_verification_timeout')).status,429);
+console.log('Recovery checks passed: hosted fallback, discounted price, signed/entry gates, reconciliation, uncertain/racing charge protection and curated private diagnostics.');
 // Pausing is owner-only, blocks text and both upload paths, and retains the existing session.
 await env.DB.prepare('UPDATE prototype_settings SET content=? WHERE id=?').bind(row.content,contractKey).run();
 assert.equal((await call('/api/chat/students',{method:'PATCH',user:'intruder',data:{studentId:shortCode.data.studentId,conversationEnabled:false}})).status,403);

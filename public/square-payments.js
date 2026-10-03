@@ -16,11 +16,41 @@ async function squareInit(){
 // A late tokenization result is discarded after timeout; only this awaited result
 // can submit a charge. HTTP retries always keep the original attempt identity.
 function squareAwait(promise,ms,message){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(message)),ms);})]).finally(()=>clearTimeout(timer));}
-async function squareTokenize(card,details,ms=90000){
+async function squareTokenize(card,details,ms=180000){
  let blocked;
- const policy=new Promise((_,reject)=>{blocked=e=>{if(['form-action','frame-src'].includes(e.effectiveDirective))reject(Error('Bank verification could not open securely. Reopen checkout and try again.'));};window.addEventListener('securitypolicyviolation',blocked);});
- try{return await squareAwait(Promise.race([card.tokenize(details),policy]),ms,'Bank verification timed out. No payment was submitted by this attempt. Reopen checkout to try again.');}
+ const policy=new Promise((_,reject)=>{blocked=e=>{if(['form-action','frame-src'].includes(e.effectiveDirective))reject(Object.assign(Error('Bank verification could not open securely. Continue on Square to complete payment.'),{code:'bank_policy_blocked'}));};window.addEventListener('securitypolicyviolation',blocked);});
+ try{return await squareVerificationAwait(Promise.race([card.tokenize(details),policy]),ms,'Bank verification timed out. No payment was submitted by this attempt. Reopen checkout to try again.');}
  finally{window.removeEventListener('securitypolicyviolation',blocked);}
+}
+// Allow time spent in the bank app without discarding its successful return.
+function squareVerificationAwait(promise,ms,message,wallMs=600000){
+ let timer,wallTimer,remaining=ms,visibleSince=null,settled=false;
+ const doc=typeof document==='undefined'?null:document;
+ return new Promise((resolve,reject)=>{
+  const finish=(error,value)=>{if(settled)return;settled=true;clearTimeout(timer);clearTimeout(wallTimer);doc?.removeEventListener('visibilitychange',visibility);error?reject(error):resolve(value);};
+  const expire=()=>finish(Object.assign(Error(message),{code:'bank_verification_timeout'}));
+  const visibility=()=>{clearTimeout(timer);if(visibleSince!==null)remaining-=Date.now()-visibleSince;visibleSince=null;if(remaining<=0){expire();return;}if(!doc?.hidden){visibleSince=Date.now();timer=setTimeout(expire,remaining);}};
+  doc?.addEventListener('visibilitychange',visibility);wallTimer=setTimeout(expire,wallMs);visibility();Promise.resolve(promise).then(value=>finish(null,value),error=>finish(error));
+ });
+}
+async function squareAuthenticationSurface(run){
+ const dialog=typeof entryDialog!=='undefined'?entryDialog:null,version=squareFormVersion;
+ const modal=dialog?.open&&dialog.matches(':modal');
+ const closeWithoutDisposing=()=>{dialog.dataset.squareSkipClose=String(Number(dialog.dataset.squareSkipClose||0)+1);dialog.close();};
+ if(modal){closeWithoutDisposing();dialog.show();}
+ try{return await run();}finally{if(modal&&dialog.open&&version===squareFormVersion){closeWithoutDisposing();dialog.showModal();}}
+}
+function squareReportBankIssue(stage,error){
+ const issue=error.code==='bank_verification_timeout'?'bank_verification_timeout':error.code==='bank_policy_blocked'?'bank_policy_blocked':'bank_verification_failed';
+ void fetch('/api/education/payments/diagnostic',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({stage,issue}),signal:AbortSignal.timeout(5000)}).catch(()=>{});
+}
+async function squareHostedRecovery(stage,button,message){
+ const alternative=button.parentElement.querySelector('[data-square-hosted-recovery]');if(alternative)alternative.disabled=true;
+ button.disabled=true;squareNotice(message,'loading','Opening Square checkout','You’ll return here after completing payment.');squareSaveDraft();
+ try{await squareDisposeCard();const result=await eduAPI('payments/fallback','POST',{stage,planId:stage==='entry'?entryId:contractId,revision:configRevision,promoCode:squarePromoCode});
+  if(result.paid){await squareRefresh();if(stage==='entry')squareEntryDialog();return;}
+  const url=new URL(result.url);if(url.protocol!=='https:'||url.hostname!==(squareState.mode==='sandbox'?'sandbox.square.link':'square.link'))throw Error('The checkout address could not be verified.');location.assign(url.href);
+ }catch(error){squareNotice(message,'retry','Checkout needs another try',error.message);squareButton(button,'retry','Continue on Square');button.onclick=()=>squareHostedRecovery(stage,button,message);button.disabled=false;if(alternative)alternative.disabled=false;}
 }
 let squareSDKPromise=null,squareCard=null,squareFormVersion=0;
 async function squareDisposeCard(){squareFormVersion++;const card=squareCard;squareCard=null;if(card)await card.destroy().catch(()=>{});}
@@ -59,20 +89,23 @@ async function squareMountCard(stage,buttonId,statusId){
   const prepared=await eduAPI('payments/prepare','POST',{stage,planId:stage==='entry'?entryId:contractId,revision:configRevision,promoCode:squarePromoCode});
   if(version!==squareFormVersion||!button.isConnected)return;
   if(prepared.paid){await squareRefresh();if(stage==='entry')squareEntryDialog();return;}
+  if(prepared.hosted){squareNotice(message,'retry','Continue your secure checkout','Complete payment on Square, then return here.');squareButton(button,'card','Continue on Square');button.onclick=()=>squareHostedRecovery(stage,button,message);button.disabled=false;return;}
   let attemptId=prepared.resumeAttempt||null,pendingSource=null;
+  button.parentElement.querySelector('[data-square-hosted-recovery]')?.remove();let recovery=null;
   if(!attemptId){await squareLoadSDK();if(version!==squareFormVersion||!button.isConnected)return;const payments=window.Square.payments(prepared.applicationId,prepared.locationId);const card=await payments.card();if(version!==squareFormVersion||!button.isConnected){await card.destroy();return;}squareCard=card;await card.attach('#square-card-container');}
+  if(!attemptId){recovery=document.createElement('button');recovery.type='button';recovery.className='quiet';recovery.dataset.squareHostedRecovery='';recovery.textContent='Pay on Square instead';recovery.onclick=()=>squareHostedRecovery(stage,button,message);button.after(recovery);}
   if(attemptId)squareNotice(message,'retry','Let’s confirm your payment','A previous attempt is awaiting confirmation. Retry to check it safely.');else{message.replaceChildren();message.className='';}button.disabled=false;squareButton(button,attemptId?'retry':'card',attemptId?'Retry confirmation':'Confirm & Pay '+gbp(prepared.plan.amount));
   button.onclick=async()=>{
-   if(button.disabled)return;button.disabled=true;squareNotice(message,'loading','Confirming your payment','Please keep this page open while Square confirms your payment.');squareSaveDraft();
+   if(button.disabled)return;button.disabled=true;if(recovery)recovery.disabled=true;squareNotice(message,'loading',attemptId?'Confirming your payment':'Verify with your bank',attemptId?'Checking the same payment safely.':'Complete any bank prompt, then return to this page. Bank approval is followed by payment confirmation.');squareSaveDraft();
    try{
     let sourceId=pendingSource;
-    if(!attemptId){const result=await squareTokenize(squareCard,{amount:(prepared.plan.amount/100).toFixed(2),currencyCode:'GBP',intent:'CHARGE',customerInitiated:true,sellerKeyedIn:false,billingContact:{...(learnerEmail?{email:learnerEmail}:{})}});if(result.status!=='OK')throw Error(result.status==='Cancel'?'Verification cancelled. No payment was submitted.':'Please check your card details and try again.');if(version!==squareFormVersion||!button.isConnected)return;sourceId=result.token;pendingSource=sourceId;attemptId=crypto.randomUUID();}
+    if(!attemptId){const result=await squareAuthenticationSurface(()=>squareTokenize(squareCard,{amount:(prepared.plan.amount/100).toFixed(2),currencyCode:'GBP',intent:'CHARGE',customerInitiated:true,sellerKeyedIn:false,billingContact:{...(learnerEmail?{email:learnerEmail}:{})}}));if(result.status!=='OK')throw Error(result.status==='Cancel'?'Verification cancelled. No payment was submitted.':'Please check your card details and try again.');if(version!==squareFormVersion||!button.isConnected)return;sourceId=result.token;pendingSource=sourceId;attemptId=crypto.randomUUID();}
     const response=await fetch('/api/education/payments/charge',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({stage,planId:prepared.plan.id,revision:configRevision,promoCode:squarePromoCode,attemptId,...(sourceId?{sourceId}:{})}),signal:AbortSignal.timeout(25000)});
     const result=await response.json();
     if(!result.paid){if(result.retryCard){attemptId=null;await squareMountCard(stage,buttonId,statusId);squareNotice(message,'retry','Please try again',result.error||'Check your card details and retry.');return;}throw Error(result.error||'Your payment is being checked. Retry confirmation.');}
     await squareDisposeCard();squareState=await eduAPI('payments');entryReviewed=squareEntryPaid();
     if(stage==='entry'){renderLearning();squareEntryDialog();}else squareContractPanel();
-   }catch(error){if(version!==squareFormVersion||!button.isConnected)return;squareNotice(message,'retry',attemptId?'Confirmation is taking longer':'Please try again',error.name==='TimeoutError'?'The connection timed out. Retry confirmation to check this same payment safely.':error.message||'Retry to check the same payment safely.');squareButton(button,'retry',attemptId?'Retry confirmation':'Reopen secure checkout');if(!attemptId)button.onclick=()=>squareMountCard(stage,buttonId,statusId);button.disabled=false;}
+   }catch(error){if(version!==squareFormVersion||!button.isConnected)return;squareNotice(message,'retry',attemptId?'Confirmation is taking longer':'Please try again',error.name==='TimeoutError'?'The connection timed out. Retry confirmation to check this same payment safely.':error.message||'Retry to check the same payment safely.');squareButton(button,'retry',attemptId?'Retry confirmation':'Continue on Square');if(!attemptId){squareReportBankIssue(stage,error);await squareDisposeCard();button.onclick=()=>squareHostedRecovery(stage,button,message);}button.disabled=false;}
   };
  }catch(error){squareNotice(message,'retry','Checkout needs another try',error.message);button.disabled=false;squareButton(button,'retry','Retry checkout');button.onclick=()=>squareMountCard(stage,buttonId,statusId);}
 }

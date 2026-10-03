@@ -2,6 +2,20 @@
 
 Record confirmed incidents and fixes here, newest first. Dates use Europe/Warsaw. Keep client names, email addresses, card data, tokens, access codes and raw recordings out of this file. Distinguish observed evidence from inferred causes. A deployment alone does not prove a live issue is resolved.
 
+## BUG-2026-10-04-001 — Bank approval followed by verification timeout
+
+- **Reported:** 4 October 2026, Europe/Warsaw, with a screenshot and repeated live-client failures.
+- **Status:** Patched; automated validation pending release; original issuer/device confirmation remains outstanding.
+- **Affected areas:** Entry/contract bank authentication, recovery checkout, private status/changelog and browser diagnostic reporting.
+- **Evidence:** Screenshot shows the browser's bank-verification timeout before submission. Recent production entry records were pending without recorded server charge attempts; these records cannot independently identify the reporting client. Other recent payments completed. Vercel runtime-log access returned 403, so no issuer callback trace was available.
+- **Confirmed implementation defects:** A hard 90-second timer counted time spent outside the browser in a bank app and discarded any later token. Entry checkout used a native modal that makes Square's separate authentication surface outside it inert. Exact contribution of each defect to this client's failure is unconfirmed.
+- **Patch:** Count up to 3 minutes of visible authentication time, bounded by a 10-minute total deadline; discard terminal late results. Temporarily yield native modal ownership for Square authentication and restore it after completion without destroying the mounted card. Provide explicit same-tab Square-hosted recovery before waiting or after a verification failure, and return to the application. Server conversion is allowed only before any charge attempt/payment, using revision comparison to exclude concurrent charging; original SUB50 price, signed agreement and entry gates remain authoritative. Existing uncertain attempts retain their original charge identity.
+- **Health/changelog:** Updated release history, read-only active GBP Square location check, separate unverified bank-flow status, and rate-limited allowlisted browser reports. Reports are labelled unverified browser evidence and contain no arbitrary error text, card data, source tokens, client identity or URLs. Recent reports trigger an attention state without claiming a provider outage.
+- **Validation:** Targeted mobile bank-return timeout, listener cleanup, native modal success/failure handoff, safe hosted conversion, discount integrity, signed contract/entry gates, hosted reconciliation, concurrent fallback/charge exclusion, uncertain payment protection, diagnostic authentication/validation/rate limits and private health redaction. Full regression/audit/build and deployment checks are recorded after release.
+- **Deployments:** Commit identifiers to be added after publication on main and square-sandbox.
+- **Record handling:** Existing client agreements, payments and pending checkouts preserved; no real money charged in testing. Disposable local PostgreSQL tests use mocked provider responses. Browser diagnostic records follow the existing 100-record / 7-day retention boundary.
+- **Limitations:** No physical phone or original bank challenge replay is possible from the supplied screenshot. Automated issuer-flow simulation is not a confirmed live bank-app round trip. A fresh authorised live test is still needed; customer bank approval alone is not proof of a completed charge.
+
 ## BUG-2026-10-03-002 — Mobile conversation layout and attachment recovery
 
 - **Reported:** 3 October 2026, from a live client test with screenshots and a recording.

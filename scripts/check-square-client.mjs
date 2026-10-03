@@ -11,3 +11,18 @@ api.setState({entry:{plan,canChangePromo:false}},'SUB50');assert.equal(api.squar
 const config=JSON.parse(fs.readFileSync('vercel.json','utf8'));const base=config.headers[0].headers.find(h=>h.key==='Content-Security-Policy').value;const payment=config.headers.filter(r=>r.source==='/application.html').flatMap(r=>r.headers).find(h=>h.key==='Content-Security-Policy').value;
 assert(base.includes("form-action 'self';"));assert(!base.includes("frame-src 'self' https:;"));assert(payment.includes("form-action 'self' https:;"));assert(payment.includes("frame-src 'self' https:;"));assert(!payment.includes("script-src 'self' https:;"));assert(!payment.includes("'unsafe-eval'"));assert(payment.includes("object-src 'none'"));
 console.log('Payment client checks passed: stalled verification, blocked bank form, late tokens ignored, listener cleanup, promo display and checkout-only bank authentication CSP.');
+
+// Verification time is paused while the buyer uses a bank app, with a hard total bound.
+let visibility,hidden=false;
+context.document={get hidden(){return hidden;},addEventListener:(type,fn)=>{visibility=fn;},removeEventListener:()=>{visibility=null;}};
+let completed;
+const returning=api.squareTokenize({tokenize:()=>new Promise(r=>completed=r)},{},30);
+hidden=true;visibility();await new Promise(r=>setTimeout(r,45));hidden=false;visibility();completed({status:'OK',token:'bank-return'});assert.equal((await returning).token,'bank-return');assert.equal(visibility,null);
+context.document.hidden;
+vm.runInContext('globalThis.surfaceAPI={squareAuthenticationSurface,setDialog:(d)=>{globalThis.entryDialog=d;}}',context);
+let modal=true,open=true,closes=0,shows=0,modals=0;
+const dialog={get open(){return open;},dataset:{},matches:()=>modal,close(){closes++;open=false;},show(){shows++;open=true;modal=false;},showModal(){modals++;open=true;modal=true;}};
+context.surfaceAPI.setDialog(dialog);
+assert.equal(await context.surfaceAPI.squareAuthenticationSurface(async()=>{assert.equal(modal,false);return 'verified';}),'verified');assert.equal(modal,true);assert.equal(closes,2);assert.equal(shows,1);assert.equal(modals,1);assert.equal(dialog.dataset.squareSkipClose,'2');
+await assert.rejects(context.surfaceAPI.squareAuthenticationSurface(async()=>{throw Error('Challenge failed');}),/Challenge failed/);assert.equal(modal,true);
+console.log('Bank return checks passed: hidden-bank-app time excluded, listener cleanup and authentication window modal handoff restored on success/failure.');

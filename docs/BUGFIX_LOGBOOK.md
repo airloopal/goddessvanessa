@@ -2,6 +2,19 @@
 
 Record confirmed incidents and fixes here, newest first. Dates use Europe/Warsaw. Keep client names, email addresses, card data, tokens, access codes and raw recordings out of this file. Distinguish observed evidence from inferred causes. A deployment alone does not prove a live issue is resolved.
 
+## BUG-2026-10-03-002 — Mobile conversation layout and attachment recovery
+
+- **Reported:** 3 October 2026, from a live client test with screenshots and a recording.
+- **Status:** Patched; automated validation completed; awaiting confirmation on the reporting phone.
+- **Affected areas:** Sub chat header, account menu, mobile keyboard, file selection and attachment upload; shared upload quota check also affects Goddess uploads.
+- **Evidence:** Name overlaps action icons, dropdown extends beyond the left edge, keyboard leaves recent messages outside the visible screen, native file selection opens Workspace, and a small screenshot is rejected as exceeding the 1 GB allowance. Aggregate live storage was approximately 5.4 MB; no personal record content was required for diagnosis.
+- **Confirmed causes:** An inherited mobile `flex-basis:100%` squeezed the chat identity beside its action buttons; the menu was anchored to that misplaced action group. Visibility changes from the native file picker invoked the same privacy cover as leaving the tab. PostgreSQL `SUM(bigint)` returns a numeric string, and adding upload bytes concatenated that string instead of adding numbers. Keyboard clipping is consistent with a layout viewport that does not follow the visual viewport; physical-device confirmation remains required.
+- **Patch:** Give header identity and action controls explicit flex sizing; bound the account dropdown; follow visual viewport height and offset, preserve reading position and keep the latest conversation visible when composing; return automatically only after picker change/cancel confirms completion of a picker-induced cover. Manual Workspace and ordinary tab-switch covers persist. Keep a visible explicit Send file control. Convert and validate aggregate bytes numerically before enforcing quota.
+- **Validation:** Targeted picker/privacy, keyboard viewport, scroll retention, upload completion and idempotent retry checks; genuine full quota rejection. Full regression suite, production dependency audit and build required before deployment. Post-deployment private API and header checks required on both hosts.
+- **Deployments:** Commit identifiers are recorded in the release entry below after publication.
+- **Record handling:** No client messages, files, contracts, access codes or payment records changed. Regression upload records exist only in disposable local test databases. Raw client recordings are excluded from the repository.
+- **Limitations:** Automated visual-viewport tests do not emulate an actual iOS/Android keyboard or native picker. The client should refresh the chat and repeat typing, menu and file selection on their phone. No claim of absolute security.
+
 ## BUG-2026-10-03-001 — Discount and contract checkout recovery
 
 - **Reported:** 3 October 2026, during a live client test.

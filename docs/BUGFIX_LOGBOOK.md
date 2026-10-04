@@ -3,6 +3,15 @@
 Record confirmed incidents and fixes here, newest first. Dates use Europe/Warsaw. Keep client names, email addresses, card data, tokens, access codes and raw recordings out of this file. Distinguish observed evidence from inferred causes. A deployment alone does not prove a live issue is resolved.
 
 
+## BUG-2026-10-04-003 — Simplify tribute contact to optional email
+
+- **Evidence/request:** User supplied mobile screenshot of the full-name/email/phone panel above tribute choices and requested one optional email underneath the selection.
+- **Patch:** Replace that entry panel with Email (optional) below tribute cards. Blank/omitted email permits entry and checkout; a supplied email is trimmed and validated on the server. Only optional email/path are collected by a new entry checkout. Remove the added phone field and phone requirement from contract review; retain the established required contract name/email, signature, age and agreement checks. Existing saved records and paid/uncertain checkouts are not rewritten by this change. Privacy notice and acceptance checklist updated.
+- **Financial/security scope:** Server fees, SUB50, entry-paid gate, signed contract, idempotency, provider verification, session ownership and environment separation retained. No schema, credentials or access policies changed. No real money, email or SMS sent.
+- **Validation:** Targeted optional-email API and UI checks added for omitted/empty/whitespace email, malformed/types/length, trimmed email, private email-only records, server fee authority, safe checkout reuse, field placement and retained contract identity. Full npm test suite passed, build succeeded with 97 assets, and npm audit --omit=dev reported zero known vulnerabilities. All tests used synthetic local records and mocked provider responses.
+- **Status:** Implemented and regression-verified; deployment and device confirmation pending. Main and square-sandbox commit identifiers follow in the release verification addendum.
+
+
 ## BUG-2026-10-04-002 — Major member-support and private-browser compatibility update
 
 - **Status:** Patched; automated flow checks passed. Deployment verification recorded below. Physical Firefox Android, Safari private mode, native notification delivery and client confirmation remain required before marking those reports resolved.

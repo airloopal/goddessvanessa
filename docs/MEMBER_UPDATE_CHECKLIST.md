@@ -5,7 +5,7 @@ Use sandbox first. No live charges are required for routine verification.
 | Check | Automated evidence | Device/user confirmation |
 |---|---|---|
 | Correct server fee and SUB50 discount; one charge identity | Payment regression suite passed | Test Square sandbox entry and signed contract |
-| Full name, email and phone before new paid entry | Server validation and private records | New application; incomplete fields must block |
+| Optional email below tribute selection | Blank entry email accepted; malformed supplied email rejected; private records | Continue with blank email; check one field below tribute choices. Name/email remain required at contract signing |
 | Video verification stays private to the requester | Upload signatures, ownership and reply visibility checks | Select original MP4/MOV/WebM, upload, preview, send and view as that Sub |
 | Wrong photo choice produces clear instructions | JPEG and HEIC rejection | Select a thumbnail and then the original video |
 | Contract amounts and Account control fit mobile | Scoped responsive CSS and accessible name | Check 320, 375, 390 px and enlarged text |

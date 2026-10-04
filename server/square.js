@@ -110,8 +110,12 @@ async function squareAPI(request,env,url,{user,owner}){
  plan=squarePriced(plan,promo);
  const key=await squareKey(env,user,body.stage);
  let r=await squareRecord(env,key);
- if(body.stage==='entry'&&!r){const c=body.contact;if(!c||typeof c.name!=='string'||c.name.trim().length<2||c.name.length>100||typeof c.email!=='string'||c.email.length>254||!/^\S+@[^\s@]+\.[^\s@]+$/.test(c.email)||typeof c.phone!=='string'||! /^[+0-9 ()-]{7,32}$/.test(c.phone)||c.phone.replace(/\D/g,'').length<7)return json({error:'Enter your full name, email and phone number before paying.'},400);
- await db(env).prepare('INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?) ON CONFLICT(id) DO UPDATE SET content=excluded.content,revision=prototype_settings.revision+1,updated_at=excluded.updated_at').bind('sub-contact:'+user,JSON.stringify({name:c.name.trim(),email:c.email.trim(),phone:c.phone.trim(),pathId:config.paths.some(p=>p.id===body.pathId)?body.pathId:null}),new Date().toISOString()).run();email=c.email.trim();}
+ if(body.stage==='entry'&&!r){const c=body.contact;
+ if(c!==undefined&&(!c||typeof c!=='object'||Array.isArray(c)))return json({error:'Enter a valid email address or leave it blank.'},400);
+ const supplied=c?.email;if(supplied!==undefined&&typeof supplied!=='string')return json({error:'Enter a valid email address or leave it blank.'},400);
+ const optionalEmail=(supplied||'').trim();if(optionalEmail&&(optionalEmail.length>254||!/^\S+@[^\s@]+\.[^\s@]+$/.test(optionalEmail)))return json({error:'Enter a valid email address or leave it blank.'},400);
+ await db(env).prepare('INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?) ON CONFLICT(id) DO UPDATE SET content=excluded.content,revision=prototype_settings.revision+1,updated_at=excluded.updated_at').bind('sub-contact:'+user,JSON.stringify({email:optionalEmail,pathId:config.paths.some(p=>p.id===body.pathId)?body.pathId:null}),new Date().toISOString()).run();email=optionalEmail||null;}
+
  if(!r){
   const initial={method:embedded?'embedded':'hosted',user,stage:body.stage,plan,agreementId,mode,status:'pending',idempotencyKey:crypto.randomUUID(),createdAt:new Date().toISOString()};
   // Return to the same site that owns the host-only application cookie.

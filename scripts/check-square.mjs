@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import vm from 'node:vm';
 import {PGlite} from '@electric-sql/pglite';
 import {database} from '../server/platform/database.js';
 import worker from '../dist/server/index.js';
@@ -22,7 +23,7 @@ async function call(path,{method='GET',data,user='applicant',origin='https://aca
 }
 async function webhook(id,{bad=false,type='payment.updated'}={}){const body=JSON.stringify({type,data:{object:type.startsWith('refund.')?{refund:{payment_id:id}}:{payment:{id}}}});const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SQUARE_WEBHOOK_SIGNATURE_KEY),{name:'HMAC',hash:'SHA-256'},false,['sign']);const signature=Buffer.from(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(env.SQUARE_WEBHOOK_URL+body))).toString('base64');const r=await worker.fetch(new Request(env.SQUARE_WEBHOOK_URL,{method:'POST',body,headers:{'x-square-hmacsha256-signature':bad?'bad':signature}}),env);return r.status;}
 function complete(orderId,amount){const id='payment-'+orderId,order=orders.get(orderId);const now=new Date().toISOString();payments.set(id,{id,order_id:orderId,location_id:'location',status:'COMPLETED',amount_money:{amount,currency:'GBP'},total_money:{amount,currency:'GBP'},updated_at:now,receipt_url:'https://squareup.com/receipt/example'});order.tenders=[{payment_id:id}];return id;}
-assert.equal((await call('payments/checkout',{method:'POST',user:'contact-required',data:{stage:'entry',planId:'basic',revision:0}})).status,400,'a new entry requires contact');assert.equal((await call('payments/checkout',{method:'POST',user:'contact-required',data:{stage:'entry',planId:'basic',revision:0,contact:{name:'Test',email:'bad',phone:'123'}}})).status,400,'invalid contact never reaches Square');
+
 const post=(stage,planId,extras={})=>call('payments/checkout',{method:'POST',data:{stage,planId,revision:0,amount:1,contact:{name:'Test Sub',email:'sub@example.test',phone:'+447700900123'}},...extras});
 assert.equal((await post('entry','basic',{origin:'https://evil.test'})).status,403);
 assert.equal((await post('contract','month')).status,409);
@@ -184,5 +185,28 @@ const events=await call('/api/chat/notifications?after=0',{user:'owner'});assert
 assert.equal((await call('/api/chat/notifications?after=-1',{user:'owner'})).status,400);
 assert.equal((await call('/api/chat/notifications',{user:'owner'})).data.events.length,0);
 console.log('Launch checks passed: SUB50 prices/signed agreement/charge, invalid codes, pause/resume session preservation, blocked uploads and private notification feed.');
+
+// Entry contact is optional; malformed supplied email is rejected before Square.
+const beforeOptional=creations;
+for(const contact of [{email:'bad'},{email:42},{email:'a'.repeat(255)+'@example.test'},null,[]]){
+ const result=await call('payments/checkout',{method:'POST',user:'invalid-optional-email',data:{stage:'entry',planId:'basic',revision:0,contact}});
+ assert.equal(result.status,400);assert.equal(creations,beforeOptional,'invalid optional email never reaches Square');
+}
+for(const [index,contact] of [undefined,{email:''},{email:'   '},{email:'  optional@example.test  ',name:'ignore',phone:'ignore'}].entries()){
+ const user='optional-email-'+index;
+ const result=await call('payments/checkout',{method:'POST',user,data:{stage:'entry',planId:'basic',revision:0,contact,amount:1}});assert.equal(result.status,200,JSON.stringify(result.data));
+ const self=await call('payments',{user});assert.equal(self.data.entry.plan.amount,8500,'optional contact cannot override price');
+ assert.equal(self.data.contact.email,index===3?'optional@example.test':'');assert.equal(self.data.contact.name,undefined);assert.equal(self.data.contact.phone,undefined);
+ const recordRow=await env.DB.prepare('SELECT content FROM prototype_settings WHERE id=?').bind(orders.get('order-'+creations).reference_id).first();
+ const request=JSON.parse(recordRow.content).request;assert.equal(request.pre_populated_data?.buyer_email,index===3?'optional@example.test':undefined);
+ assert.equal((await call('payments/checkout',{method:'POST',user,data:{stage:'entry',planId:'basic',revision:0}})).data.url,result.data.url,'same checkout safely resumes without contact');
+}
+assert.equal((await call('payments',{user:'unrelated-optional-email'})).data.contact,null,'optional email remains session-private');
+const ui={course:config,learnerName:'',screen:'entry',eduEscape:s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;')};vm.createContext(ui);vm.runInContext(fs.readFileSync('public/education-review.js','utf8'),ui);
+vm.runInContext("entryId='basic'",ui);assert.equal(vm.runInContext('contactValid()',ui),true,'blank optional email allows entry');
+const markup=vm.runInContext('entryChoices()',ui);assert.ok(markup.indexOf('id="entry-email"')>markup.indexOf('name="entry-plan"'));assert.equal((markup.match(/type="email"/g)||[]).length,1);assert.ok(!markup.includes('Your contact details')&&!markup.includes('Phone number')&&!markup.includes('Full name'));assert.ok(!/id="entry-email"[^>]*required/.test(markup));
+vm.runInContext("learnerEmail='bad'",ui);assert.equal(vm.runInContext('contactValid()',ui),false);vm.runInContext("learnerEmail='  optional@example.test  '",ui);assert.equal(vm.runInContext('contactValid()',ui),true);
+assert.equal(vm.runInContext('reviewValid()',ui),false,'optional entry email does not waive signed-contract identity requirements');
+console.log('Optional entry email checks passed: blank/missing/whitespace accepted, malformed/type/length rejected, private email-only records, unchanged prices and idempotency, optional field after plans, contract identity retained.');
 
 await sql.close();console.log('Square checks passed: server prices, duplicate checkout, stage gates, isolated users/environments, webhook signatures, amount checks, reconciliation, refunds, admin visibility and calendar expiry.');

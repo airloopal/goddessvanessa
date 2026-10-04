@@ -49,7 +49,7 @@ function squareReportBankIssue(stage,error){
 async function squareHostedRecovery(stage,button,message){
  const alternative=button.parentElement.querySelector('[data-square-hosted-recovery]');if(alternative)alternative.disabled=true;
  button.disabled=true;squareNotice(message,'loading','Opening Square checkout','You’ll return here after completing payment.');squareSaveDraft();
- try{await squareDisposeCard();const result=await eduAPI('payments/fallback','POST',{stage,planId:stage==='entry'?entryId:contractId,revision:configRevision,promoCode:squarePromoCode,pathId,contact:{name:learnerName.trim(),email:learnerEmail.trim(),phone:learnerPhone.trim()}});
+ try{await squareDisposeCard();const result=await eduAPI('payments/fallback','POST',{stage,planId:stage==='entry'?entryId:contractId,revision:configRevision,promoCode:squarePromoCode,pathId,contact:{email:learnerEmail.trim()}});
   if(result.paid){await squareRefresh();if(stage==='entry')squareEntryDialog();return;}
   const url=new URL(result.url);if(url.protocol!=='https:'||url.hostname!==(squareState.mode==='sandbox'?'sandbox.square.link':'square.link'))throw Error('The checkout address could not be verified.');location.assign(url.href);
  }catch(error){squareNotice(message,'retry','Checkout needs another try',error.message);squareButton(button,'retry','Continue on Square');button.onclick=()=>squareHostedRecovery(stage,button,message);button.disabled=false;if(alternative)alternative.disabled=false;}
@@ -88,7 +88,7 @@ async function squareMountCard(stage,buttonId,statusId){
  await squareDisposeCard();const version=squareFormVersion,button=document.getElementById(buttonId),message=document.getElementById(statusId);
  if(!button||!message)return;button.disabled=true;squareNotice(message,'loading','Preparing secure checkout','Your card form will appear here.');
  try{
-  const prepared=await eduAPI('payments/prepare','POST',{stage,planId:stage==='entry'?entryId:contractId,revision:configRevision,promoCode:squarePromoCode,pathId,contact:{name:learnerName.trim(),email:learnerEmail.trim(),phone:learnerPhone.trim()}});
+  const prepared=await eduAPI('payments/prepare','POST',{stage,planId:stage==='entry'?entryId:contractId,revision:configRevision,promoCode:squarePromoCode,pathId,contact:{email:learnerEmail.trim()}});
   if(version!==squareFormVersion||!button.isConnected)return;
   if(prepared.paid){await squareRefresh();if(stage==='entry')squareEntryDialog();return;}
   if(prepared.hosted){squareNotice(message,'retry','Continue your secure checkout','Complete payment on Square, then return here.');squareButton(button,'card','Continue on Square');button.onclick=()=>squareHostedRecovery(stage,button,message);button.disabled=false;return;}

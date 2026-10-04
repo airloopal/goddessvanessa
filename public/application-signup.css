@@ -28,3 +28,5 @@ body.restored-application{background:radial-gradient(ellipse at 5% 10%,#f9deec 0
 
 /* Stable contract prices at mobile widths and enlarged text sizes. */
 .restored-application .agreement-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.restored-application .agreement-option{min-width:0;display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;padding:18px!important;overflow-wrap:anywhere}.restored-application .agreement-option input{grid-column:1;grid-row:1;margin:3px 0}.restored-application .agreement-option>span{grid-column:2;min-width:0}.restored-application .agreement-option>strong{grid-column:1/-1;display:block;position:static!important;font-size:clamp(22px,5vw,32px)!important;white-space:nowrap;line-height:1.2}.restored-application .agreement-option>small{grid-column:1/-1}@media(max-width:520px){.restored-application .agreement-grid{grid-template-columns:1fr}}
+
+.entry-email{margin-top:1.25rem;max-width:36rem}.entry-email input{width:100%;box-sizing:border-box}

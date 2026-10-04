@@ -6,7 +6,7 @@ async function uploadPrivateFile(file,params,id){
  const api=async(path,data)=>{const r=await fetch('/api/media/'+path,{method:'POST',headers,body:JSON.stringify(data)});const result=await r.json();if(!r.ok)throw Error(result.error||'Upload failed. Please retry.');return result;};
  const ready=await api('prepare',{...params,id,name:file.name,size:file.size,type:file.type||'application/octet-stream'});
  if(ready.file)return ready;
- if(ready.uploadUrl){const r=await fetch(ready.uploadUrl,{method:'PUT',headers:{'Content-Type':file.type||'application/octet-stream','x-upsert':'false'},body:file});if(!r.ok)throw Error('The file could not be uploaded. Choose the file again and retry.');}
+ if(ready.uploadUrl){try{const r=await fetch(ready.uploadUrl,{method:'PUT',headers:{'Content-Type':file.type||'application/octet-stream','x-upsert':'false'},body:file});if(!r.ok)throw Error('Upload interrupted.');}catch{try{return await api('complete',{id});}catch{throw Error('The upload was interrupted. Keep this tab open and retry sending the same selected file.');}}}
  return api('complete',{id});
 }
 function mediaMessage(file){if(!file||!/^\/api\/media\/[a-f0-9-]{36}$/.test(file.url))return '';const url=eduEscape(file.url),name=eduEscape(file.name);let content='';if(file.mime.startsWith('image/'))content='<a href="'+url+'?download=1" target="_blank" rel="noopener"><img loading="lazy" src="'+url+'" alt="'+name+'"></a>';else if(file.mime.startsWith('video/'))content='<video controls playsinline preload="none" src="'+url+'" aria-label="'+name+'"></video>';else if(file.mime.startsWith('audio/'))return voiceNoteMarkup(url);return '<div class="message-attachment">'+content+'<a href="'+url+'?download=1" target="_blank" rel="noopener">'+name+' · '+(file.size/1048576).toFixed(1)+' MB</a></div>';}
@@ -46,7 +46,7 @@ function applyChatBackground(host,background){
  const line=dark?'rgba(255,255,255,.07)':'rgba(0,0,0,.06)';host.setAttribute('data-conversation-background','');host.style.setProperty('--conversation-color',color);
  host.style.setProperty('--conversation-image',background.pattern==='grid'?'linear-gradient('+line+' 1px,transparent 1px),linear-gradient(90deg,'+line+' 1px,transparent 1px)':background.pattern==='dots'?'radial-gradient('+line+' 1px,transparent 1px)':'none');
  host.style.setProperty('--conversation-size',background.pattern==='grid'?'32px 32px':'22px 22px');
- host.style.setProperty('--conversation-repeat',photo?'no-repeat':'repeat');
+ host.style.setProperty('--conversation-repeat',photo?'no-repeat':'repeat');if(!photo&&background.pattern==='emojis'){host.style.setProperty('--conversation-image','url("/images/brand/chat-emojis.svg")');host.style.setProperty('--conversation-size','180px 180px');}
  if(photo){const tint=background.overlay==='pink'?'rgba(174,61,112,.58)':'rgba(66,8,34,.72)';host.style.setProperty('--conversation-image','linear-gradient('+tint+','+tint+'),url("/api/media/'+imageId+'")');host.style.setProperty('--conversation-size','cover');}host.style.setProperty('--chat-muted',dark?'#c4cbd4':'#46515d');host.style.setProperty('--date-bg',dark?'#00000055':'#ffffffaa');
 }
 

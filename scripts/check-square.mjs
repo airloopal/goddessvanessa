@@ -22,7 +22,8 @@ async function call(path,{method='GET',data,user='applicant',origin='https://aca
 }
 async function webhook(id,{bad=false,type='payment.updated'}={}){const body=JSON.stringify({type,data:{object:type.startsWith('refund.')?{refund:{payment_id:id}}:{payment:{id}}}});const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SQUARE_WEBHOOK_SIGNATURE_KEY),{name:'HMAC',hash:'SHA-256'},false,['sign']);const signature=Buffer.from(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(env.SQUARE_WEBHOOK_URL+body))).toString('base64');const r=await worker.fetch(new Request(env.SQUARE_WEBHOOK_URL,{method:'POST',body,headers:{'x-square-hmacsha256-signature':bad?'bad':signature}}),env);return r.status;}
 function complete(orderId,amount){const id='payment-'+orderId,order=orders.get(orderId);const now=new Date().toISOString();payments.set(id,{id,order_id:orderId,location_id:'location',status:'COMPLETED',amount_money:{amount,currency:'GBP'},total_money:{amount,currency:'GBP'},updated_at:now,receipt_url:'https://squareup.com/receipt/example'});order.tenders=[{payment_id:id}];return id;}
-const post=(stage,planId,extras={})=>call('payments/checkout',{method:'POST',data:{stage,planId,revision:0,amount:1},...extras});
+assert.equal((await call('payments/checkout',{method:'POST',user:'contact-required',data:{stage:'entry',planId:'basic',revision:0}})).status,400,'a new entry requires contact');assert.equal((await call('payments/checkout',{method:'POST',user:'contact-required',data:{stage:'entry',planId:'basic',revision:0,contact:{name:'Test',email:'bad',phone:'123'}}})).status,400,'invalid contact never reaches Square');
+const post=(stage,planId,extras={})=>call('payments/checkout',{method:'POST',data:{stage,planId,revision:0,amount:1,contact:{name:'Test Sub',email:'sub@example.test',phone:'+447700900123'}},...extras});
 assert.equal((await post('entry','basic',{origin:'https://evil.test'})).status,403);
 assert.equal((await post('contract','month')).status,409);
 assert.equal((await post('entry','basic',{extraEnv:{SQUARE_ENVIRONMENT:'production'}})).status,503);
@@ -89,7 +90,7 @@ env.SQUARE_FETCH=async(url,options)=>{
  }
  return hostedFetch(url,options);
 };
-const embedded=(route,user,data={})=>call('payments/'+route,{method:'POST',user,data:{stage:'entry',planId:'basic',revision:0,...data}});
+const embedded=(route,user,data={})=>call('payments/'+route,{method:'POST',user,data:{stage:'entry',planId:'basic',revision:0,contact:{name:'Test Sub',email:'sub@example.test',phone:'+447700900123'},...data}});
 assert.equal((await embedded('prepare','card-user',{extra:'ignored'})).status,200);
 assert.equal((await embedded('charge','card-user',{attemptId:crypto.randomUUID(),sourceId:'CASH'})).status,400);
 const cardBody={attemptId:crypto.randomUUID(),sourceId:'cnon:valid',amount:1};
@@ -155,7 +156,7 @@ assert.equal((await embedded('fallback','fallback-uncertain')).status,409);
 // Race fallback against a charge: never authorize both paths.
 await embedded('prepare','fallback-race');const raceBefore=charges;
 const recoveryRace=await Promise.all([embedded('fallback','fallback-race'),embedded('charge','fallback-race',{attemptId:crypto.randomUUID(),sourceId:'cnon:valid'})]);
-assert.ok(recoveryRace.some(r=>r.status===409));assert.ok(charges-raceBefore<=1);
+assert.ok(recoveryRace.some(r=>r.status===409)||recoveryRace[0].data.paid===true,'race loser rejects or observes the same completed payment');assert.ok(charges-raceBefore<=1);if(charges>raceBefore)assert.ok(!recoveryRace[0].data.url,'a successful charge must not also create a hosted link');
 const diagnostic=issue=>call('payments/diagnostic',{method:'POST',user:'fallback-user',data:{stage:'entry',issue}});
 assert.equal((await diagnostic('bank_verification_timeout')).status,200);
 assert.equal((await diagnostic('arbitrary private text')).status,400);

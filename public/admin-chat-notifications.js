@@ -13,5 +13,5 @@ window.AdminChatNotifications=(()=>{
  if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',event=>{if(event.data?.type==='open-chat')open(event.data.studentId).catch(()=>{});});
  document.addEventListener('dashboard-ready',()=>{const id=new URLSearchParams(location.search).get('conversation');if(id)open(id).catch(()=>{});poll();mount();});
  setInterval(poll,5000);document.addEventListener('visibilitychange',poll);
- return {mount,poll};
+ async function paidAlert(event){if(!enabled||!supported()||Notification.permission!=='granted')return;try{const reg=await worker();await reg.showNotification(previews?event.name:'Paid phase update',{body:(event.stage==='entry'?'Entry':'Contract')+' phase · '+(event.status==='paid'?'Payment confirmed':'Payment needs review'),icon:'/apple-touch-icon.png',tag:'paid-'+event.id+'-'+event.status,data:{section:'applications'}});}catch{}}return {mount,poll,paidAlert};
 })();

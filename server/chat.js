@@ -11,9 +11,10 @@ async function chatLimit(env,key,max,period){const now=Date.now();const row=awai
 async function chatAPI(request,env,url){
  const path=url.pathname.slice('/api/chat/'.length),method=request.method,owner=!!request.headers.get('oai-authenticated-user-id')&&request.headers.get('oai-authenticated-user-email')?.toLowerCase()===EDUCATION_OWNER&&request.headers.get('x-chat-role')!=='student',now=Date.now();
  let body={};if(!['GET','HEAD'].includes(method)){body=await educationBody(request,url,8000);if(body instanceof Response)return body;}
- if(path==='capabilities'&&method==='GET')return json({email:false,codeDelivery:'platform',uploads:!!env.BUCKET,maxUploadBytes:MEDIA_MAX});
+ if(path==='capabilities'&&method==='GET'){const response=json({email:false,codeDelivery:'platform',uploads:!!env.BUCKET,maxUploadBytes:MEDIA_MAX});response.headers.set('Set-Cookie','__Host-vanessa_probe=1; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=120');return response;}
 
  if(path==='session'&&method==='POST'){
+  if(body.cookieProbe===true&&!/(?:^|;\s*)__Host-vanessa_probe=1(?:;|$)/.test(request.headers.get('cookie')||''))return json({error:'This browser is blocking the session cookie. Enable cookies for this site and retry. Your access code has not been used.'},400);
   const ip=request.headers.get('cf-connecting-ip')||'unknown';if(!await chatLimit(env,'login:'+await chatHash(ip),20,15*60*1000))return json({error:'Too many attempts. Try again in 15 minutes.'},429);
   const code=typeof body.code==='string'?body.code.trim().toLowerCase():'';
   if(!/^[a-f0-9]{48}$/.test(code))return json({error:'This code is invalid or has expired. Ask Goddess for a new code.'},401);
@@ -32,6 +33,7 @@ async function chatAPI(request,env,url){
  if(path==='request-code'||path==='code-requests')return chatCodeRequests(request,env,url,{owner,student,body,method,now,path});
  if(path==='session'&&method==='GET')return student?json({student:{id:student.id,name:student.name,email:student.email}}):json({error:'Enter your access code to open your conversation.'},401);
  if(path==='notifications'&&method==='GET'){if(!owner)return json({error:'Goddess access required.'},403);const latest=await db(env).prepare('SELECT COALESCE(MAX(seq),0) AS seq FROM chat_messages').first();const after=Number(url.searchParams.get('after')??latest.seq);if(!Number.isSafeInteger(after)||after<0)return json({error:'Invalid notification cursor.'},400);const rows=await db(env).prepare("SELECT m.seq,m.id,m.student_id AS student_id,s.name,m.body AS text,m.attachment_id,f.mime,f.name AS file_name FROM chat_messages m JOIN chat_students s ON s.id=m.student_id LEFT JOIN media_files f ON f.id=m.attachment_id WHERE m.seq>? AND (m.sender='client' OR m.id LIKE 'throne-gift:%') ORDER BY m.seq ASC LIMIT 100").bind(after).all();const events=rows.results.map(r=>({...r,kind:r.id.startsWith('throne-gift:')?'gift':r.mime?.startsWith('image/')?'image':r.mime?.startsWith('video/')?'video':r.mime?.startsWith('audio/')?'voice':'message'}));return json({events,cursor:events.length===100?events.at(-1).seq:latest.seq});}
+ if(['profile','gallery','paid-activity','visits','visitor-stats'].includes(path))return chatSupport(request,env,url,{owner,student,body,path,method,now});
  if(path==='students'){
   if(!owner)return json({error:'Goddess access required.'},403);
   if(method==='GET'){const rows=await db(env).prepare("SELECT s.id,s.name,s.email,s.status,COALESCE((SELECT (content::jsonb->>'enabled')::boolean FROM prototype_settings WHERE id='chat-control:'||s.id),true) AS conversation_enabled,s.created_at,(SELECT body FROM chat_messages WHERE student_id=s.id ORDER BY seq DESC LIMIT 1) AS last_message,(SELECT MAX(seq) FROM chat_messages WHERE student_id=s.id) AS last_seq,(SELECT COUNT(*) FROM chat_messages WHERE student_id=s.id AND sender='client' AND seq>COALESCE((SELECT MAX(read_seq) FROM chat_state WHERE student_id=s.id AND role='admin'),0)) AS unread FROM chat_students s ORDER BY last_seq DESC NULLS LAST,s.created_at DESC LIMIT 200").all();return json({students:rows.results||[]});}
@@ -60,7 +62,7 @@ async function chatAPI(request,env,url){
   if(!owner)return json({error:'Only Vanessa can change conversation backgrounds.'},403);
   if(method==='GET')return json({background:await chatBackground(env,id)});
   if(method!=='PUT')return json({error:'Method not allowed'},405);
-  if((body.color!==null&&(typeof body.color!=='string'||!/^#[0-9a-f]{6}$/i.test(body.color)))||!['plain','dots','grid'].includes(body.pattern)||!Number.isInteger(body.revision)||body.revision<0)return json({error:'Choose a colour and pattern.'},400);
+  if((body.color!==null&&(typeof body.color!=='string'||!/^#[0-9a-f]{6}$/i.test(body.color)))||!['plain','dots','grid','emojis'].includes(body.pattern)||!Number.isInteger(body.revision)||body.revision<0)return json({error:'Choose a colour and pattern.'},400);
   const imageId=body.imageId||null,overlay=body.overlay||'burgundy';
   if(!['pink','burgundy'].includes(overlay))return json({error:'Choose a pink or burgundy overlay.'},400);
   if(imageId){const file=typeof imageId==='string'&&await db(env).prepare("SELECT id FROM media_files WHERE id=? AND student_id=? AND scope='background' AND role='admin'").bind(imageId,id).first();if(!file)return json({error:'Upload an image for this conversation.'},400);}
@@ -96,7 +98,7 @@ async function chatAPI(request,env,url){
  }
  if(path==='account'&&!owner){
   if(method==='PATCH'&&body.action==='deactivate'){await db(env).batch([db(env).prepare("UPDATE chat_students SET status='suspended',code_hash=NULL,code_expires=0 WHERE id=?").bind(id),db(env).prepare('DELETE FROM chat_sessions WHERE student_id=?').bind(id)]);return json({ok:true});}
-  if(method==='DELETE'&&body.confirm===true){await mediaDeleteStudent(env,id);await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind('chat-background:'+id).run();await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind('code-request:'+id).run();await db(env).batch(['chat_messages','chat_state','chat_sessions'].map(table=>db(env).prepare('DELETE FROM '+table+' WHERE student_id=?').bind(id)).concat([db(env).prepare('DELETE FROM chat_students WHERE id=?').bind(id)]));const response=json({ok:true});response.headers.set('Set-Cookie',chatCookie('',0));return response;}
+  if(method==='DELETE'&&body.confirm===true){await mediaDeleteStudent(env,id);await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind('chat-background:'+id).run();await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind('code-request:'+id).run();await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind('sub-profile:'+id).run();await db(env).batch(['chat_messages','chat_state','chat_sessions'].map(table=>db(env).prepare('DELETE FROM '+table+' WHERE student_id=?').bind(id)).concat([db(env).prepare('DELETE FROM chat_students WHERE id=?').bind(id)]));const response=json({ok:true});response.headers.set('Set-Cookie',chatCookie('',0));return response;}
  }
  return json({error:'Not found'},404);
 }
@@ -143,3 +145,45 @@ async function chatCodeRequests(request,env,url,{owner,student,body,method,now,p
 }
 
 async function chatBackground(env,id){const row=await db(env).prepare('SELECT content,revision FROM prototype_settings WHERE id=?').bind('chat-background:'+id).first();return row?{...JSON.parse(row.content),revision:row.revision}:{color:null,pattern:'dots',revision:0};}
+
+// Owner-only support data uses the existing private schema; no public profiles.
+async function chatSupport(request,env,url,{owner,student,body,path,method,now}){
+ if(path==='visits'&&method==='POST'){
+  if(typeof body.id!=='string'||! /^[a-f0-9-]{36}$/.test(body.id))return json({error:'Invalid visit.'},400);
+  const ip=await chatHash(request.headers.get('cf-connecting-ip')||'unknown');
+  if(!await chatLimit(env,'visit:'+ip,180,3600000)||!await chatLimit(env,'visits-total',20000,3600000))return json({error:'Visit limit reached.'},429);
+  const key='site-visit:'+await chatHash(body.id),stamp=new Date(now).toISOString();
+  await db(env).prepare('INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?) ON CONFLICT(id) DO UPDATE SET content=excluded.content,updated_at=excluded.updated_at').bind(key,JSON.stringify({studentId:student?.id||null}),stamp).run();
+  await db(env).prepare("DELETE FROM prototype_settings WHERE id LIKE 'site-visit:%' AND updated_at<?").bind(new Date(now-86400000).toISOString()).run();return json({ok:true});
+ }
+ if(!owner)return json({error:'Goddess access required.'},403);
+ if(path==='visitor-stats'&&method==='GET'){
+  const rows=await db(env).prepare("SELECT COUNT(*) AS visits,COUNT(*) FILTER(WHERE updated_at>?) AS online FROM prototype_settings WHERE id LIKE 'site-visit:%' AND updated_at>=?").bind(new Date(now-90000).toISOString(),new Date(new Date(now).setUTCHours(0,0,0,0)).toISOString()).first();
+  const people=await db(env).prepare("SELECT DISTINCT s.id,s.name FROM prototype_settings p JOIN chat_students s ON s.id=p.content::jsonb->>'studentId' WHERE p.id LIKE 'site-visit:%' AND p.updated_at>? AND s.status='active'").bind(new Date(now-90000).toISOString()).all();return json({visits:Number(rows.visits),online:Number(rows.online),subs:people.results,windowSeconds:90});
+ }
+ if(path==='paid-activity'&&method==='GET'){
+  const rows=await db(env).prepare("SELECT p.id,p.content,p.updated_at,c.content AS contact,e.name,e.reference,s.id AS student_id FROM prototype_settings p LEFT JOIN prototype_settings c ON c.id='sub-contact:'||(p.content::jsonb->>'user') LEFT JOIN education_enrolments e ON e.user_id=p.content::jsonb->>'user' LEFT JOIN chat_students s ON s.user_id=p.content::jsonb->>'user' WHERE p.id LIKE ? AND p.content::jsonb->>'status' IN ('paid','refund_review') ORDER BY p.updated_at DESC LIMIT 200").bind('sq-'+squareMode(env)+'-%').all();
+  return json({events:rows.results.map(row=>{const p=JSON.parse(row.content),c=row.contact?JSON.parse(row.contact):{};return {id:row.id,name:c.name||row.name||'Entry applicant',email:c.email||'',phone:c.phone||'',reference:row.reference||null,studentId:row.student_id||null,stage:p.stage,status:p.status,amount:p.plan.amount,plan:p.plan.name,at:p.paidAt||p.createdAt||row.updated_at};})});
+ }
+ const id=url.searchParams.get('student')||body.studentId;
+ if(typeof id!=='string'||! /^[a-f0-9-]{36}$/.test(id))return json({error:'Choose a Sub.'},400);
+ const target=await db(env).prepare('SELECT id,user_id,name,email,status,created_at FROM chat_students WHERE id=?').bind(id).first();if(!target)return json({error:'Sub not found.'},404);
+ if(path==='gallery'&&method==='GET'){
+  const before=Number(url.searchParams.get('before')||Number.MAX_SAFE_INTEGER);if(!Number.isSafeInteger(before)||before<1)return json({error:'Invalid gallery cursor.'},400);
+  const rows=await db(env).prepare("SELECT m.seq,m.sender,m.created_at,f.id,f.name,f.mime,f.size FROM chat_messages m JOIN media_files f ON f.id=m.attachment_id WHERE m.student_id=? AND m.seq<? AND f.scope='chat' ORDER BY m.seq DESC LIMIT 60").bind(id,before).all();return json({files:rows.results.map(f=>({...mediaDescriptor(f),seq:f.seq,from:f.sender,at:f.created_at})),hasMore:rows.results.length===60});
+ }
+ if(path==='profile'){
+  const key='sub-profile:'+id;
+  if(method==='PUT'){
+   if(Object.keys(body).some(k=>!['studentId','notes','revision'].includes(k))||typeof body.notes!=='string'||body.notes.length>4000||!Number.isSafeInteger(body.revision)||body.revision<0)return json({error:'Use notes of up to 4,000 characters.'},400);
+   const value=JSON.stringify({notes:body.notes}),stamp=new Date(now).toISOString();
+   const saved=body.revision===0?await db(env).prepare('INSERT INTO prototype_settings(id,content,revision,updated_at) VALUES(?,?,1,?) ON CONFLICT(id) DO NOTHING').bind(key,value,stamp).run():await db(env).prepare('UPDATE prototype_settings SET content=?,revision=revision+1,updated_at=? WHERE id=? AND revision=?').bind(value,stamp,key,body.revision).run();
+   return saved.meta.changes?json({ok:true,revision:body.revision+1}):json({error:'These notes changed in another window. Reopen the profile before saving.'},409);
+  }
+  if(method==='GET'){
+   const row=await db(env).prepare('SELECT content,revision FROM prototype_settings WHERE id=?').bind(key).first(),contact=await db(env).prepare('SELECT content FROM prototype_settings WHERE id=?').bind('sub-contact:'+target.user_id).first(),enrol=await db(env).prepare('SELECT reference,answers,snapshot,created_at FROM education_enrolments WHERE user_id=?').bind(target.user_id).first(),payments=await squarePaymentState(env,target.user_id);
+   const {user_id,...person}=target;return json({profile:{...person,contact:contact?JSON.parse(contact.content):{},application:enrol?{...enrol,answers:JSON.parse(enrol.answers),snapshot:JSON.parse(enrol.snapshot)}:null,payments:{entry:squarePublic(payments.entry),contract:squarePublic(payments.contract)},notes:row?JSON.parse(row.content).notes:'',revision:row?.revision||0}});
+  }
+ }
+ return json({error:'Method not allowed.'},405);
+}

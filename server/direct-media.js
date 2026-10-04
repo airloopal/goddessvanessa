@@ -40,7 +40,7 @@ async function directMediaAPI(request,env,url){
   const file=await db(env).prepare('SELECT * FROM media_files WHERE id=?').bind(id).first();if(file)return json({file:mediaDescriptor(file)});
   // Retry completion after a lost response, rather than allowing the upload token to be extended forever.
   if(previous.expires_at<=Date.now())return json({error:'Upload expired. Choose the file again.'},410);
-  return json({id,completeOnly:true});
+  return json({id,completeOnly:true,uploadUrl:await env.BUCKET.signUpload(previous.storage_key)});
  }
  if(!await chatLimit(env,'prepare:'+actor,20,3600000))return json({error:'Upload limit reached. Try again in an hour.'},429);
  const name=body.name.replace(/[\x00-\x1f\x7f/\\]/g,'_').slice(0,150)||'Attachment',key=await chatHash(actor)+'/'+id;

@@ -66,8 +66,8 @@ async function squareAPI(request,env,url,{user,owner}){
  if(url.pathname==='/api/education/payments/webhook')return squareWebhook(request,env);
  const mode=squareMode(env),ready=squareReady(env);
  if(url.pathname==='/api/education/payments'&&request.method==='GET'){
-  const state=user?await squarePaymentState(env,user):{};
-  return json({mode,ready,embeddedReady:ready&&!!env.SQUARE_APPLICATION_ID,applicationId:env.SQUARE_APPLICATION_ID||null,locationId:env.SQUARE_LOCATION_ID||null,entry:squarePublic(state.entry),contract:squarePublic(state.contract)});
+  const state=user?await squarePaymentState(env,user):{};const contact=user?await db(env).prepare('SELECT content FROM prototype_settings WHERE id=?').bind('sub-contact:'+user).first():null;
+  return json({contact:contact?JSON.parse(contact.content):null,mode,ready,embeddedReady:ready&&!!env.SQUARE_APPLICATION_ID,applicationId:env.SQUARE_APPLICATION_ID||null,locationId:env.SQUARE_LOCATION_ID||null,entry:squarePublic(state.entry),contract:squarePublic(state.contract)});
  }
  if(!user)return json({error:'Start your application in this browser first.'},401);
  if(request.method!=='POST')return json({error:'Method not allowed'},405);
@@ -110,6 +110,8 @@ async function squareAPI(request,env,url,{user,owner}){
  plan=squarePriced(plan,promo);
  const key=await squareKey(env,user,body.stage);
  let r=await squareRecord(env,key);
+ if(body.stage==='entry'&&!r){const c=body.contact;if(!c||typeof c.name!=='string'||c.name.trim().length<2||c.name.length>100||typeof c.email!=='string'||c.email.length>254||!/^\S+@[^\s@]+\.[^\s@]+$/.test(c.email)||typeof c.phone!=='string'||! /^[+0-9 ()-]{7,32}$/.test(c.phone)||c.phone.replace(/\D/g,'').length<7)return json({error:'Enter your full name, email and phone number before paying.'},400);
+ await db(env).prepare('INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?) ON CONFLICT(id) DO UPDATE SET content=excluded.content,revision=prototype_settings.revision+1,updated_at=excluded.updated_at').bind('sub-contact:'+user,JSON.stringify({name:c.name.trim(),email:c.email.trim(),phone:c.phone.trim(),pathId:config.paths.some(p=>p.id===body.pathId)?body.pathId:null}),new Date().toISOString()).run();email=c.email.trim();}
  if(!r){
   const initial={method:embedded?'embedded':'hosted',user,stage:body.stage,plan,agreementId,mode,status:'pending',idempotencyKey:crypto.randomUUID(),createdAt:new Date().toISOString()};
   // Return to the same site that owns the host-only application cookie.

@@ -7,7 +7,7 @@ function mediaType(bytes,claimed){const b=new Uint8Array(bytes),str=(a,n)=>Strin
  if(str(0,4)==='RIFF'&&str(8,4)==='WAVE')return 'audio/wav';
  if(str(0,4)==='OggS')return 'audio/ogg';
  if(str(0,3)==='ID3'||b[0]===255&&(b[1]&224)===224)return 'audio/mpeg';
- if(str(4,4)==='ftyp')return claimed==='audio/mp4'?'audio/mp4':'video/mp4';
+ if(str(4,4)==='ftyp'){const brand=str(8,4);if(!['isom','iso2','iso4','iso5','iso6','mp41','mp42','avc1','dash','M4V ','M4A ','qt  '].includes(brand))return null;return brand==='qt  '?'video/quicktime':claimed==='audio/mp4'?'audio/mp4':'video/mp4';}
  if(b[0]===26&&b[1]===69&&b[2]===223&&b[3]===163)return claimed.startsWith('audio/')?'audio/webm':'video/webm';
  if(str(0,5)==='%PDF-')return 'application/pdf';return null;
 }

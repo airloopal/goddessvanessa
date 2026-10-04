@@ -5,6 +5,7 @@ let squareState={mode:'off',ready:false,entry:null,contract:null};
 const squareEnabled=()=>!educationPreview&&squareState.mode!=='off';
 const squareEntryPaid=()=>squareState.entry?.status==='paid'&&squareState.entry.plan.id===entryId;
 const squareDraftKey='vanessa-square-application';
+async function squareFetchTimed(path,options,ms){if(typeof AbortSignal!=='undefined'&&typeof AbortSignal.timeout==='function')return fetch(path,{...options,signal:AbortSignal.timeout(ms)});if(typeof AbortController!=='function')return fetch(path,options);const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),ms);try{return await fetch(path,{...options,signal:controller.signal});}finally{clearTimeout(timer);}}
 function squareSaveDraft(){try{sessionStorage.setItem(squareDraftKey,JSON.stringify({pathId,entryId,contractId,answers,learnerName,learnerEmail,learnerPhone,screen,squarePromoCode}));}catch{/* Optional draft storage must never interrupt a payment. */}}
 async function squareInit(){
  squareState=await eduAPI('payments');if(!squareEnabled())return;
@@ -43,7 +44,7 @@ async function squareAuthenticationSurface(run){
 }
 function squareReportBankIssue(stage,error){
  const issue=error.code==='bank_verification_timeout'?'bank_verification_timeout':error.code==='bank_policy_blocked'?'bank_policy_blocked':'bank_verification_failed';
- void fetch('/api/education/payments/diagnostic',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({stage,issue}),signal:AbortSignal.timeout(5000)}).catch(()=>{});
+ void squareFetchTimed('/api/education/payments/diagnostic',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({stage,issue})},5000).catch(()=>{});
 }
 async function squareHostedRecovery(stage,button,message){
  const alternative=button.parentElement.querySelector('[data-square-hosted-recovery]');if(alternative)alternative.disabled=true;
@@ -101,7 +102,7 @@ async function squareMountCard(stage,buttonId,statusId){
    try{
     let sourceId=pendingSource;
     if(!attemptId){const result=await squareAuthenticationSurface(()=>squareTokenize(squareCard,{amount:(prepared.plan.amount/100).toFixed(2),currencyCode:'GBP',intent:'CHARGE',customerInitiated:true,sellerKeyedIn:false,billingContact:{...(learnerEmail?{email:learnerEmail}:{})}}));if(result.status!=='OK')throw Error(result.status==='Cancel'?'Verification cancelled. No payment was submitted.':'Please check your card details and try again.');if(version!==squareFormVersion||!button.isConnected)return;sourceId=result.token;pendingSource=sourceId;attemptId=crypto.randomUUID();}
-    const response=await fetch('/api/education/payments/charge',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({stage,planId:prepared.plan.id,revision:configRevision,promoCode:squarePromoCode,attemptId,...(sourceId?{sourceId}:{})}),signal:AbortSignal.timeout(25000)});
+    const response=await squareFetchTimed('/api/education/payments/charge',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({stage,planId:prepared.plan.id,revision:configRevision,promoCode:squarePromoCode,attemptId,...(sourceId?{sourceId}:{})}),},25000);
     const result=await response.json();
     if(!result.paid){if(result.retryCard){attemptId=null;await squareMountCard(stage,buttonId,statusId);squareNotice(message,'retry','Please try again',result.error||'Check your card details and retry.');return;}throw Error(result.error||'Your payment is being checked. Retry confirmation.');}
     await squareDisposeCard();squareState=await eduAPI('payments');entryReviewed=squareEntryPaid();

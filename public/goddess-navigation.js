@@ -11,7 +11,7 @@
  if(el.matches('a[target="_blank"],.status-links a'))return 'external';return null;
  }
  function decorate(){document.querySelectorAll('#dashboard-nav a,#dashboard-nav button,.dashboard-links a,.dashboard-links button,#dashboard-main .quiet,#dashboard-main .p-button,#status-main a,#status-main button,dialog button,#floating-chat-toggle,#floating-chat button').forEach(el=>{
- if(el.querySelector('svg')||el.matches('[data-student],.floating-conversation-row'))return;const k=key(el);if(!k)return;
+ if(el.id==='admin-theme-toggle'||el.querySelector('svg')||el.matches('[data-student],.floating-conversation-row'))return;const k=key(el);if(!k)return;
  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('class','goddess-action-icon');svg.setAttribute('aria-hidden','true');svg.setAttribute('focusable','false');const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',paths[k]);svg.append(path);el.prepend(svg);el.classList.add('goddess-icon-action');
  });}
  decorate();let queued=false;new MutationObserver(()=>{if(queued)return;queued=true;queueMicrotask(()=>{queued=false;decorate();});}).observe(document.body,{childList:true,subtree:true});

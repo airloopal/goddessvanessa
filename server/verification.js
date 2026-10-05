@@ -22,6 +22,11 @@ async function educationVerificationAPI(request,env,url,{user,email,owner}){
   await db(env).prepare('INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?) ON CONFLICT(id) DO NOTHING').bind(key,JSON.stringify(record),now).run();
   return json({request:await mine()});
  }
+ if(body.action==='close'){
+  if(body.confirm!==true||typeof body.key!=='string'||!body.key.startsWith('education-verification:')||body.key.length>220||!Number.isInteger(body.revision)||body.revision<1)return json({error:'Confirm closing this verification.'},400);
+  const saved=await db(env).prepare("UPDATE prototype_settings SET content=(content::jsonb || jsonb_build_object('closed',true))::text,revision=revision+1,updated_at=? WHERE id=? AND revision=?").bind(now,body.key,body.revision).run();
+  return saved.meta.changes?json({ok:true}):json({error:'This request changed. Refresh before closing.'},409);
+ }
  if(typeof body.key!=='string'||!body.key.startsWith('education-verification:')||body.key.length>220||!Number.isInteger(body.revision)||body.revision<1||typeof body.message!=='string'||body.message.length>2000||typeof body.videoUrl!=='string'||body.videoUrl.length>2000)return json({error:'Check the verification reply fields.'},400);
  let videoUrl;
  if(/^\/api\/media\/[a-f0-9-]{36}$/.test(body.videoUrl)){const file=await db(env).prepare('SELECT user_id,scope,mime FROM media_files WHERE id=?').bind(body.videoUrl.split('/').at(-1)).first();if(!file||file.scope!=='verification'||!file.mime.startsWith('video/')||file.user_id!==body.key.slice('education-verification:'.length))return json({error:'Choose a video uploaded for this verification request.'},400);videoUrl=body.videoUrl;}

@@ -95,9 +95,9 @@ const ref=(await request(endpoint+'enrolment',{account:'learner'})).data.enrolme
 const issue=await request(chat+'students',{method:'POST',account:'owner',data:{reference:ref}});
 assert.equal(issue.status,200);assert.equal(issue.data.emailSent,false);
 assert.equal((await env.DB.prepare('SELECT code_hash FROM chat_students WHERE id=?').bind(issue.data.studentId).first()).code_hash.includes(issue.data.code),false);
-const login=await request(chat+'session',{method:'POST',data:{code:issue.data.code}});assert.equal(login.status,200);
-const cookie=login.headers.get('set-cookie').split(';')[0];assert.match(login.headers.get('set-cookie'),/HttpOnly/);assert.match(login.headers.get('set-cookie'),/Secure/);
-assert.equal((await request(chat+'session',{method:'POST',data:{code:issue.data.code}})).status,401);
+let login=await request(chat+'session',{method:'POST',data:{code:issue.data.code}});assert.equal(login.status,200);
+let cookie=login.headers.get('set-cookie').split(';')[0];assert.match(login.headers.get('set-cookie'),/HttpOnly/);assert.match(login.headers.get('set-cookie'),/Secure/);
+const reused=await request(chat+'session',{method:'POST',data:{code:issue.data.code}});assert.equal(reused.status,200,'code can be reused during contract access');assert.equal((await request(chat+'session',{cookie})).status,401,'new sign-in rotates the session');cookie=reused.headers.get('set-cookie').split(';')[0];
 assert.equal((await request(chat+'session',{cookie})).data.student.name,'Test Learner');
 assert.equal((await request(chat+'messages',{cookie,account:'owner',chatRole:'student'})).status,200);
 assert.equal((await request(chat+'students',{cookie,account:'owner',chatRole:'student'})).status,403);
@@ -144,5 +144,5 @@ assert.equal((await request(chat+'account',{method:'DELETE',cookie:finalCookie,d
 assert.equal((await env.DB.prepare('SELECT count(*) n FROM chat_messages WHERE student_id=?').bind(sid).first()).n,0);
 assert.equal((await request(endpoint+'enrolment',{account:'learner'})).data.enrolment.reference,ref);
 assert.equal((await request(chat+'session',{cookie:finalCookie})).status,401);
-console.log('Live chat checks passed: single-use hashed codes, secure sessions, linked records, private threads, durable messages, idempotent sends, unread counts, typing, presence, code rotation, suspension, logout and deletion.');
+console.log('Live chat checks passed: contract-bound reusable hashed codes, secure sessions, linked records, private threads, durable messages, idempotent sends, unread counts, typing, presence, code rotation, suspension, logout and deletion.');
 export {request,env,sql};

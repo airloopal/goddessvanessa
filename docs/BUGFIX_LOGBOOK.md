@@ -3,6 +3,18 @@
 Record confirmed incidents and fixes here, newest first. Dates use Europe/Warsaw. Keep client names, email addresses, card data, tokens, access codes and raw recordings out of this file. Distinguish observed evidence from inferred causes. A deployment alone does not prove a live issue is resolved.
 
 
+
+## BUG-2026-10-05-001 — Recover conversation, access and dashboard batch
+
+- **Status:** Implemented and regression-verified locally; deployed identifiers and checks are recorded in a follow-up verification entry. Physical-device acceptance remains open.
+- **Evidence:** Recovered the interrupted 5 October session, its source edits, requested list and screenshots. Current main and sandbox source trees are identical before this batch. Confirmed causes include one-time/24-hour code consumption, availability reset on dashboard load, incorrect signed-upload body shape and crowded mobile controls. Browser verification additionally found white text on pale night-mode notification/search/selected-conversation surfaces.
+- **Patch:** Contract-bound reusable hashed codes and atomic session rotation with a stale-code recheck; optional-email code issuance; saved availability heartbeat; scoped replies; private idempotent broadcasts; shared gallery and labels; generic media names and download names; multipart staging matching the installed Supabase SDK; expanded MOV/MP4 signatures; audio draft replay and conversation-switch protection; responsive textarea composers and compact action menu; condensed verification filters and confirmed closure retaining saved replies; visual activity cards; persisted admin theme and corrected contrast; profile answer cards and hidden progress. Existing-member plan viewing/requesting is added; self-service renewal payment is explicitly open.
+- **Validation:** Full npm test passed twice around security changes; build passed with 97 assets; npm audit --omit=dev reports zero vulnerabilities. Added stale-code replacement race case: rejected login neither creates a session nor removes the current one. Existing CSRF, forged-owner, role, payment price/idempotency/refund/expiry, private media and session cases pass. At 390 px browser code issuance opens, corrected night contrast is readable, and a real public-site MP4 uploaded into disposable private fixture storage and played (540 px video width, 8.57-second duration). No browser console errors on the conversation flow.
+- **Security/database:** Supabase advisors queried; all 22 application tables have RLS enabled and no anon/authenticated SELECT privilege. No-policy INFO notices match deny-by-default server-only access. Existing leaked-password protection WARN remains and is linked in the checklist/security report. No schema, credential, financial record or public access policy changed.
+- **Data handling:** Test records/media remain in disposable local storage. No real payments, broadcast messages, emails or SMS sent. Existing consumed legacy codes cannot be recovered from a deleted hash; Goddess must issue replacement once. Records and current payment modes remain preserved.
+- **Limitations:** Physical mobile microphone, keyboard, codec/private-mode behaviour, genuine private Supabase upload/playback and real-device acceptance remain open. Pink logo still pending. Live visitor counts are active tabs. See CONVERSATION_UPDATE_CHECKLIST.md.
+
+
 ## BUG-2026-10-04-003 — Simplify tribute contact to optional email
 
 - **Evidence/request:** User supplied mobile screenshot of the full-name/email/phone panel above tribute choices and requested one optional email underneath the selection.

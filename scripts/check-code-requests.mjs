@@ -27,8 +27,8 @@ assert.equal(a.status,200);assert.equal(b.status,200);assert.equal(a.data.code,b
 assert.equal((await request('/api/chat/session',{cookie})).status,200,'collection preserves current chat');
 const record=await env.DB.prepare('SELECT content FROM prototype_settings WHERE id=?').bind('code-request:'+target.id).first();assert.equal(record.content.includes(a.data.code),false);
 const used=await request('/api/chat/session',{method:'POST',data:{code:a.data.code}});assert.equal(used.status,200);
-assert.equal((await request('/api/chat/session',{method:'POST',data:{code:a.data.code}})).status,401);
+const reused=await request('/api/chat/session',{method:'POST',data:{code:a.data.code}});assert.equal(reused.status,200);assert.equal((await request('/api/chat/session',{method:'POST',data:{code:issued.data.code}})).status,401,'replacement revokes previous code');
 assert.equal((await request('/api/chat/session',{cookie})).status,401);
-const newCookie=used.headers.get('set-cookie').split(';')[0];
+const newCookie=reused.headers.get('set-cookie').split(';')[0];
 assert.equal((await request('/api/chat/request-code',{method:'POST',cookie:newCookie,data:{action:'collect'}})).status,409);
-console.log('Replacement code checks passed: authenticated requests, CSRF, admin-only review, duplicate suppression, atomic review, decline, recoverable collection, hashed storage, session continuity and single-use redemption.');
+console.log('Replacement code checks passed: authenticated requests, CSRF, admin-only review, duplicate suppression, atomic review, decline, recoverable collection, hashed storage, session continuity and contract-bound reuse and replacement revocation.');

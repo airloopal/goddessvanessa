@@ -10,10 +10,13 @@ function squareSaveDraft(){try{sessionStorage.setItem(squareDraftKey,JSON.string
 async function squareInit(){
  squareState=await eduAPI('payments');if(!squareEnabled())return;
  try{const d=JSON.parse(sessionStorage.getItem(squareDraftKey)||'null');if(d&&!enrolment){squarePromoCode=d.squarePromoCode==='SUB50'?'SUB50':'';pathId=d.pathId||'';entryId=d.entryId||'';contractId=d.contractId||'';answers=d.answers||{};learnerName=d.learnerName||'';learnerEmail=d.learnerEmail||'';learnerPhone=d.learnerPhone||'';screen=d.screen||'paths';}}catch{}
- if(new URLSearchParams(location.search).has('payment')&&squareState.ready){try{squareState=await eduAPI('payments/refresh','POST',{});}catch{/* Keep the saved status and provide a retry control. */}history.replaceState(null,'',location.pathname);screen=squareState.contract?'review':'intro';}
+ const paymentReturn=new URLSearchParams(location.search).has('payment');
+ const pendingCheckout=[squareState.entry,squareState.contract].some(p=>p?.status==='pending');
+ if((paymentReturn||pendingCheckout)&&squareState.ready){try{squareState={...squareState,...await eduAPI('payments/refresh','POST',{})};}catch{/* Keep the saved status and provide a retry control. */}if(paymentReturn){history.replaceState(null,'',location.pathname);screen=squareState.contract?'review':'intro';}}
  if(squareState.contact&&!enrolment){learnerName=learnerName||squareState.contact.name||'';learnerEmail=learnerEmail||squareState.contact.email||'';learnerPhone=learnerPhone||squareState.contact.phone||'';pathId=pathId||squareState.contact.pathId||'';}
  if(squareState.entry){squarePromoCode=squareState.entry.plan.promoCode||'';entryId=squareState.entry.plan.id;entryReviewed=squareEntryPaid();}
  if(squareState.contract){contractId=squareState.contract.plan.id;screen='review';}
+ else if(squareEntryPaid()&&['paths','entry','intro'].includes(screen)&&pathId&&!enrolment){screen=course.features.questionnaire?'questions':'review';squareSaveDraft();}
 }
 // A late tokenization result is discarded after timeout; only this awaited result
 // can submit a charge. HTTP retries always keep the original attempt identity.
@@ -111,7 +114,7 @@ async function squareMountCard(stage,buttonId,statusId){
   };
  }catch(error){squareNotice(message,'retry','Checkout needs another try',error.message);button.disabled=false;squareButton(button,'retry','Retry checkout');button.onclick=()=>squareMountCard(stage,buttonId,statusId);}
 }
-async function squareRefresh(){squareState=await eduAPI('payments/refresh','POST',{});entryReviewed=squareEntryPaid();renderLearning();}
+async function squareRefresh(){squareState={...squareState,...await eduAPI('payments/refresh','POST',{})};entryReviewed=squareEntryPaid();renderLearning();}
 function squareLabel(){return squareState.mode==='sandbox'?'Sandbox test · No real payment':'Secured by Square';}
 function squareEntryDialog(){
  void squareDisposeCard();clearInterval(verificationPoll);entryDialogView='payment';const plan=entryPlan(),paid=squareEntryPaid();if(paid){squareEntrySuccess(squareState.entry.plan);return;}
@@ -135,6 +138,7 @@ function squareContractPanel(){
 }
 function squareDecorate(){if(!squareEnabled())return;
  if((!squareState.entry||squareState.entry.canChangePromo)&&['entry','intro'].includes(screen)){const host=document.createElement('section');host.className='promo-code-panel';host.innerHTML='<label for="square-promo">Have a promo code?</label><div><input id="square-promo" maxlength="32" autocomplete="off" autocapitalize="characters" value="'+eduEscape(squarePromoCode)+'" placeholder="Enter code"><button class="quiet" type="button" id="square-promo-apply">Apply</button></div><p role="status">'+(squarePromoCode?'SUB50 applied · 50% off your entry and contract fees.':'Apply before opening payment.')+'</p>';const anchor=document.getElementById('open-entry-payment')?.closest('section')||app.querySelector('.step-actions');if(anchor)anchor.before(host);else app.append(host);host.querySelector('button').onclick=async()=>{const b=host.querySelector('button');b.disabled=true;try{const result=await eduAPI('payments/promo','POST',{promoCode:host.querySelector('input').value});squarePromoCode=result.promoCode;invalidateAgreement();squareSaveDraft();renderLearning();}catch(e){host.querySelector('p').textContent=e.message;b.disabled=false;}};}
+ if(squareEntryPaid()&&['questions','review'].includes(screen)&&!squareState.contract){const confirmed=document.createElement('p');confirmed.className='notice';confirmed.setAttribute('role','status');confirmed.textContent='Entry payment confirmed. Continue your application.';app.querySelector('h1')?.after(confirmed);}
  if(squarePromoCode&&!app.querySelector('.promo-code-panel')){const note=document.createElement('p');note.className='promo-applied';note.textContent='SUB50 applied · 50% off entry and contract fees.';app.querySelector('h1')?.after(note);}
  app.querySelectorAll('[name="entry-plan"]').forEach(el=>{if(squareState.entry)el.disabled=el.value!==squareState.entry.plan.id;});
  const statusEl=app.querySelector('.entry-payment-status');if(statusEl)statusEl.textContent=squareEntryPaid()?'Paid':'Not paid';

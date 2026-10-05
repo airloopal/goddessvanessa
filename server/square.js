@@ -35,19 +35,31 @@ async function squareApplyPayment(env,paymentId){
   if(r.orderId&&r.orderId!==p.order_id)return;
   if(p.location_id!==env.SQUARE_LOCATION_ID||order.location_id!==env.SQUARE_LOCATION_ID||p.amount_money?.amount!==r.plan.amount||p.amount_money?.currency!=='GBP'||p.total_money?.amount!==r.plan.amount||p.total_money?.currency!=='GBP')return;
   if(r.method==='embedded'&&['FAILED','CANCELED'].includes(p.status))return;
-  if(r.paymentId&&r.paymentId!==p.id)return;
+  const replacing=r.paymentId&&r.paymentId!==p.id;
+  if(replacing){
+   if(r.status!=='pending'||r.paidAt||r.method!=='hosted')return;
+   const {payment:previous}=await squareCall(env,'payments/'+encodeURIComponent(r.paymentId));
+   if(previous?.order_id!==p.order_id||!['FAILED','CANCELED'].includes(previous.status))return;
+  }
   // Re-fetching Square's current object avoids replaying stale webhook payloads.
-  if(r.providerUpdatedAt&&p.updated_at<r.providerUpdatedAt)return;
+  if(!replacing&&r.providerUpdatedAt&&p.updated_at<r.providerUpdatedAt)return;
   let status=r.status;
   if(p.status==='COMPLETED')status=p.refunded_money?.amount>0||r.status==='refund_review'?'refund_review':'paid';
   else if(['FAILED','CANCELED'].includes(p.status)&&r.status!=='paid')status='pending';
   const paidAt=r.paidAt||(status==='paid'?(p.card_details?.card_payment_timeline?.captured_at||p.updated_at):null);
-  const next={...r,orderId:p.order_id,paymentId:p.id,status,paidAt,providerUpdatedAt:p.updated_at,receiptUrl:p.receipt_url||null,expiresAt:r.stage==='contract'&&paidAt?squareExpiry(r.plan.id,paidAt):null};
+  const next={...r,orderId:p.order_id,paymentId:p.id,status,paidAt,providerStatus:p.status,providerUpdatedAt:p.updated_at,receiptUrl:p.receipt_url||null,expiresAt:r.stage==='contract'&&paidAt?squareExpiry(r.plan.id,paidAt):null};
   const result=await squareWrite(env,key,next,r._revision);if(result.meta.changes)return;
  }
  throw Error('Concurrent payment update; retry required.');
 }
-async function squareReconcile(env,r){if(!r)return;if(r.paymentId)return squareApplyPayment(env,r.paymentId);if(!r.orderId)return;const {order}=await squareCall(env,'orders/'+encodeURIComponent(r.orderId));for(const t of order?.tenders||[])if(t.payment_id)await squareApplyPayment(env,t.payment_id);}
+async function squareReconcile(env,r){
+ if(!r)return;
+ if(r.paymentId){await squareApplyPayment(env,r.paymentId);r=await squareRecord(env,await squareKey(env,r.user,r.stage));if(!r||r.status!=='pending')return;}
+ if(!r.orderId)return;
+ const {order}=await squareCall(env,'orders/'+encodeURIComponent(r.orderId));
+ if(order?.id!==r.orderId||order.location_id!==env.SQUARE_LOCATION_ID)return;
+ for(const t of order.tenders||[]){const paymentId=t.payment_id||t.id;if(typeof paymentId==='string'&&paymentId&&paymentId!==r.paymentId)await squareApplyPayment(env,paymentId);}
+}
 async function squareWebhook(request,env){
  if(request.method!=='POST')return json({error:'Method not allowed'},405);
  if(!squareReady(env))return json({error:'Payments are not configured.'},503);

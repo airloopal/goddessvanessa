@@ -13,7 +13,7 @@ const squareKey=async(env,user,stage)=>'sq-'+squareMode(env)+'-'+stage[0]+'-'+(a
 function squarePromo(code){return typeof code==='string'&&code.trim().toUpperCase()==='SUB50'?'SUB50':null;}
 function squaredAmountMismatch(plan,signed,promo){return signed.amount!==squarePriced(plan,promo).amount||(promo&&promo!=='SUB50');}
 function squarePriced(plan,promo){return promo?{...plan,originalAmount:plan.amount,amount:Math.round(plan.amount/2),promoCode:promo}:plan;}
-function squarePublic(r){return r?{stage:r.stage,plan:r.entitlement?.plan||r.plan,status:r.status,receiptUrl:r.receiptUrl||null,paidAt:r.paidAt||null,expiresAt:r.expiresAt||null,canChangePromo:r.stage==='entry'&&r.method==='embedded'&&r.status==='pending'&&!r.cardAttempt&&!r.paymentId}:null;}
+function squarePublic(r){return r?{stage:r.stage,plan:r.entitlement?.plan||r.plan,status:r.status,receiptUrl:r.entitlement?.receiptUrl||r.receiptUrl||null,paidAt:r.entitlement?.paidAt||r.paidAt||null,expiresAt:r.expiresAt||null,canChangePromo:r.stage==='entry'&&r.method==='embedded'&&r.status==='pending'&&!r.cardAttempt&&!r.paymentId}:null;}
 function squareExpiry(plan,start){const d=new Date(start);if(plan==='infinite')return null;if(plan==='day')return new Date(d.getTime()+86400000).toISOString();const day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+(plan==='quarter'?3:1));const last=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();d.setUTCDate(Math.min(day,last));return d.toISOString();}
 async function squarePaymentState(env,user){const [entry,contract]=await Promise.all(['entry','contract'].map(async stage=>squareRecord(env,await squareKey(env,user,stage))));return {entry,contract};}
 async function squareAccessDeadline(env,user){

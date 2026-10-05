@@ -1,10 +1,11 @@
 // Private transactional notification outbox. No card data, access codes or attachments.
 const noticeEmail=value=>typeof value==='string'&&value.length<=254&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)&&!/[\r\n]/.test(value);
+const noticePreview=text=>Array.from(text.replace(/\b[a-f0-9]{48}\b/gi,'[private code omitted]').replace(/\b(?:\d[ -]?){13,19}\b/g,'[number omitted]').replace(/[\r\n\t]+/g,' ')).slice(0,120).join('');
 const noticeEnabled=env=>env.TRANSACTIONAL_EMAIL_ENABLED==='true'&&emailReady(env)&&env.SQUARE_ENVIRONMENT==='production';
 const noticeOrigin=env=>{try{const u=new URL(env.SQUARE_SITE_URL);return u.protocol==='https:'&&['houseofvanessa.com','www.houseofvanessa.com'].includes(u.hostname)?u.origin:null;}catch{return null;}};
 async function notifyEvent(env,kind,key,data){const id='notice:'+await chatHash(kind+':'+key),now=Date.now();await db(env).prepare('INSERT INTO prototype_settings(id,content,revision,updated_at) VALUES(?,?,1,?) ON CONFLICT(id) DO NOTHING').bind(id,JSON.stringify({kind,...data,createdAt:now,state:'pending',attempts:0}),new Date(now).toISOString()).run();}
 async function noticeUnread(env,now=Date.now(),enqueue=true){
- const rows=await db(env).prepare("SELECT s.id,s.name,s.email,s.user_id,m.sender,MIN(m.created_at) AS oldest,MAX(m.seq) AS latest,COALESCE(st.read_seq,0) AS read_seq FROM chat_students s JOIN chat_messages m ON m.student_id=s.id LEFT JOIN chat_state st ON st.student_id=s.id AND st.role=CASE WHEN m.sender='client' THEN 'admin' ELSE 'client' END WHERE s.status='active' AND m.seq>COALESCE(st.read_seq,0) GROUP BY s.id,s.name,s.email,s.user_id,m.sender,st.read_seq HAVING MIN(m.created_at)<=? ORDER BY MIN(m.created_at) LIMIT 100").bind(now-300000).all();
+ const rows=await db(env).prepare("SELECT s.id,s.name,s.email,s.user_id,m.sender,MIN(m.created_at) AS oldest,MAX(m.seq) AS latest,COALESCE(st.read_seq,0) AS read_seq FROM chat_students s JOIN chat_messages m ON m.student_id=s.id LEFT JOIN chat_state st ON st.student_id=s.id AND st.role=CASE WHEN m.sender='client' THEN 'admin' ELSE 'client' END WHERE s.status='active' AND m.seq>COALESCE(st.read_seq,0) AND m.created_at<=? GROUP BY s.id,s.name,s.email,s.user_id,m.sender,st.read_seq ORDER BY MIN(m.created_at) LIMIT 100").bind(now-300000).all();
  if(enqueue)for(const row of rows.results)await notifyEvent(env,'unread',row.id+':'+row.sender+':'+row.read_seq,{studentId:row.id,recipient:row.sender==='client'?'admin':'client',readSeq:row.read_seq,seq:row.latest});
  return rows.results;
 }
@@ -21,7 +22,7 @@ async function noticePayload(env,n){
   const sender=n.recipient==='admin'?'client':'admin',state=await db(env).prepare('SELECT read_seq FROM chat_state WHERE student_id=? AND role=?').bind(student.id,n.recipient).first();if((state?.read_seq||0)>=n.seq)return null;
   const m=await db(env).prepare('SELECT body,attachment_id,created_at FROM chat_messages WHERE student_id=? AND sender=? AND seq>? AND seq<=? ORDER BY seq DESC LIMIT 1').bind(student.id,sender,state?.read_seq||0,n.seq).first();if(!m)return null;
   to=n.recipient==='admin'?env.ADMIN_NOTIFICATION_EMAIL:student.email;
-  const preview=m.attachment_id?'Shared attachment':m.body.replace(/[\r\n\t]+/g,' ').slice(0,120);
+  const preview=m.attachment_id?'Shared attachment':noticePreview(m.body);
   subject='House of Vanessa · Unread message';body='You have an unread message'+(n.recipient==='admin'?' from '+student.name:' from Goddess Vanessa')+'.\n\n'+preview+'\n\nOpen your conversation: '+origin+(n.recipient==='admin'?'/dashboard.html':'/chat.html');
  }else if(n.kind==='expiry'){
   const {contract}=await squarePaymentState(env,student.user_id);if(contract?.status!=='paid'||contract.expiresAt!==n.expiresAt||Date.parse(n.expiresAt)<=Date.now())return null;

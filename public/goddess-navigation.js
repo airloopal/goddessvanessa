@@ -11,8 +11,8 @@
  if(el.matches('a[target="_blank"],.status-links a'))return 'external';return null;
  }
  function decorate(){document.querySelectorAll('#dashboard-nav a,#dashboard-nav button,.dashboard-links a,.dashboard-links button,#dashboard-main .quiet,#dashboard-main .p-button,#status-main a,#status-main button,dialog button,#floating-chat-toggle,#floating-chat button').forEach(el=>{
- if(el.id==='admin-theme-toggle'||el.querySelector('svg')||el.matches('[data-student],.floating-conversation-row'))return;const k=key(el);if(!k)return;
- const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('class','goddess-action-icon');svg.setAttribute('aria-hidden','true');svg.setAttribute('focusable','false');const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',paths[k]);svg.append(path);el.prepend(svg);el.classList.add('goddess-icon-action');
+ if(el.matches('[data-reply-message],[data-pin-student],.voice-note-play,.voice-note-download,.media-download-icon,[data-emoji-toggle],#admin-theme-toggle')||el.querySelector('svg')||el.matches('[data-student],.floating-conversation-row'))return;const k=key(el);if(!k)return;
+ const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('class','goddess-action-icon');svg.setAttribute('aria-hidden','true');svg.setAttribute('focusable','false');const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',paths[k]);svg.append(path);if(/^[×✕✖←→↓]$/.test(el.textContent.trim()))el.replaceChildren(svg);else el.prepend(svg);el.classList.add('goddess-icon-action');
  });}
  decorate();let queued=false;new MutationObserver(()=>{if(queued)return;queued=true;queueMicrotask(()=>{queued=false;decorate();});}).observe(document.body,{childList:true,subtree:true});
 })();
@@ -31,5 +31,5 @@
  const sync=()=>{const active=nav.querySelector('[data-tab][aria-current="page"]');const value=active&&!labels[active.dataset.tab]?'page':'false';if(more.getAttribute('aria-current')!==value)more.setAttribute('aria-current',value);document.body.dataset.mobileAdminTab=active?.dataset.tab||'overview';};
  new MutationObserver(sync).observe(nav,{attributes:true,attributeFilter:['aria-current'],subtree:true});sync();
  // Use visualViewport so the keyboard does not cover the navigation or reply field.
- const viewport=window.visualViewport;const keyboard=()=>{const raised=!!viewport&&innerHeight-viewport.height>150;document.body.classList.toggle('admin-keyboard-open',raised);};viewport?.addEventListener('resize',keyboard);keyboard();
+ const viewport=window.visualViewport;const keyboard=()=>{const raised=!!viewport&&innerHeight-viewport.height>150;document.body.classList.toggle('admin-keyboard-open',raised);const header=document.querySelector('body>.p-header'),top=header?.getBoundingClientRect().height||80;document.body.style.setProperty('--mobile-chat-top',top+'px');document.body.style.setProperty('--mobile-chat-height',Math.max(100,(viewport?.height||innerHeight)-top)+'px');};viewport?.addEventListener('resize',keyboard);addEventListener('resize',keyboard);keyboard();
 })();

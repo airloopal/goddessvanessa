@@ -23,6 +23,17 @@ await chat.read();await chat.read();assert.equal(requests.filter(r=>r.path.endsW
 stored=[];await chat.select('student-b');assert.equal(chat.all().length,0);
 console.log('Chat checks passed: immediate pending bubbles, sent/read states, typing, escaped text, retry with original ID, deduplicated polling, private cover, read throttling and conversation isolation.');
 
+// Loading the landing list must not mark a hidden conversation as read, even
+// if responsive CSS has not yet hidden its rectangle during initialization.
+const refreshSource=fs.readFileSync('public/education-dashboard.js','utf8').split('function refreshAdminThreads(){')[1].split('\nfunction renderFloating')[0];
+let adminReads=0;
+const adminContext={tab:'chats',mobileChatOpen:false,floatingThread:false,floatingChat:{hidden:true},window:{matchMedia:()=>({matches:true})},document:{getElementById:id=>id==='admin-thread'?{getClientRects:()=>[{}]}:null},syncConversationComposers(){},applyChatBackground(){},renderChatLog(){},PreviewChat:{background:()=>({}),read:()=>adminReads++}};
+vm.createContext(adminContext);vm.runInContext('function refreshAdminThreads(){'+refreshSource,adminContext);
+vm.runInContext('refreshAdminThreads()',adminContext);assert.equal(adminReads,0,'mobile list preserves unread messages');
+adminContext.mobileChatOpen=true;vm.runInContext('refreshAdminThreads()',adminContext);assert.equal(adminReads,1,'opened mobile thread can mark read');
+adminContext.mobileChatOpen=false;adminContext.window.matchMedia=()=>({matches:false});vm.runInContext('refreshAdminThreads()',adminContext);assert.equal(adminReads,2,'desktop visible thread can mark read');
+adminContext.tab='overview';vm.runInContext('refreshAdminThreads()',adminContext);assert.equal(adminReads,2,'other sections do not mark a hidden thread read');
+
 const adminLink=vm.runInContext('chatMessageText({from:"admin",text:"Gift https://throne.com/vvannessa"})',context);assert.match(adminLink,/target="_blank"/);assert.match(adminLink,/noopener noreferrer/);assert.doesNotMatch(vm.runInContext('chatMessageText({from:"client",text:"https://throne.com/vvannessa"})',context),/<a /);assert.doesNotMatch(vm.runInContext('chatMessageText({from:"admin",text:"https://throne.com.evil.example/x"})',context),/<a /);
 const policy=fs.readFileSync('server/chat.js','utf8').split('// Private learning-support')[0];const guard={URL};vm.createContext(guard);vm.runInContext(policy,guard);for(const url of ['http://throne.com/x','https://throne.com.evil.example/x','https://user@throne.com/x','javascript:alert(1)','https://throne.com:444/x'])assert.equal(vm.runInContext('chatSafeLink('+JSON.stringify(url)+')',guard),false);assert.equal(vm.runInContext('chatSafeLink("https://throne.com/vvannessa")',guard),true);for(const text of ['https://evil.example/x','www.evil.example','evil.example/path'])assert.ok(vm.runInContext('chatLinkCandidates('+JSON.stringify(text)+').length',guard));console.log('Chat link checks passed: sender separation, HTTPS allowlist, lookalikes, credentials, ports and plain-text Sub rendering.');
 

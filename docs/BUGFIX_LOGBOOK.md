@@ -4,6 +4,13 @@ Record confirmed incidents and fixes here, newest first. Dates use Europe/Warsaw
 
 
 
+## BUG-2026-10-05-003 — Conversation landing and dense composer/overview
+
+- **Evidence:** User screenshots show activity/stat cards dominating Overview, stacked composer tools, hidden low-contrast send arrow, oversized voice/emoji controls and text on the mobile back action. Draft reply cancellation needed a clear X. Existing CSS assigns a dark send background while icon colour is dark; moving emoji outside the form initially exposed a repeated mount loop in local preview, fixed before deployment.
+- **Patch:** Conversations is the landing tab, with explicit settings/overview deep links preserved. Latest Applications precedes totals and collapsed trends/tasks; live activity and totals become compact summaries. Admin request/attach/record/emoji controls occupy one row above the input; microphone recording restores the icon on stop and emoji mounts once. Send is burgundy with white arrow on full/floating admin composers. Draft reply has an accessible X above the tools, cancelling reply metadata and preserving input. Mobile back is arrow-only. Desktop thread fills available viewport; mobile header/quotes are compact and same-sender spacing is tightened without altering the established Sub layout or theme. Read receipts are issued only for a visible full or floating thread, preserving unread state in mobile list view.
+- **Validation:** Browser verified mobile landing with six unread messages retained in list view, draft-preserving reply cancellation, one emoji control, grouped icon toolbar, arrow-only back and compact Latest Applications overview. At 1440×1000 the desktop thread measures 674 px. Send colours are white on burgundy. Full npm test passed, including hidden-mobile read-receipt coverage; build passed (97 assets) and npm audit --omit=dev reported zero vulnerabilities. Deployed identifiers/checks follow in the verification addendum. No schema, credentials, prices, payment modes, public permissions or real member messages were changed. Disposable synthetic accounts/audio used in preview.
+- **Status:** Implemented; browser/device acceptance and deployed verification noted below. Physical-phone keyboard behaviour remains an acceptance item.
+
 ## BUG-2026-10-05-002 — Compact bubbles, mobile chat screens and saved pins
 
 - **Evidence:** User supplied mobile list/thread reference, doubled-close-icon example and oversized text/voice bubbles. Confirmed inherited margins/padding and stacked reply metadata enlarged bubbles; automatic icon decoration retained existing symbol text. The mobile layout displayed list and thread together, reducing useful conversation height.

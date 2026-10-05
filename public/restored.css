@@ -160,6 +160,46 @@ body.dashboard .chat-list-row .chat-pin-button{width:34px;min-width:34px;min-hei
 body.dashboard .admin-media-actions{display:flex;align-items:center;justify-content:flex-start;flex-wrap:nowrap;gap:7px!important;padding:4px 10px!important}
 body.dashboard .admin-media-actions [data-media-request]{display:grid;place-items:center;width:32px;height:32px;min-width:32px;min-height:32px;padding:7px!important;border-radius:50%;color:#922e5a!important;background:#f8ddea!important;border-color:#dca7bf!important}
 .mobile-chat-back{display:none!important}
+/* Dense admin workspace with one tools row and a visible send action. */
+body.dashboard .admin-composer-tools{display:flex;align-items:center;flex-wrap:wrap;gap:5px!important;padding:3px 8px!important;margin:0;min-height:32px}
+.composer-request-tools{display:inline-flex;align-items:center;gap:5px}
+body.dashboard .admin-chat-heading .chat-header-person strong{display:block;line-height:1.3;margin:0}
+body.dashboard .admin-chat-heading .chat-header-person small{font-size:10px;line-height:1.2;margin:0;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.dashboard .admin-thread .message-quote{font-size:10px;line-height:1.35;margin-bottom:4px;padding:4px 6px}
+body.dashboard .admin-thread .message.grouped{margin-top:0!important}
+body.dashboard .admin-composer-tools .quiet,body.dashboard .admin-composer-tools [data-media-request]{display:inline-flex!important;align-items:center;justify-content:center;gap:0;width:30px;min-width:30px;height:30px;min-height:30px;padding:6px!important;border-radius:50%;font-size:18px!important;flex:0 0 30px;background:var(--dash-surface)!important;color:var(--dash-ink)!important}
+body.dashboard .admin-composer-tools [data-media-request]{background:#f8ddea!important;color:#922e5a!important;border:1px solid #dca7bf}
+body.dashboard .admin-composer-tools svg{width:18px;height:18px;min-width:18px;flex-basis:auto;margin:0!important;fill:none;stroke:currentColor;stroke-width:1.7}
+body.dashboard .admin-composer-tools .attachment-status:empty{display:none}.admin-composer-tools .attachment-status{font-size:10px;line-height:1.3}.admin-composer-tools .attachment-selection{font-size:10px}
+body.dashboard .admin-composer-tools [data-clear-file],body.dashboard .admin-composer-tools [data-send-file]{width:auto;flex-basis:auto;font-size:11px!important}
+body.dashboard .admin-composer-tools [hidden]{display:none!important}
+body.dashboard #admin-form.chat-composer,body.dashboard #floating-form{display:flex;align-items:flex-end;gap:7px;padding:3px 8px!important;margin:0}
+body.dashboard #admin-form.chat-composer>.p-button,body.dashboard #floating-form>.p-button{display:grid;place-items:center;width:38px;min-width:38px;height:38px;min-height:38px;margin:0;padding:9px;flex:0 0 38px;border:0;border-radius:50%;background:#9c3459!important;color:#fff!important;font-size:0}
+body.dashboard #admin-form.chat-composer>.p-button svg,body.dashboard #floating-form>.p-button svg{width:20px;height:20px;margin:0;stroke:#fff!important;fill:none}
+body.dashboard .composer-reply{padding:5px 8px;gap:8px;min-width:0;font-size:10px;line-height:1.3}.dashboard .composer-reply>span{min-width:0;flex:1}.dashboard .composer-reply small{max-height:27px;font-size:10px;line-height:1.3}
+body.dashboard .composer-reply button[aria-label="Cancel reply"]{display:grid;place-items:center;width:28px;min-width:28px;height:28px;min-height:28px;padding:5px!important;margin:0;flex:0 0 28px;border-radius:50%}
+.composer-reply button[aria-label="Cancel reply"] svg{width:16px;height:16px;margin:0!important;fill:none;stroke:currentColor;stroke-width:2}
+body.dashboard .mobile-chat-back{width:30px;min-width:30px;height:30px;min-height:30px;flex:0 0 30px;padding:5px!important;justify-content:center}
+body.dashboard .mobile-chat-back svg{width:18px;height:18px;margin:0;fill:none;stroke:currentColor;stroke-width:1.8}
+body.dashboard #visitor-summary{padding:10px 12px;margin:0 0 10px;border-radius:12px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:11px}
+body.dashboard #visitor-summary h2{font-size:13px;margin:0}.dashboard #visitor-summary>[role=status]{flex:1;min-width:0}.dashboard #visitor-summary .visitor-metrics{display:flex;flex-wrap:wrap;gap:8px}.dashboard #visitor-summary .visitor-metrics>div{display:inline-flex;align-items:baseline;gap:5px;padding:3px 8px;border-radius:20px}.dashboard #visitor-summary .visitor-metrics strong{font-size:15px;line-height:1}.dashboard #visitor-summary .visitor-metrics span{font-size:10px;margin:0}.dashboard #visitor-summary .live-dot{position:static;width:5px;height:5px}.dashboard #visitor-summary .visitor-people:empty{display:none}.dashboard #visitor-summary .visitor-people{margin:4px 0}.dashboard #visitor-summary small{display:none}
+body.dashboard #overview-body{display:flex;flex-direction:column;gap:10px}.dashboard #overview-recent{padding:14px}.dashboard #overview-recent h2{font-size:18px;margin:0}.dashboard #overview-totals{gap:6px}.dashboard #overview-totals .stat-card{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;border-radius:12px}.dashboard #overview-totals .stat-card strong{font-size:19px;margin:0;line-height:1}.dashboard #overview-totals .stat-card small{font-size:11px}.dashboard #overview-totals .stat-card>span{display:none}.overview-details{order:3;font-size:12px}.overview-details>summary{cursor:pointer;padding:10px}.overview-details .overview-columns{margin-top:8px}
+body.dashboard .chat-admin-tools:empty{display:none!important}
+body.dashboard[data-mobile-admin-tab=chats] #floating-chat-toggle{display:none!important}
+body.dashboard[data-mobile-admin-tab=overview] #dashboard-main>.dash-title{margin-bottom:10px}.dashboard[data-mobile-admin-tab=overview] .dash-title h1{font-size:24px}.dashboard[data-mobile-admin-tab=overview] .dash-title p{font-size:11px;line-height:1.4;margin-top:4px}
+body.dashboard .overview-toolbar{display:flex;flex-wrap:nowrap;align-items:center;gap:8px;margin:0 0 10px}.dashboard .overview-toolbar p{flex:1;font-size:10px;line-height:1.3;margin:0}.dashboard .overview-toolbar #overview-refresh{display:grid;place-items:center;min-width:32px;width:32px;height:32px;min-height:32px;font-size:0;padding:7px}.dashboard .overview-toolbar #overview-refresh svg{width:17px;height:17px;margin:0}
+body.dashboard #overview-recent .overview-section-title{margin-bottom:8px}.dashboard #overview-recent .overview-section-title .quiet{min-height:32px;padding:6px 9px;font-size:11px}
+@media(min-width:701px){
+ body.dashboard[data-mobile-admin-tab=chats]{overflow:hidden}
+ body.dashboard[data-mobile-admin-tab=chats] .dashboard-layout{height:calc(100dvh - var(--mobile-chat-top,94px));min-height:0;padding-bottom:0}
+ body.dashboard[data-mobile-admin-tab=chats] #dashboard-main{height:100%;min-height:0;box-sizing:border-box;display:flex;flex-direction:column;padding:12px 16px!important;overflow:hidden}
+ body.dashboard[data-mobile-admin-tab=chats] #dashboard-main>.dash-title{flex:0 0 auto;margin:0 0 8px}.dashboard[data-mobile-admin-tab=chats] .dash-title h1{font-size:22px;line-height:1.3}.dashboard[data-mobile-admin-tab=chats] .dash-title p{display:none}
+ body.dashboard[data-mobile-admin-tab=chats] .demo-conversations{flex:1;min-height:0;grid-template-columns:240px minmax(0,1fr)}
+ body.dashboard[data-mobile-admin-tab=chats] .conversation-list{display:flex;flex-direction:column;min-height:0;padding:10px}.dashboard[data-mobile-admin-tab=chats] .conversation-list h2{font-size:17px;margin:0 0 8px}.dashboard[data-mobile-admin-tab=chats] .conversation-search{margin:0 0 8px;min-height:38px}.dashboard[data-mobile-admin-tab=chats] .student-chat-list{flex:1;min-height:0;overflow-y:auto}
+ body.dashboard[data-mobile-admin-tab=chats] .admin-conversation{display:flex;flex-direction:column;min-height:0;padding:0!important}
+ body.dashboard[data-mobile-admin-tab=chats] .admin-chat-heading{flex:0 0 auto;padding:8px 10px;margin:0!important;gap:8px}.dashboard[data-mobile-admin-tab=chats] .admin-chat-heading .chat-portrait{width:32px;height:32px;font-size:16px}.dashboard[data-mobile-admin-tab=chats] .admin-chat-heading strong{font-size:13px}.dashboard[data-mobile-admin-tab=chats] .admin-chat-heading small{font-size:10px}
+ body.dashboard[data-mobile-admin-tab=chats] .chat-warning{display:none}.dashboard[data-mobile-admin-tab=chats] #admin-thread{height:auto;max-height:none;min-height:0;flex:1;overflow-y:auto;margin:0!important;border-radius:0}.dashboard[data-mobile-admin-tab=chats] .admin-chat-bottom{flex:0 0 auto;padding:4px 0}
+}
 @media(max-width:700px){
  body.dashboard[data-mobile-admin-tab=chats]{overflow:hidden;padding-bottom:0}
  body.dashboard[data-mobile-admin-tab=chats] #dashboard-main{position:fixed;top:var(--mobile-chat-top,80px);left:0;right:0;bottom:calc(84px + env(safe-area-inset-bottom));padding:12px!important;display:flex;flex-direction:column;overflow:hidden}

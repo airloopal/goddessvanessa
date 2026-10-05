@@ -105,3 +105,12 @@ Record confirmed incidents and fixes here, newest first. Dates use Europe/Warsaw
 - **Patch / validation:** Final changes, exact checks performed, and any remaining limitations.
 - **Deployments / record handling:** Live and sandbox commits; any data changes or real transactions.
 - **Prevention / confirmation:** Regression coverage and who confirmed resolution, with date.
+
+## BUG-2026-10-05-004 — Composer displaced by growing history
+
+- Reported 2026-10-05; patched, verification in progress. Goddess desktop/tablet chat and both mobile keyboard layouts.
+- User screenshot showed the input below the visible screen as messages accumulated. Disposable local preview confirmed a 1023px dashboard layout in a 693px viewport, with composer starting at 1003px. Confirmed cause: an unbounded parent layout and implicit grid minimum sizing allowed message content to grow the conversation.
+- Bounded the dashboard parent, grid track and tablet flex layout. Only the thread scrolls; individual bubbles retain their height. Mobile admin keyboard mode uses visual viewport height and offset, hides navigation/header while composing, and restores them on dismissal. Sub keyboard mode compacts the header/hint and caps textarea height while keeping theme/icons.
+- Validation: long-message send in disposable preview; 768px tablet and 1440px desktop thread overflow with composer inside viewport; 390px mobile keyboard-sized viewport retained 238px thread with composer ending at 389px. Automated admin viewport cases cover visual offset, layout viewport resizing, dismissal and history retention. Full regression suite, production dependency audit (zero vulnerabilities) and build (97 assets) passed. Sub keyboard-sized preview retained 211px message space with composer ending at the 390px visible viewport; no browser console errors. Deployed checks pending.
+- Production/sandbox commit identifiers pending. No account/schema/payment/credential changes; only disposable synthetic messages were sent. Physical iOS/Android keyboard confirmation remains pending.
+- Next product work remains self-service upgrade/extension, preceded by essential email notifications and expiry reminders; not part of this incident patch.

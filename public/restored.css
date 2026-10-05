@@ -221,3 +221,26 @@ body.dashboard #overview-recent .overview-section-title{margin-bottom:8px}.dashb
  body.dashboard[data-chat-pane=thread] .chat-composer{padding:4px 8px!important}.dashboard[data-chat-pane=thread] #admin-reply{min-height:38px;padding:8px 10px!important}
  body.dashboard[data-mobile-admin-tab=chats].admin-keyboard-open #dashboard-main{bottom:0;height:var(--mobile-chat-height);}
 }
+
+/* Keep the composer outside the scrolling message history, at every viewport size. */
+@media(min-width:701px){
+ body.dashboard[data-mobile-admin-tab=chats] .dashboard-layout{flex:0 0 auto;height:calc(var(--admin-viewport-height,100dvh) - var(--mobile-chat-top,94px));max-height:calc(var(--admin-viewport-height,100dvh) - var(--mobile-chat-top,94px));grid-template-rows:minmax(0,1fr);overflow:hidden}
+ body.dashboard[data-mobile-admin-tab=chats] #dashboard-main{min-height:0;overflow:hidden}
+ body.dashboard[data-mobile-admin-tab=chats] .demo-conversations{grid-template-rows:minmax(0,1fr);overflow:hidden}
+}
+@media(min-width:701px) and (max-width:900px){
+ body.dashboard[data-mobile-admin-tab=chats] .dashboard-layout{display:flex;flex-direction:column}
+ body.dashboard[data-mobile-admin-tab=chats] #dashboard-nav{flex:0 0 auto}
+ body.dashboard[data-mobile-admin-tab=chats] #dashboard-main{flex:1;height:auto}
+}
+body.dashboard[data-mobile-admin-tab=chats] .admin-conversation{overflow:hidden}
+body.dashboard[data-mobile-admin-tab=chats] #admin-thread{flex:1 1 0px!important;min-height:0!important;overscroll-behavior:contain}
+body.dashboard[data-mobile-admin-tab=chats] #admin-thread>.message,body.dashboard[data-mobile-admin-tab=chats] #admin-thread>.chat-date,body.dashboard[data-mobile-admin-tab=chats] #admin-thread>.typing-bubble{flex-shrink:0}
+@media(max-width:700px){
+ body.dashboard[data-mobile-admin-tab=chats] #dashboard-main{top:var(--mobile-chat-top,80px);bottom:auto;height:var(--mobile-chat-height,calc(100dvh - 164px));box-sizing:border-box}
+ body.dashboard[data-mobile-admin-tab=chats].admin-keyboard-open>.p-header,body.dashboard[data-mobile-admin-tab=chats].admin-keyboard-open #dashboard-nav{display:none!important}
+ body.dashboard[data-chat-pane=thread].admin-keyboard-open #dashboard-main{padding:0!important}
+}
+.chat-view #client-chat.keyboard-open .telegram-chat .chat-compose-hint{display:none}
+.chat-view #client-chat.keyboard-open .telegram-chat .chat-header{min-height:44px;padding-top:4px;padding-bottom:4px}
+.chat-view #client-chat.keyboard-open .telegram-chat .chat-composer textarea{max-height:80px}

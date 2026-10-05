@@ -58,11 +58,11 @@ function installChatViewport(host,log){
   const follow=log.scrollHeight-log.scrollTop-log.clientHeight<100||document.activeElement?.id==='client-message';
   const height=viewport?.height||window.innerHeight,top=viewport?.offsetTop||0;
   host.style.setProperty('--chat-viewport-height',height+'px');host.style.setProperty('--chat-viewport-top',top+'px');
-  host.classList.toggle('keyboard-open',window.innerHeight-height>150);
+  host.classList.toggle('keyboard-open',window.innerHeight-height>100||(document.activeElement?.id==='client-message'&&height<500));
   if(follow)log.scrollTop=log.scrollHeight;
  }
  const schedule=()=>{if(!scheduled){scheduled=true;requestAnimationFrame(update);}};
- viewport?.addEventListener('resize',schedule,{passive:true});viewport?.addEventListener('scroll',schedule,{passive:true});window.addEventListener('resize',schedule,{passive:true});update();
+ viewport?.addEventListener('resize',schedule,{passive:true});viewport?.addEventListener('scroll',schedule,{passive:true});window.addEventListener('resize',schedule,{passive:true});document.addEventListener('focusin',schedule);document.addEventListener('focusout',schedule);update();
 }
 // Auto-return only after a picker completion event, never merely after switching tabs.
 function createChatPickerPrivacy({hidden,covered,conceal,resume,reason}){

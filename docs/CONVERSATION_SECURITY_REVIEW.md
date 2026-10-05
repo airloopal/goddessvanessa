@@ -1,5 +1,13 @@
 # Conversation release security review — 5 October 2026
 
+## Conversation workspace addendum — release 2026.10.05.3
+
+Production implementation `a6c0b7949902281b557b95f25795969769e1c08c` and sandbox implementation `262a8b020659366e5f0b67ec9e9f5fd1436f449f` deployed READY. Conversations is the landing tab; Overview prioritizes Latest Applications and collapses supplementary charts/tasks. Admin tools are grouped above input, Send is white on burgundy, back is arrow-only, and the draft reply X preserves input. Desktop thread fills available height and the redundant floating launcher cannot overlap Send. The established Sub bubble layout and theme remain retained.
+
+Final npm test/build passed, production dependency audit found zero vulnerabilities. Added read-receipt regression cases ensure the hidden mobile chat list and other dashboard sections do not mark a conversation read, while a visible mobile/desktop thread does. Browser verified a six-message unread badge in mobile list, cancellation preserving a typed draft, exactly one emoji control, a 674 px desktop thread, visible Send and compact Overview, with no observed console errors. An emoji mount loop found in local preview was fixed before release.
+
+Both hosts passed anonymous/forged/cross-origin denial, no-store and security headers, twelve exact-asset comparisons and separate payment mode checks. No authentication, authorization, schema, credential, price, payment or real-client message change was performed. Earlier runtime-log permission and Supabase leaked-password warning limitations remain unchanged. Physical device keyboard/microphone acceptance remains separate. Documentation follow-ups retain this same executable source.
+
 ## 07:19 addendum — release 2026.10.05.2
 
 Production implementation `51be41505994e0889f69c4c353421d6737ce42e2` and sandbox implementation `4d806707fe58914ce08c9ab9078c5e05419651c3` deployed READY. UI refinements preserve the existing theme, private media and message security. Pins use the existing private settings table; mutations are owner-only, boolean/UUID validated, nonexistent targets rejected, and pins are cleaned up on chat deletion. Targeted tests cover unauthorized Sub requests, CSRF, malformed pins, persistence, ordering and unpinning. Final full regression suite and build passed; production dependency audit found zero vulnerabilities.

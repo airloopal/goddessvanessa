@@ -1,5 +1,13 @@
 # Conversation release security review — 5 October 2026
 
+## 07:19 addendum — release 2026.10.05.2
+
+Production implementation `51be41505994e0889f69c4c353421d6737ce42e2` and sandbox implementation `4d806707fe58914ce08c9ab9078c5e05419651c3` deployed READY. UI refinements preserve the existing theme, private media and message security. Pins use the existing private settings table; mutations are owner-only, boolean/UUID validated, nonexistent targets rejected, and pins are cleaned up on chat deletion. Targeted tests cover unauthorized Sub requests, CSRF, malformed pins, persistence, ordering and unpinning. Final full regression suite and build passed; production dependency audit found zero vulnerabilities.
+
+Browser checks at mobile/desktop sizes confirmed Settings relocation, separate mobile list/thread, single-icon closes and shared compact rendering in admin, floating and Sub chat. Short bubbles measure 45.8 px at 12 px text; voice bubbles measure 64 px. Device keyboard/microphone acceptance remains separate.
+
+Deployed checks on both hosts: eleven private routes denied anonymous access with no-store responses; forged identity and pin mutations and cross-origin broadcast returned 403; security headers retained; twelve checked assets matched local source; payment modes stayed separate. Earlier runtime-log access and Supabase authentication warning limitations below remain unchanged. No schema, credentials, grants, real charges or real member messages changed. Subsequent documentation commits retain the identical executable source.
+
 Release: `2026.10.05.1`. This is a targeted application regression and deployment review, not an independent penetration test.
 
 ## Release evidence

@@ -244,3 +244,5 @@ body.dashboard[data-mobile-admin-tab=chats] #admin-thread>.message,body.dashboar
 .chat-view #client-chat.keyboard-open .telegram-chat .chat-compose-hint{display:none}
 .chat-view #client-chat.keyboard-open .telegram-chat .chat-header{min-height:44px;padding-top:4px;padding-bottom:4px}
 .chat-view #client-chat.keyboard-open .telegram-chat .chat-composer textarea{max-height:80px}
+
+.chat-view .telegram-chat .goddess-chat-avatar{position:absolute;inset:0;display:block;width:100%;height:100%;border-radius:50%;object-fit:cover;object-position:50% 40%}

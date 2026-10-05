@@ -68,7 +68,6 @@ async function educationAPI(request,env,url){
  const enrolmentWrite=db(env).prepare('INSERT INTO education_enrolments (user_id,reference,name,path_id,answers,snapshot,completed,created_at,updated_at) VALUES (?,?,?,?,?,?,?, ?,?) ON CONFLICT(user_id) DO UPDATE SET name=excluded.name,path_id=excluded.path_id,answers=excluded.answers,snapshot=excluded.snapshot,updated_at=excluded.updated_at').bind(user,'LEARN-'+crypto.randomUUID(),p.name.trim(),p.pathId,JSON.stringify(p.answers),JSON.stringify(snapshot),'[]',now,now);
  const reviewWrite=db(env).prepare('INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?)').bind('education-review-'+agreement.id,JSON.stringify({userId:user,name:p.name.trim(),...agreement}),now);
  await db(env).batch([enrolmentWrite,reviewWrite]);
- await notifyEvent(env,'application',agreement.id,{user,email:agreement.email});
  return json({enrolment:await read(),access:{status:'awaiting_admin',codeIssued:false}});
 }
 async function educationBody(request,url,limit){if(request.headers.get('origin')!==url.origin)return json({error:'Request origin rejected'},403);if(!request.headers.get('content-type')?.startsWith('application/json'))return json({error:'JSON required'},415);let raw;try{raw=await boundedText(request,limit);}catch(error){return json({error:error.status===413?'Request too large':'Invalid request body'},error.status===413?413:400);}try{const p=JSON.parse(raw);return p&&typeof p==='object'&&!Array.isArray(p)?p:json({error:'Invalid JSON object'},400);}catch{return json({error:'Invalid JSON'},400);}}

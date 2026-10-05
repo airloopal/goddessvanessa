@@ -26,3 +26,15 @@ context.surfaceAPI.setDialog(dialog);
 assert.equal(await context.surfaceAPI.squareAuthenticationSurface(async()=>{assert.equal(modal,false);return 'verified';}),'verified');assert.equal(modal,true);assert.equal(closes,2);assert.equal(shows,1);assert.equal(modals,1);assert.equal(dialog.dataset.squareSkipClose,'2');
 await assert.rejects(context.surfaceAPI.squareAuthenticationSurface(async()=>{throw Error('Challenge failed');}),/Challenge failed/);assert.equal(modal,true);
 console.log('Bank return checks passed: hidden-bank-app time excluded, listener cleanup and authentication window modal handoff restored on success/failure.');
+
+// Reload and native return recover server contact without optional sessionStorage.
+async function nativeInit({returned=true,paid=true,refreshError=false}={}){
+ const state={mode:'production',ready:true,contact:{pathId:'path',email:'fixture@example.test'},entry:{status:'pending',plan:{id:'advanced',amount:6250,promoCode:'SUB50'}},contract:null};let refreshes=0;
+ const c=vm.createContext({setTimeout,clearTimeout,URLSearchParams,educationPreview:false,enrolment:null,pathId:'',entryId:'',contractId:'',answers:{},learnerName:'',learnerEmail:'',learnerPhone:'',entryReviewed:false,screen:returned?'intro':'paths',course:{features:{questionnaire:true}},sessionStorage:{getItem(){throw Error('Storage blocked');},setItem(){throw Error('Storage blocked');}},location:{search:returned?'?payment=entry':'',pathname:'/application.html'},history:{replaceState(){}},eduAPI:async path=>{if(path==='payments')return state;refreshes++;if(refreshError)throw Error('Offline');return {mode:'production',ready:true,entry:{...state.entry,status:paid?'paid':'pending'},contract:null};}});
+ vm.runInContext(fs.readFileSync('public/square-payments.js','utf8')+';globalThis.init=squareInit;',c);await c.init();return {c,refreshes};
+}
+let resume=await nativeInit();assert.equal(resume.c.screen,'questions');assert.equal(resume.c.pathId,'path');assert.equal(resume.c.learnerEmail,'fixture@example.test');assert.equal(resume.c.entryReviewed,true);
+resume=await nativeInit({returned:false});assert.equal(resume.refreshes,1);assert.equal(resume.c.screen,'questions');
+resume=await nativeInit({paid:false});assert.equal(resume.c.entryReviewed,false);assert.equal(resume.c.screen,'intro');
+resume=await nativeInit({refreshError:true});assert.equal(resume.c.entryReviewed,false);assert.equal(resume.c.pathId,'path');
+console.log('Native browser recovery checks passed: missing marker, blocked draft storage, contact retained and no unverified paid state.');

@@ -12,7 +12,7 @@ let dashboardNavigation=0,overviewFlight=null,overviewData=null;
 async function navigateDashboard(next){if(!dashboardAllowed||!['overview','chats','applications','verifications','content','settings'].includes(next))return;const sequence=++dashboardNavigation;DashboardBusy.clear();const done=DashboardBusy.start('Opening '+({applications:'All Subs',chats:'conversations',verifications:'verification requests'}[next]||next)+'…');
  try{await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));if(sequence!==dashboardNavigation)return;
  if(next==='applications'){const data=await eduAPI('enrolments');if(sequence!==dashboardNavigation)return;enrolments=data.enrolments;}
- if(next==='chats'){await loadStudents();if(sequence!==dashboardNavigation)return;}
+ if(next==='chats'){mobileChatOpen=false;await loadStudents();if(sequence!==dashboardNavigation)return;}
  tab=next;await renderDashboard();if(sequence===dashboardNavigation){const h=document.querySelector('#dashboard-main h1');if(h){h.tabIndex=-1;h.focus({preventScroll:true});}}}
  catch(error){if(sequence===dashboardNavigation){let message=document.getElementById('dashboard-transition-error');if(!message){message=document.createElement('p');message.id='dashboard-transition-error';message.setAttribute('role','alert');dashboardMain.prepend(message);}message.textContent='Could not open this section. '+error.message;}}
  finally{done();}

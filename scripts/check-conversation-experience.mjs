@@ -20,6 +20,15 @@ assert.equal((await call('chat/session',{cookie:login.cookie})).status,200,'reje
 assert.equal((await env.DB.prepare('SELECT COUNT(*) AS count FROM chat_sessions WHERE student_id=?').bind(first).first()).count,1);
 await env.DB.prepare('UPDATE chat_students SET code_hash=? WHERE id=?').bind(currentHash,first).run();
 const sub=(path,method='GET',body)=>call('chat/'+path,{cookie:login.cookie,method,body});
+assert.equal((await sub('students','PATCH',{studentId:first,pinned:true})).status,403,'Sub cannot edit admin pins');
+assert.equal((await admin('chat/students','PATCH',{studentId:first,pinned:'true'})).status,400);
+assert.equal((await admin('chat/students','PATCH',{studentId:crypto.randomUUID(),pinned:true})).status,404);
+assert.equal((await call('chat/students',{method:'PATCH',admin:true,origin:'https://evil.test',body:{studentId:first,pinned:true}})).status,403);
+assert.equal((await admin('chat/students','PATCH',{studentId:first,pinned:true})).status,200);
+let pinnedList=(await admin('chat/students')).data.students;
+assert.equal(pinnedList[0].id,first);assert.equal(pinnedList[0].pinned,true,'pin saved and first in selector');
+assert.equal((await admin('chat/students','PATCH',{studentId:first,pinned:false})).status,200);
+assert.equal((await admin('chat/students')).data.students.find(s=>s.id===first).pinned,false);
 assert.equal((await sub('gallery')).status,200);assert.equal((await sub('gallery?student='+second)).status,403);assert.equal((await sub('profile?student='+first)).status,403);
 assert.equal((await sub('plans')).status,200);assert.equal((await call('chat/plans')).status,403);
 await admin('chat/profile','PUT',{studentId:first,revision:0,notes:'Private note',labels:['New','Regular']});assert.deepEqual((await admin('chat/profile?student='+first)).data.profile.labels,['New','Regular']);assert.equal((await admin('chat/profile','PUT',{studentId:first,revision:1,notes:'',labels:['x'.repeat(25)]})).status,400);

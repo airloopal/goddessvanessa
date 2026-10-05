@@ -4,6 +4,14 @@ Record confirmed incidents and fixes here, newest first. Dates use Europe/Warsaw
 
 
 
+## BUG-2026-10-05-002 — Compact bubbles, mobile chat screens and saved pins
+
+- **Evidence:** User supplied mobile list/thread reference, doubled-close-icon example and oversized text/voice bubbles. Confirmed inherited margins/padding and stacked reply metadata enlarged bubbles; automatic icon decoration retained existing symbol text. The mobile layout displayed list and thread together, reducing useful conversation height.
+- **Patch:** Shared 12px compact bubble text and tightly bounded padding/margins; timestamp, receipts and circular reply control in one row; 30px voice playback control and compact waveform without repeated media labels. Photos/videos no longer have redundant visible type/size captions; accessible labels and download controls remain. Remove repeated arrow/X decoration. Mobile Chats opens the searchable list, and selection opens a full-height thread with a Chats back control beneath the retained header and above bottom navigation. Pink/burgundy palette retained. Media request actions are pink circular icons in one row. Browser alerts and client-view link move to Settings; Message all moves to Conversations. Administrator pins persist per chat in the existing private settings table and sort first across desktop/mobile/floating selectors.
+- **Security/regression:** Pin mutations require verified owner, strict UUID/boolean fields and same-origin checks; nonexistent targets are rejected. Targeted tests verify Sub denial, malformed input, CSRF, persistence, ordering and unpinning. Existing message escaping/link allowlist, private media, notifications, sessions and financial flows retained. Final full npm test and build passed (97 assets), and npm audit --omit=dev found zero vulnerabilities. Deployment identifiers are recorded in the verification addendum.
+- **Data handling:** No schema, payment mode, credential or public-access grants changed. Pin settings are removed when the chat account is deleted. Browser verification uses disposable accounts and synthetic audio; no real client messages or charges sent.
+- **Acceptance:** Browser verified separate mobile list/thread, pin action, compact short/voice bubbles and icon request row. Settings controls, desktop and floating chat verified in browser; both admin/Sub short bubbles measure 45.8 px with 12 px text, and voice bubbles measure 64 px. Close buttons contain one SVG with no repeated symbol. Deployed checks follow in the verification addendum. Physical phone keyboard, recordings and client acceptance remain pending.
+
 ## BUG-2026-10-05-001 — Recover conversation, access and dashboard batch
 
 - **Status:** Implemented, regression-verified and deployed READY on both environments. Physical-device acceptance remains open.

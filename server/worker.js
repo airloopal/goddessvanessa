@@ -2,6 +2,8 @@ const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:
 const db=env=>{if(!env.DB)throw Error('Progress database is unavailable');return env.DB;};
 export default {async fetch(request,env){
  const url=new URL(request.url),pathname=url.pathname;
+ if(pathname==='/api/cron/notifications'||pathname==='/api/chat/activity')return notificationAPI(request,env,url);
+ if(pathname.startsWith('/api/member/'))return membershipAPI(request,env,url);
  if(pathname.startsWith('/api/visual/')){
   if(!['/api/visual/published','/api/visual/draft'].includes(pathname))return json({error:'Not found'},404);
   const authenticatedUser=request.headers.get('oai-authenticated-user-id'),userId=authenticatedUser?'owner':null;

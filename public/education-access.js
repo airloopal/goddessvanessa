@@ -11,3 +11,5 @@ PreviewAccess.check().then(student=>{if(student){const a=document.createElement(
 
 const accessNotice=new URLSearchParams(location.search).get('notice');
 if(accessNotice==='application-saved')document.getElementById('access-status').textContent='Your application has been sent to Goddess Vanessa for review. Chat opens only after she issues your private access code.';
+
+const renewalLink=document.createElement('a');renewalLink.className='quiet';renewalLink.href='/plans.html';renewalLink.textContent='Renew or extend a contract';accessHost.append(renewalLink);

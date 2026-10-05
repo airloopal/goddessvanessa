@@ -51,7 +51,7 @@ Once Vercel assigns the production website URL:
 
 The owner email remains `danielvernontp@gmail.com`. Sign in at `/signin.html?return_to=%2Fdashboard.html` with that address. A Supabase Dashboard login does not automatically create an application login session.
 
-Students continue to use `/access.html` and their 48-character, single-use chat codes. The administrator can issue these manually through Applications/Conversations. If Resend is configured, the code is emailed as well.
+Students continue to use `/access.html` and their 48-character chat codes valid until replacement, suspension or contract expiry. The administrator can issue these manually through Applications/Conversations. Codes are shared manually and privately; the current issuance route does not send email.
 
 ## 5. Check before changing the domain
 

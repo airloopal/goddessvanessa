@@ -42,3 +42,5 @@ body.chat-view .telegram-chat .message>.message-reply,body.dashboard .admin-thre
 body.chat-view .telegram-chat .message.outgoing>.message-reply,body.dashboard .admin-thread .message.outgoing>.message-reply{left:-34px;right:auto}
 .message>.message-reply svg{width:16px!important;height:16px!important;min-width:16px!important;margin:0!important;fill:currentColor!important;stroke:none!important;display:block;pointer-events:none}
 .message>.message-reply:hover,.message>.message-reply:focus-visible{background:color-mix(in srgb,currentColor 16%,transparent)!important;outline:2px solid currentColor;outline-offset:2px}
+
+body.dashboard .admin-thread .message>.message-reply{color:var(--dash-muted)!important}

@@ -1,25 +1,35 @@
-'use strict';
+ 'use strict';
 (()=>{
- const paths={
- status:'M3 12h4l3-8 4 16 3-8h4',chat:'M4 4h16v12H9l-5 4V4',overview:'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',
- applications:'M6 3h12v18H6zM9 7h6M9 11h6M9 15h4',video:'M3 6h12v12H3zM15 10l6-4v12l-6-4',photo:'M3 3h18v18H3zM3 17l6-6 4 4 3-3 5 5M7 7h.01',microphone:'M9 5a3 3 0 0 1 6 0v7a3 3 0 0 1-6 0V5M5 11v1a7 7 0 0 0 14 0v-1M12 19v3M8 22h8',
- edit:'m4 16 12-12 4 4L8 20H4zM14 6l4 4',history:'M4 5v5h5M4 10a8 8 0 1 1 1 8M12 7v5l3 2',bell:'M6 9a6 6 0 0 1 12 0v6l2 3H4l2-3V9M10 21h4',external:'M14 3h7v7M21 3 10 14M10 3H3v18h18v-7',back:'M20 12H4m6-6-6 6 6 6',next:'M4 12h16m-6-6 6 6-6 6',close:'M6 6l12 12M6 18 18 6',send:'m3 3 19 9-19 9 4-9-4-9m4 9h15',download:'M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4',key:'M14 9a5 5 0 1 1-10 0 5 5 0 0 1 10 0m-1 3 8 8m-4-4 3-3',book:'M12 5C8 3 5 3 2 4v16c3-1 6-1 10 1V5m0 0c4-2 7-2 10-1v16c-3-1-6-1-10 1',copy:'M8 8h13v13H8zM16 8V3H3v13h5',check:'m4 12 5 5L20 6',trash:'M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15',pause:'M8 4v16M16 4v16',debug:'M8 8h8v10H8zM9 8V5h6v3M3 10h5m8 0h5M3 16h5m8 0h5M12 8v10'
- };
- function key(el){if(paths[el.dataset.navIcon])return el.dataset.navIcon;const tab=el.dataset.tab;if(tab)return {chats:'chat',overview:'overview',applications:'applications',verifications:'video',content:'edit'}[tab];
+ function key(el){
+ const explicit=el.dataset.navIcon||el.dataset.adminActionIcon;if(AdminIcons.names.includes(explicit))return explicit;
+ if(el.id==='admin-theme-toggle')return document.body.dataset.adminTheme==='night'?'sun':'moon';
+ if(el.id==='goddess-account-toggle')return 'user';if(el.id==='mobile-admin-more')return 'more';if(el.id==='goddess-logout')return 'logout';
+ const tab=el.dataset.tab||el.dataset.mobileTab;if(tab)return {chats:'chat',overview:'overview',applications:'applications',verifications:'verification',settings:'key',content:'edit'}[tab];
+ if(el.matches('[data-reply-message]'))return 'reply';if(el.matches('[data-pin-student]'))return 'pin';if(el.matches('[data-emoji-toggle]'))return 'smile';
  const t=(el.getAttribute('aria-label')||el.textContent).trim().toLowerCase();
- for(const [pattern,k] of [[/status/,'status'],[/debug|issues/,'debug'],[/changelog/,'history'],[/notification/,'bell'],[/refresh|reload|retry/,'history'],[/download/,'download'],[/copy/,'copy'],[/code|sign in/,'key'],[/video|verification/,'video'],[/photo/,'photo'],[/voice/,'microphone'],[/send|reply/,'send'],[/visual|content|theme|edit/,'edit'],[/application/,'applications'],[/back|dashboard/,'back'],[/conversation|chat/,'chat'],[/tour|walkthrough|around/,'book'],[/close|not now|^×$/,'close'],[/next/,'next'],[/finish|done|save|publish|reactivate/,'check'],[/delete/,'trash'],[/suspend/,'pause']])if(pattern.test(t))return k;
+ for(const [pattern,k] of [[/cancel reply|close|not now|^×$/,'close'],[/choose emoji/,'smile'],[/attach/,'attach'],[/gift/,'gift'],[/status/,'status'],[/debug|issues/,'debug'],[/changelog/,'history'],[/notification/,'bell'],[/refresh|reload|retry/,'refresh'],[/download/,'download'],[/copy/,'copy'],[/code|sign in/,'key'],[/verification|authenticator/,'verification'],[/video/,'video'],[/photo|gallery|background/,'photo'],[/voice/,'microphone'],[/reply to/,'reply'],[/send|reply/,'send'],[/visual|content|edit/,'edit'],[/application|all subs/,'applications'],[/back|dashboard/,'back'],[/conversation|chat/,'chat'],[/tour|walkthrough|around/,'book'],[/next/,'next'],[/finish|done|save|publish|reactivate/,'check'],[/delete|remove/,'trash'],[/suspend|pause/,'pause'],[/profile|account/,'user'],[/log out/,'logout']])if(pattern.test(t))return k;
  if(el.matches('a[target="_blank"],.status-links a'))return 'external';return null;
  }
- function decorate(){document.querySelectorAll('#dashboard-nav a,#dashboard-nav button,.dashboard-links a,.dashboard-links button,#dashboard-main .quiet,#dashboard-main .p-button,#status-main a,#status-main button,dialog button,#floating-chat-toggle,#floating-chat button').forEach(el=>{
- if(el.matches('[data-reply-message],[data-pin-student],.voice-note-play,.voice-note-download,.media-download-icon,[data-emoji-toggle],#admin-theme-toggle')||el.querySelector('svg')||el.matches('[data-student],.floating-conversation-row'))return;const k=key(el);if(!k)return;
- const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('class','goddess-action-icon');svg.setAttribute('aria-hidden','true');svg.setAttribute('focusable','false');const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',paths[k]);svg.append(path);if(/^[×✕✖←→↓]$/.test(el.textContent.trim()))el.replaceChildren(svg);else el.prepend(svg);el.classList.add('goddess-icon-action');
- });}
- decorate();let queued=false;new MutationObserver(()=>{if(queued)return;queued=true;queueMicrotask(()=>{queued=false;decorate();});}).observe(document.body,{childList:true,subtree:true});
+ function decorate(){document.querySelectorAll('#dashboard-nav a,#dashboard-nav button,.dashboard-links a,.dashboard-links button,#dashboard-main button,#dashboard-main .quiet,#dashboard-main .p-button,#status-main a,#status-main button,dialog button,#floating-chat-toggle,#floating-chat button').forEach(el=>{
+ if(el.matches('.crucial-notification,.emoji-picker button,[data-student],.floating-conversation-row,.background-preset,[data-chat-media-url],.voice-note-play,.voice-note-download,.media-download-icon')||el.closest('.crucial-notification'))return;
+ const k=key(el);if(!k)return;const existing=el.querySelector('svg');if(existing?.dataset.adminIcon===k)return;
+ for(const n of el.childNodes)if(n.nodeType===3&&el.textContent.trim().length>1)n.textContent=n.textContent.replace(/[↗←→↑↓]/g,'');
+ const markup=AdminIcons.svg(k,'goddess-action-icon');
+ if(el.id==='admin-theme-toggle'||/^[×✕✖←→↓↩]$/.test(el.textContent.trim()))el.innerHTML=markup;
+ else if(existing){const own=el.querySelector(':scope > svg');if(own)own.outerHTML=markup;else if(el.querySelector('.mobile-tool-symbol'))el.querySelector('.mobile-tool-symbol').innerHTML=markup;else return;}
+ else el.insertAdjacentHTML('afterbegin',markup);
+ el.classList.add('goddess-icon-action');
+ });
+ const account=document.querySelector('#goddess-account-toggle .account-chevron');if(account&&!account.dataset.adminIcon)account.outerHTML=AdminIcons.svg('chevronDown','account-chevron');
+ document.querySelectorAll('.mobile-admin-tool-list>*>span:last-child').forEach(e=>{if(e.textContent.trim()==='›')e.innerHTML=AdminIcons.svg('chevron');});
+ const search=document.querySelector('.conversation-search>svg');if(search&&!search.dataset.adminIcon)search.outerHTML=AdminIcons.svg('search');
+ }
+ decorate();let queued=false;new MutationObserver(()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;decorate();});}).observe(document.body,{childList:true,subtree:true});
 })();
 
 // Mobile navigation uses the existing authenticated dashboard routes.
 (()=>{
- const nav=document.getElementById('dashboard-nav');if(!nav)return;
+ const nav=document.getElementById('dashboard-nav');if(!nav||!nav.querySelector('[data-tab]'))return;
  const labels={overview:'Home',chats:'Chats',applications:'All Subs',content:'Edit'};
  for(const [key,label] of Object.entries(labels)){const button=nav.querySelector('[data-tab="'+key+'"]');button.dataset.mobileLabel=label;button.setAttribute('aria-label',key==='overview'?'Overview':key==='content'?'Edit website':key==='chats'?'Conversations':label);}
  const more=document.createElement('button');more.id='mobile-admin-more';more.type='button';more.dataset.mobileLabel='More';more.setAttribute('aria-label','More admin tools');more.setAttribute('aria-haspopup','dialog');more.innerHTML='<svg class="goddess-action-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>More';nav.append(more);

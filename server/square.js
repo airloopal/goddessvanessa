@@ -48,6 +48,7 @@ async function squareApplyPayment(env,paymentId){
   else if(['FAILED','CANCELED'].includes(p.status)&&r.status!=='paid')status='pending';
   const paidAt=r.paidAt||(status==='paid'?(p.card_details?.card_payment_timeline?.captured_at||p.updated_at):null);
   const next={...r,orderId:p.order_id,paymentId:p.id,status,paidAt,providerStatus:p.status,providerUpdatedAt:p.updated_at,receiptUrl:p.receipt_url||null,expiresAt:r.stage==='contract'&&paidAt?(r.entitlement?r.entitlement.expiresAt:squareExpiry(r.plan.id,paidAt)):r.stage==='renewal'?r.expiresAt||null:null};
+  if(r.stage==='donation'&&r.cardAttempt&&['paid','refund_review'].includes(status))next.cardAttempt={id:r.cardAttempt.id,complete:true};
   const result=await squareWrite(env,key,next,r._revision);if(result.meta.changes){if(r.stage==='renewal'){if(status==='paid')await squareApplyRenewal(env,key);else if(status==='refund_review'&&r.appliedAt){const parentKey=await squareKey(env,r.user,'contract');await db(env).prepare("UPDATE prototype_settings SET content=jsonb_set(content::jsonb,'{status}','\"refund_review\"'::jsonb)::text,revision=revision+1,updated_at=? WHERE id=?").bind(new Date().toISOString(),parentKey).run();}}else if(status==='paid'&&r.status!=='paid'&&r.stage!=='donation'){const contact=await squareRecord(env,'sub-contact:'+r.user);await notifyEvent(env,'payment',p.id,{user:r.user,email:contact?.email,plan:r.plan.name,expiresAt:next.expiresAt});}return;}
  }
  throw Error('Concurrent payment update; retry required.');

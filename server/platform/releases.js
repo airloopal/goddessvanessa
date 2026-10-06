@@ -1,6 +1,7 @@
-export const release={version:'2026.10.06.8',date:'2026-10-06',title:'Shared-device application isolation — Sandbox'};
+export const release={version:'2026.10.06.9',date:'2026-10-06',title:'On-page feed donations — Sandbox'};
 export const changelog=[
- {...release,changes:['Kept application records and payments separate from an unrelated logged-in Sub.','Paused automatic Home entry when another application is present in the browser.']},
+ {...release,changes:['Added secure Square card fields inside the feed donation popup.','Shared Retry and Success feedback with application checkout and preserved safe same-payment confirmation.']},
+ {...{version:'2026.10.06.8',date:'2026-10-06',title:'Shared-device application isolation — Sandbox'},changes:['Kept application records and payments separate from an unrelated logged-in Sub.','Paused automatic Home entry when another application is present in the browser.']},
  {...{version:'2026.10.06.7',date:'2026-10-06',title:'Shared Sub theme and liquid glass — Sandbox'},changes:['Matched Chat to the Home feed palette and shared floating navigation.','Added a subtle glass trial to Sub controls and dashboard buttons/navigation.','Active Sub sessions now resume directly at Home.']},
  {...{version:'2026.10.06.6',date:'2026-10-06',title:'Private Goddess feed — Sandbox'},changes:['Added a private Sub Home feed for Goddess text, photo and video posts.','Added Like and fixed-amount Square donation actions, with contract access unchanged.','Added Goddess feed drafting/publishing tools and Sub Home/Chat navigation.']},
  {...{version:'2026.10.06.5',date:'2026-10-06',title:'Access requests in Notifications'},changes:['Moved access-code decisions to Notifications and revealed an approved private code for Goddess to copy and share.']},

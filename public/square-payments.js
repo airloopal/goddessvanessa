@@ -20,24 +20,6 @@ async function squareInit(){
 }
 // A late tokenization result is discarded after timeout; only this awaited result
 // can submit a charge. HTTP retries always keep the original attempt identity.
-function squareAwait(promise,ms,message){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(message)),ms);})]).finally(()=>clearTimeout(timer));}
-async function squareTokenize(card,details,ms=180000){
- let blocked;
- const policy=new Promise((_,reject)=>{blocked=e=>{if(['form-action','frame-src'].includes(e.effectiveDirective))reject(Object.assign(Error('Bank verification could not open securely. Continue on Square to complete payment.'),{code:'bank_policy_blocked'}));};window.addEventListener('securitypolicyviolation',blocked);});
- try{return await squareVerificationAwait(Promise.race([card.tokenize(details),policy]),ms,'Bank verification timed out. No payment was submitted by this attempt. Reopen checkout to try again.');}
- finally{window.removeEventListener('securitypolicyviolation',blocked);}
-}
-// Allow time spent in the bank app without discarding its successful return.
-function squareVerificationAwait(promise,ms,message,wallMs=600000){
- let timer,wallTimer,remaining=ms,visibleSince=null,settled=false;
- const doc=typeof document==='undefined'?null:document;
- return new Promise((resolve,reject)=>{
-  const finish=(error,value)=>{if(settled)return;settled=true;clearTimeout(timer);clearTimeout(wallTimer);doc?.removeEventListener('visibilitychange',visibility);error?reject(error):resolve(value);};
-  const expire=()=>finish(Object.assign(Error(message),{code:'bank_verification_timeout'}));
-  const visibility=()=>{clearTimeout(timer);if(visibleSince!==null)remaining-=Date.now()-visibleSince;visibleSince=null;if(remaining<=0){expire();return;}if(!doc?.hidden){visibleSince=Date.now();timer=setTimeout(expire,remaining);}};
-  doc?.addEventListener('visibilitychange',visibility);wallTimer=setTimeout(expire,wallMs);visibility();Promise.resolve(promise).then(value=>finish(null,value),error=>finish(error));
- });
-}
 async function squareAuthenticationSurface(run){
  const dialog=typeof entryDialog!=='undefined'?entryDialog:null,version=squareFormVersion;
  const modal=dialog?.open&&dialog.matches(':modal');
@@ -57,28 +39,15 @@ async function squareHostedRecovery(stage,button,message){
   const url=new URL(result.url);if(url.protocol!=='https:'||url.hostname!==(squareState.mode==='sandbox'?'sandbox.square.link':'square.link'))throw Error('The checkout address could not be verified.');location.assign(url.href);
  }catch(error){squareNotice(message,'retry','Checkout needs another try',error.message);squareButton(button,'retry','Continue on Square');button.onclick=()=>squareHostedRecovery(stage,button,message);button.disabled=false;if(alternative)alternative.disabled=false;}
 }
-let squareSDKPromise=null,squareCard=null,squareFormVersion=0;
+let squareCard=null,squareFormVersion=0;
 async function squareDisposeCard(){squareFormVersion++;const card=squareCard;squareCard=null;if(card)await card.destroy().catch(()=>{});}
-function squareLoadSDK(){
- if(window.Square)return Promise.resolve();
- if(!squareSDKPromise)squareSDKPromise=new Promise((resolve,reject)=>{const el=document.createElement('script');el.src=squareState.mode==='sandbox'?'https://sandbox.web.squarecdn.com/v1/square.js':'https://web.squarecdn.com/v1/square.js';el.onload=resolve;el.onerror=()=>{el.remove();squareSDKPromise=null;reject(Error('The secure card form could not load. Please close and reopen checkout.'));};document.head.append(el);});
- return squareSDKPromise;
-}
 function squareCardHTML(){return '<div id="square-card-container" aria-label="Secure card details"></div><p class="muted">Secured by Square. Your card details stay with Square.</p>';}
-function squareIcon(kind){const paths={card:'<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h3"/>',retry:'<path d="M20 7v5h-5M20 12a8 8 0 1 0-2 6"/>',video:'<rect x="3" y="6" width="12" height="12" rx="3"/><path d="m15 10 6-3v10l-6-3Z"/>',next:'<path d="M4 12h16m-6-6 6 6-6 6"/>',sign:'<path d="m14 4 6 6M4 20l5-1L21 7l-5-5L4 14v6ZM12 21h9"/>'};return '<svg class="square-action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(paths[kind]||paths.card)+'</svg>';}
-function squareButton(button,kind,label,compact=false){if(!button)return;button.innerHTML=squareIcon(kind)+(compact?'':'<span>'+eduEscape(label)+'</span>');button.setAttribute('aria-label',label);button.title=label;button.classList.add('square-action');button.classList.toggle('square-icon-only',compact);}
 function squareCheckout(stage){if(stage!=='contract')return;squareSaveDraft();screen='review';squareContractPanel();}
 function squareCheckoutActions(){
  squareButton(document.getElementById('lightbox-verification'),'video','Request verification');
  squareButton(document.getElementById('square-refresh'),'retry','Check payment status',true);
  squareButton(document.getElementById('square-contract-refresh'),'retry','Check payment status',true);
  const refresh=document.getElementById('square-refresh'),actions=entryDialog?.querySelector('.entry-lightbox-actions');if(refresh&&actions)actions.insertBefore(refresh,document.getElementById('square-entry-pay'));
-}
-function squareNotice(el,state,title,detail=''){
- if(!el)return;
- el.className='square-notice square-notice--'+state;
- el.setAttribute('role',state==='retry'?'alert':'status');
- el.innerHTML='<span class="square-notice-art" aria-hidden="true"><span class="square-notice-card"></span><svg viewBox="0 0 48 48"><circle class="square-notice-ring" cx="24" cy="24" r="20"/><path class="square-notice-check" d="m14 24 7 7 14-15"/><path class="square-notice-retry" d="M33 19a11 11 0 1 0 1 10M33 12v8h-8"/></svg></span><strong>'+eduEscape(title)+'</strong>'+(detail?'<span class="square-notice-detail">'+eduEscape(detail)+'</span>':'');
 }
 function squareEntrySuccess(plan){
  entryDialog.innerHTML='<div class="entry-lightbox-top"><span class="overline">'+squareLabel()+'</span><button class="quiet" id="lightbox-close" aria-label="Close entry checkout">×</button></div><h2 id="entry-lightbox-title" class="square-success-heading" tabindex="-1">Entry confirmed</h2><div id="entry-lightbox-status"></div><div class="square-success-summary">'+eduEscape(plan?.name||'Entry')+' · '+gbp(plan?.amount||0)+'</div><p class="muted square-success-caption">Your entry is paid. The contract fee is a separate payment later.</p><button class="p-button square-success-continue" id="square-entry-pay">Continue application</button>';
@@ -97,7 +66,7 @@ async function squareMountCard(stage,buttonId,statusId){
   if(prepared.hosted){squareNotice(message,'retry','Continue your secure checkout','Complete payment on Square, then return here.');squareButton(button,'card','Continue on Square');button.onclick=()=>squareHostedRecovery(stage,button,message);button.disabled=false;return;}
   let attemptId=prepared.resumeAttempt||null,pendingSource=null;
   button.parentElement.querySelector('[data-square-hosted-recovery]')?.remove();let recovery=null;
-  if(!attemptId){await squareLoadSDK();if(version!==squareFormVersion||!button.isConnected)return;const payments=window.Square.payments(prepared.applicationId,prepared.locationId);const card=await payments.card();if(version!==squareFormVersion||!button.isConnected){await card.destroy();return;}squareCard=card;await card.attach('#square-card-container');}
+  if(!attemptId){await squareLoadSDK(squareState.mode);if(version!==squareFormVersion||!button.isConnected)return;const payments=window.Square.payments(prepared.applicationId,prepared.locationId);const card=await payments.card();if(version!==squareFormVersion||!button.isConnected){await card.destroy();return;}squareCard=card;await card.attach('#square-card-container');}
   if(!attemptId){recovery=document.createElement('button');recovery.type='button';recovery.className='quiet';recovery.dataset.squareHostedRecovery='';recovery.textContent='Pay on Square instead';recovery.onclick=()=>squareHostedRecovery(stage,button,message);button.after(recovery);}
   if(attemptId)squareNotice(message,'retry','Let’s confirm your payment','A previous attempt is awaiting confirmation. Retry to check it safely.');else{message.replaceChildren();message.className='';}button.disabled=false;squareButton(button,attemptId?'retry':'card',attemptId?'Retry confirmation':'Confirm & Pay '+gbp(prepared.plan.amount));
   button.onclick=async()=>{

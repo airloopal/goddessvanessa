@@ -40,3 +40,45 @@ const order=orders.values().next().value;const payment={id:'feed-paid',order_id:
 const paid=await call('donation-status','POST',{id:attempt,postId:id});assert.equal(paid.status,200);assert.equal(paid.data.status,'paid');assert.equal((await request('/api/chat/session',{cookie})).status,200,'donation never revokes contract access');
 const removed=await call('posts','DELETE',{id,revision:published.data.post.revision},true);assert.equal(removed.status,200);assert.equal((await call('posts')).data.posts.some(p=>p.id===id),false);assert.equal((await call('like','PUT',{postId:id,liked:true})).status,404);assert.equal((await call('donation-status','POST',{id:attempt,postId:id})).data.status,'paid','removing a post retains donation evidence');
 console.log('Private feed passed: owner-only publish, draft/media isolation, CSRF, revision/amount validation, idempotent likes/checkout, fixed provider amount, paid reconciliation and unchanged contract access.');
+
+// Embedded donations: real API and private database, fake Square transport only.
+env.SQUARE_APPLICATION_ID='sandbox-fixture-app';
+const embeddedPost=await call('posts','POST',{...data,id:crypto.randomUUID(),text:'Card donation',status:'published'},true);assert.equal(embeddedPost.status,200);
+const embeddedId=embeddedPost.data.post.id,revision=embeddedPost.data.post.revision;
+const orderKeys=new Map(),chargeKeys=new Map();let orderCreates=0,chargeCreates=0,failConfirmation=false;
+env.SQUARE_FETCH=async(url,options)=>{const path=new URL(url).pathname,b=options.body?JSON.parse(options.body):null;
+ if(path.endsWith('/orders')){if(!orderKeys.has(b.idempotency_key)){const id='embedded-order-'+(++orderCreates);const order={...b.order,id,tenders:[]};orders.set(id,order);orderKeys.set(b.idempotency_key,order);}return Response.json({order:orderKeys.get(b.idempotency_key)});}
+ if(path.endsWith('/payments')){assert.equal(b.amount_money.amount,1250);assert.equal(b.amount_money.currency,'GBP');assert.equal(b.location_id,'fixture-location');assert.ok(b.order_id);
+  if(b.source_id==='cnon:decline')return Response.json({errors:[{code:'CARD_DECLINED'}]},{status:400});
+  if(!chargeKeys.has(b.idempotency_key)){const id='embedded-payment-'+(++chargeCreates);const amount=b.source_id==='cnon:mismatch'?1251:1250,payment={id,order_id:b.order_id,location_id:'fixture-location',status:'COMPLETED',updated_at:new Date().toISOString(),amount_money:{amount,currency:'GBP'},total_money:{amount,currency:'GBP'}};chargeKeys.set(b.idempotency_key,payment);payments.set(id,payment);orders.get(b.order_id).tenders=[{payment_id:id}];}
+  if(failConfirmation){failConfirmation=false;return Response.json({errors:[{code:'INTERNAL_SERVER_ERROR'}]},{status:500});}return Response.json({payment:chargeKeys.get(b.idempotency_key)});}
+ if(path.includes('/orders/'))return Response.json({order:orders.get(path.split('/').at(-1))});if(path.includes('/payments/'))return Response.json({payment:payments.get(path.split('/').at(-1))});throw Error('Unexpected card provider request');};
+const embeddedCall=async(path,body)=>{await env.DB.prepare("DELETE FROM chat_limits WHERE key LIKE 'feed-donate:%'").run();return call(path,'POST',body);};
+const form={id:crypto.randomUUID(),postId:embeddedId,revision};
+assert.equal((await embeddedCall('donate/charge',{...form,attemptId:crypto.randomUUID(),sourceId:'cnon:test'})).status,409);
+assert.equal((await embeddedCall('donate/prepare',{...form,amount:1})).status,400);
+assert.equal((await embeddedCall('donate/prepare',{...form,revision:0})).status,409);
+assert.equal((await request('/api/feed/donate/prepare',{method:'POST',cookie,origin:'https://evil.test',data:form})).status,403);
+assert.equal((await request('/api/feed/donate/prepare',{method:'POST',data:form})).status,401);
+assert.equal((await call('donate/prepare','POST',form,true)).status,403);
+const prepared=await embeddedCall('donate/prepare',form);assert.equal(prepared.status,200);assert.equal(prepared.data.applicationId,'sandbox-fixture-app');assert.equal(prepared.data.plan.amount,1250);assert.equal(prepared.data.resumeAttempt,null);assert.equal(prepared.data.url,undefined);
+const secondTab=await embeddedCall('donate/prepare',{...form,id:crypto.randomUUID()});assert.equal(secondTab.data.id,form.id);assert.equal(orderCreates,1);
+assert.equal((await embeddedCall('donate',form)).status,409);
+const attemptId=crypto.randomUUID();assert.equal((await embeddedCall('donate/charge',{...form,attemptId,sourceId:'4111111111111111'})).status,400);
+const decline=await embeddedCall('donate/charge',{...form,attemptId,sourceId:'cnon:decline'});assert.equal(decline.status,402);assert.equal(decline.data.retryCard,true);
+assert.equal((await embeddedCall('donate/charge',{...form,attemptId,sourceId:'cnon:good'})).status,402,'declined attempt cannot silently become a new charge');
+const nextAttempt=crypto.randomUUID();failConfirmation=true;const delayed=await embeddedCall('donate/charge',{...form,attemptId:nextAttempt,sourceId:'cnon:good'});assert.equal(delayed.status,503);assert.equal(delayed.data.retrySame,true);assert.equal(chargeCreates,1);
+const confirmed=await embeddedCall('donate/charge',{...form,attemptId:nextAttempt});assert.equal(confirmed.status,200);assert.equal(confirmed.data.paid,true);assert.equal(chargeCreates,1,'retry confirms original payment, never charges twice');
+const record=JSON.parse((await env.DB.prepare("SELECT content FROM prototype_settings WHERE content::jsonb->>'clientId'=? AND id LIKE 'sq-sandbox-f-%'").bind(form.id).first()).content);assert.equal(record.cardAttempt.request,undefined,'confirmed token discarded');assert.equal(record.cardAttempt.complete,true);
+assert.equal((await embeddedCall('donate/prepare',form)).data.paid,true);assert.equal((await request('/api/chat/session',{cookie})).status,200);
+const contractSnapshot=await env.DB.prepare("SELECT content FROM prototype_settings WHERE id LIKE 'sq-sandbox-c-%'").all();assert.equal(contractSnapshot.results.length,0,'donations do not create contract access');
+console.log('Embedded feed cards passed: Sub/CSRF authorization, fixed price, preflight, pending-tab reuse, card declines, safe same-payment recovery, confirmed token disposal and unchanged contract access.');
+const mismatchForm={...form,id:crypto.randomUUID()};assert.equal((await embeddedCall('donate/prepare',mismatchForm)).status,200);
+const mismatchAttempt=crypto.randomUUID(),mismatchResult=await embeddedCall('donate/charge',{...mismatchForm,attemptId:mismatchAttempt,sourceId:'cnon:mismatch'});assert.equal(mismatchResult.status,202);assert.equal(mismatchResult.data.paid,undefined);assert.equal(mismatchResult.data.retrySame,true,'wrong amount can never show Success');
+const resumed=await embeddedCall('donate/prepare',mismatchForm);assert.equal(resumed.data.resumeAttempt,mismatchAttempt);assert.equal(resumed.data.sourceId,undefined);assert.equal(resumed.data.request,undefined);
+assert.equal((await embeddedCall('donate/charge',{...mismatchForm,attemptId:crypto.randomUUID(),sourceId:'cnon:new'})).status,409,'unconfirmed charge cannot be replaced');
+const otherStudent=crypto.randomUUID(),otherToken='ab'.repeat(24);await env.DB.prepare('INSERT INTO chat_students(id,user_id,name,email,created_at) VALUES(?,?,?,?,?)').bind(otherStudent,'second-feed-fixture','Second fixture','second@example.test',Date.now()).run();await env.DB.prepare('INSERT INTO chat_sessions(hash,student_id,expires_at) VALUES(?,?,?)').bind(Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(otherToken))).toString('hex'),otherStudent,Date.now()+3600000).run();const otherCookie='__Host-vanessa_student='+otherToken;
+assert.equal((await request('/api/feed/donation-status',{method:'POST',cookie:otherCookie,data:{id:mismatchForm.id,postId:embeddedId}})).status,404);assert.equal((await request('/api/feed/donate/charge',{method:'POST',cookie:otherCookie,data:{...mismatchForm,attemptId:mismatchAttempt}})).status,409);
+console.log('Donation amount mismatch, pending-attempt lock, safe resume payload and cross-Sub payment privacy passed.');
+
+const feedPage=await request('/feed.html');assert.match(feedPage.headers.get('content-security-policy'),/form-action 'self' https:/);assert.match(feedPage.headers.get('content-security-policy'),/frame-src 'self' https:/);assert.ok(!(await request('/chat.html')).headers.get('content-security-policy').includes("form-action 'self' https:"));

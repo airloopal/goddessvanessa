@@ -11,8 +11,6 @@ body.dashboard .chat-list-row .floating-conversation-row{padding:9px 5px!importa
 body.dashboard .chat-pin-button{width:25px;min-width:25px;min-height:30px;padding:4px!important;align-self:center}.chat-pin-button svg{width:14px;height:14px}
 body.dashboard .floating-conversation-row.selected{background:var(--pink)!important}
 .sub-peer-status,.presence-status{color:#258a52!important}.sub-peer-status:empty{display:none}.entry-tier{display:inline-flex;width:18px;height:18px;vertical-align:middle}.entry-tier svg{width:100%;height:100%;stroke:currentColor;stroke-width:1.5}.entry-tier.basic{color:#89939e}.entry-tier.basic svg{fill:#c9d0d8}.entry-tier.advanced{color:#a47b20}.entry-tier.advanced svg{fill:#ebca63}
-.message-meta [data-reply-message]{display:grid!important;place-items:center;border:1px solid color-mix(in srgb,currentColor 28%,transparent)!important;border-radius:50%!important;width:23px!important;height:23px!important;min-width:23px!important;min-height:23px!important;padding:3px!important;background:transparent!important;color:inherit!important;opacity:.72}
-.message-meta [data-reply-message]:hover,.message-meta [data-reply-message]:focus-visible{opacity:1;background:color-mix(in srgb,currentColor 12%,transparent)!important}
 .chat-composer textarea,#admin-reply,#floating-reply{max-height:min(160px,32dvh)!important;resize:none;overflow-y:auto;align-self:flex-end;box-sizing:border-box}
 .chat-composer{align-items:flex-end!important}.chat-compose-area{max-height:48dvh;overflow-y:auto}.admin-chat-bottom{max-height:48dvh;overflow-y:auto}
 .media-preview-button{position:relative;display:block;border:0!important;background:transparent!important;padding:0!important;min-width:0!important;min-height:0!important;border-radius:8px;overflow:hidden;cursor:zoom-in;color:inherit}
@@ -33,10 +31,14 @@ body.dashboard .sub-profile-cards{gap:10px}.sub-profile-card{border-radius:14px!
 /* Shared Sub/Goddess action icons: one smile, one reply silhouette. */
 [data-emoji-toggle]{display:inline-grid!important;place-items:center;padding:9px!important;gap:0!important;width:40px;height:40px;min-width:40px;min-height:40px;flex:0 0 40px;border-radius:50%}
 [data-emoji-toggle] svg{width:21px!important;height:21px!important;min-width:21px!important;margin:0!important;fill:none!important;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.message-meta .message-reply{position:relative;width:26px!important;height:26px!important;min-width:26px!important;min-height:26px!important;flex:0 0 26px;padding:5px!important;opacity:1!important;background:color-mix(in srgb,currentColor 7%,transparent)!important;border:1px solid color-mix(in srgb,currentColor 32%,transparent)!important;border-radius:50%!important;color:inherit!important}
-.message-meta .message-reply svg{width:16px!important;height:16px!important;min-width:16px!important;margin:0!important;fill:currentColor!important;stroke:none!important;display:block;pointer-events:none}
-.message-meta .message-reply:hover,.message-meta .message-reply:focus-visible{background:color-mix(in srgb,currentColor 16%,transparent)!important;outline:2px solid currentColor;outline-offset:2px}
 body.chat-view .emoji-picker{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px;padding:8px;border:1px solid var(--chat-border);border-radius:12px;background:var(--chat-panel);color:var(--chat-ink)}body.chat-view .emoji-picker[hidden]{display:none!important}body.chat-view .emoji-picker button{display:grid;place-items:center;min-width:0;min-height:38px;font-size:22px;padding:4px;border:0;background:transparent}
 @media(max-width:420px){body.chat-view .emoji-picker{grid-template-columns:repeat(6,minmax(0,1fr))}}
 
 body.chat-view [data-emoji-toggle]{color:var(--chat-ink)!important;background:var(--chat-input)!important;border:1px solid var(--chat-border)!important}
+
+/* Reply actions sit outside the bubble, on its centre-facing edge. */
+body.chat-view .telegram-chat .messages .message,body.dashboard .admin-thread .message{overflow:visible;max-width:min(82%,360px,calc(100% - 40px))!important;min-height:32px}
+body.chat-view .telegram-chat .message>.message-reply,body.dashboard .admin-thread .message>.message-reply{position:absolute!important;top:50%;right:-34px;left:auto;transform:translateY(-50%);display:grid!important;place-items:center;width:26px!important;height:26px!important;min-width:26px!important;min-height:26px!important;padding:5px!important;margin:0!important;float:none;opacity:1!important;background:color-mix(in srgb,currentColor 7%,transparent)!important;border:1px solid color-mix(in srgb,currentColor 32%,transparent)!important;border-radius:50%!important;color:var(--chat-ink,var(--dash-ink,#301522))!important;cursor:pointer}
+body.chat-view .telegram-chat .message.outgoing>.message-reply,body.dashboard .admin-thread .message.outgoing>.message-reply{left:-34px;right:auto}
+.message>.message-reply svg{width:16px!important;height:16px!important;min-width:16px!important;margin:0!important;fill:currentColor!important;stroke:none!important;display:block;pointer-events:none}
+.message>.message-reply:hover,.message>.message-reply:focus-visible{background:color-mix(in srgb,currentColor 16%,transparent)!important;outline:2px solid currentColor;outline-offset:2px}

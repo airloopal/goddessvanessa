@@ -8,6 +8,7 @@ function renderDashboard(){if(!dashboardAllowed)return;document.body.dataset.cha
  document.querySelector('.mobile-chat-back').onclick=()=>{mobileChatOpen=false;renderDashboard();};dashboardMain.querySelectorAll('[data-media-request]').forEach(b=>{b.setAttribute('aria-label','Request '+b.dataset.mediaRequest);b.title='Request '+b.dataset.mediaRequest;[...b.childNodes].filter(n=>n.nodeType===3).forEach(n=>n.remove());});
  bindPreviewComposer(document.getElementById('admin-form'),'admin',refreshAdminThreads);dashboardMain.querySelectorAll('[data-media-request]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{await PreviewChat.send('admin','Send a '+button.dataset.mediaRequest+' relevant to your learning question.');document.getElementById('media-request-status').textContent='Request sent. The sub can attach their response below the conversation.';}catch(error){document.getElementById('media-request-status').textContent=error.message;}finally{button.disabled=false;}});unread=false;refreshAdminThreads();}
 
+ if(tab==='feed')return window.renderGoddessFeed(dashboardMain);
  if(tab==='settings')window.renderGoddessSettings(dashboardMain);
  if(tab==='verifications')return renderVerificationInbox(dashboardMain);
  if(tab==='overview')return renderLiveOverview();

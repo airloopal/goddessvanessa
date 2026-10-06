@@ -1,4 +1,5 @@
 import {verify} from 'node:crypto';
+import {visitorLocation} from '../server/platform/visitor-geo.js';
 import {boundedText} from '../server/platform/request-body.js';
 import {statusAPI,recordFailure} from '../server/platform/diagnostics.js';
 import worker from '../dist/server/index.js';
@@ -53,7 +54,7 @@ export async function handle(request,env=process.env,dependencies={}){
  try{
   if(['/api/admin/status','/api/admin/changelog','/api/admin/overview'].includes(url.pathname)){context=dependencies.auth||authContext(request,{...env,...(dependencies.DB?{DB:dependencies.DB}:{})});const verified=await verifiedRequest(request,context.client,env);return context.apply(await statusAPI(verified,env,{database:()=>dependencies.DB||productionDatabase(env),storage:()=>dependencies.BUCKET||storage(env)}));}
   DB=dependencies.DB||productionDatabase(env);
-  const runtime={...env,DB,BUCKET:dependencies.BUCKET||storage(env),DIRECT_UPLOADS:true};
+  const runtime={...env,DB,BUCKET:dependencies.BUCKET||storage(env),DIRECT_UPLOADS:true,VISITOR_LOCATION:visitorLocation(request.headers,env.VERCEL==='1')};
   if(url.pathname==='/api/health'){
    await DB.prepare('SELECT 1 FROM prototype_settings LIMIT 1').all();
    return new Response(JSON.stringify({ok:true,database:true,storage:!!runtime.BUCKET,email:!!(env.RESEND_API_KEY&&env.EMAIL_FROM)}),{headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});

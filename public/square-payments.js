@@ -5,7 +5,7 @@ let squareState={mode:'off',ready:false,entry:null,contract:null};
 const squareEnabled=()=>!educationPreview&&squareState.mode!=='off';
 const squareEntryPaid=()=>squareState.entry?.status==='paid'&&squareState.entry.plan.id===entryId;
 const squareDraftKey='vanessa-square-application';
-async function squareFetchTimed(path,options,ms){if(typeof AbortSignal!=='undefined'&&typeof AbortSignal.timeout==='function')return fetch(path,{...options,signal:AbortSignal.timeout(ms)});if(typeof AbortController!=='function')return fetch(path,options);const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),ms);try{return await fetch(path,{...options,signal:controller.signal});}finally{clearTimeout(timer);}}
+async function squareFetchTimed(path,options,ms){options={...options,headers:educationRequestHeaders(path,options?.headers)};if(typeof AbortSignal!=='undefined'&&typeof AbortSignal.timeout==='function')return fetch(path,{...options,signal:AbortSignal.timeout(ms)});if(typeof AbortController!=='function')return fetch(path,options);const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),ms);try{return await fetch(path,{...options,signal:controller.signal});}finally{clearTimeout(timer);}}
 function squareSaveDraft(){try{sessionStorage.setItem(squareDraftKey,JSON.stringify({pathId,entryId,contractId,answers,learnerName,learnerEmail,learnerPhone,screen,squarePromoCode}));}catch{/* Optional draft storage must never interrupt a payment. */}}
 async function squareInit(){
  squareState=await eduAPI('payments');if(!squareEnabled())return;

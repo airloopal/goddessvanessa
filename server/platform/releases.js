@@ -1,6 +1,7 @@
-export const release={version:'2026.10.06.7',date:'2026-10-06',title:'Shared Sub theme and liquid glass — Sandbox'};
+export const release={version:'2026.10.06.8',date:'2026-10-06',title:'Shared-device application isolation — Sandbox'};
 export const changelog=[
- {...release,changes:['Matched Chat to the Home feed palette and shared floating navigation.','Added a subtle glass trial to Sub controls and dashboard buttons/navigation.','Active Sub sessions now resume directly at Home.']},
+ {...release,changes:['Kept application records and payments separate from an unrelated logged-in Sub.','Paused automatic Home entry when another application is present in the browser.']},
+ {...{version:'2026.10.06.7',date:'2026-10-06',title:'Shared Sub theme and liquid glass — Sandbox'},changes:['Matched Chat to the Home feed palette and shared floating navigation.','Added a subtle glass trial to Sub controls and dashboard buttons/navigation.','Active Sub sessions now resume directly at Home.']},
  {...{version:'2026.10.06.6',date:'2026-10-06',title:'Private Goddess feed — Sandbox'},changes:['Added a private Sub Home feed for Goddess text, photo and video posts.','Added Like and fixed-amount Square donation actions, with contract access unchanged.','Added Goddess feed drafting/publishing tools and Sub Home/Chat navigation.']},
  {...{version:'2026.10.06.5',date:'2026-10-06',title:'Access requests in Notifications'},changes:['Moved access-code decisions to Notifications and revealed an approved private code for Goddess to copy and share.']},
  {...{version:'2026.10.06.4',date:'2026-10-06',title:'Reply controls outside message bubbles'},changes:['Moved reply buttons outside sent and received bubbles, toward the centre of the stream, for Sub and Goddess on mobile and web.']},

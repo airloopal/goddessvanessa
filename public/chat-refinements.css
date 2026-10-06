@@ -29,3 +29,14 @@ body.dashboard .sub-profile-cards{gap:10px}.sub-profile-card{border-radius:14px!
 .chat-header-person strong>.conversation-labels{display:inline-flex!important;margin:0 0 0 6px!important;vertical-align:middle}.presence-dot:not(.is-online){display:none!important}.presence-dot.is-online{background:#258a52!important}
 
 @media(max-width:700px){.sub-profile-hero{display:grid!important;grid-template-columns:36px minmax(0,1fr);text-align:left!important;column-gap:8px!important;row-gap:3px!important}.sub-profile-hero>.mini-avatar{grid-column:1;grid-row:1 / span 3}.sub-profile-hero h3,.sub-profile-hero>span:not(.mini-avatar),.sub-profile-hero>.profile-chips{grid-column:2}.sub-profile-hero>.profile-chips{margin:0!important;gap:4px!important}.sub-profile-hero>.profile-chips span{font-size:9px!important;padding:2px 5px!important}}
+
+/* Shared Sub/Goddess action icons: one smile, one reply silhouette. */
+[data-emoji-toggle]{display:inline-grid!important;place-items:center;padding:9px!important;gap:0!important;width:40px;height:40px;min-width:40px;min-height:40px;flex:0 0 40px;border-radius:50%}
+[data-emoji-toggle] svg{width:21px!important;height:21px!important;min-width:21px!important;margin:0!important;fill:none!important;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.message-meta .message-reply{position:relative;width:26px!important;height:26px!important;min-width:26px!important;min-height:26px!important;flex:0 0 26px;padding:5px!important;opacity:1!important;background:color-mix(in srgb,currentColor 7%,transparent)!important;border:1px solid color-mix(in srgb,currentColor 32%,transparent)!important;border-radius:50%!important;color:inherit!important}
+.message-meta .message-reply svg{width:16px!important;height:16px!important;min-width:16px!important;margin:0!important;fill:currentColor!important;stroke:none!important;display:block;pointer-events:none}
+.message-meta .message-reply:hover,.message-meta .message-reply:focus-visible{background:color-mix(in srgb,currentColor 16%,transparent)!important;outline:2px solid currentColor;outline-offset:2px}
+body.chat-view .emoji-picker{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px;padding:8px;border:1px solid var(--chat-border);border-radius:12px;background:var(--chat-panel);color:var(--chat-ink)}body.chat-view .emoji-picker[hidden]{display:none!important}body.chat-view .emoji-picker button{display:grid;place-items:center;min-width:0;min-height:38px;font-size:22px;padding:4px;border:0;background:transparent}
+@media(max-width:420px){body.chat-view .emoji-picker{grid-template-columns:repeat(6,minmax(0,1fr))}}
+
+body.chat-view [data-emoji-toggle]{color:var(--chat-ink)!important;background:var(--chat-input)!important;border:1px solid var(--chat-border)!important}

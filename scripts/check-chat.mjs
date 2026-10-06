@@ -8,7 +8,7 @@ const context={window,parent:window,location:{search:''},URL,URLSearchParams,cry
  if(path.includes('/messages')&&options.method==='GET')data={messages:stored,states:serverStates,online:true,hasMore:false};
  if(path.endsWith('/messages')&&options.method==='POST'){if(release)await new Promise(resolve=>release=resolve);const b=JSON.parse(options.body),m={id:b.id,text:b.text,seq:stored.length+1,from:'client',at:Date.now()};stored.push(m);data={message:m};}
  return {ok:true,json:async()=>data};}};
-vm.createContext(context);vm.runInContext(fs.readFileSync('public/restored-chat.js','utf8'),context);context.PreviewChat=window.PreviewChat;
+vm.createContext(context);vm.runInContext(fs.readFileSync('public/admin-icons.js','utf8'),context);context.AdminIcons=window.AdminIcons;vm.runInContext(fs.readFileSync('public/restored-chat.js','utf8'),context);context.PreviewChat=window.PreviewChat;
 const chat=window.PreviewChat;
 await chat.select('student-a');assert.equal(chat.online(),true);
 release=true;const pending=chat.send('client','<hello>','123');assert.equal(chat.all()[0].pending,true);assert.match(vm.runInContext("previewThread('client')",context),/Sending/);release();release=null;await pending;

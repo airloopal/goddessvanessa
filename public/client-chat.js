@@ -24,7 +24,7 @@
  const updateScroll=()=>{jump.hidden=atBottom();if(atBottom()&&!window.ChatDiscreet)PreviewChat.read();};
  jump.onclick=()=>{log.scrollTop=log.scrollHeight;updateScroll();};log.addEventListener('scroll',updateScroll,{passive:true});
  window.refreshClientChat=()=>{syncConversationComposers();renderChatLog(log,'client');const typing=PreviewChat.typing('admin');document.querySelector('.self-presence-status').textContent=PreviewChat.error()?'You · Reconnecting…':'You · Online';document.querySelector('.presence-status').textContent=PreviewChat.error()?'Reconnecting…':typing?'typing…':PreviewChat.online()?'Online':'';document.querySelector('.presence-dot').classList.toggle('is-online',PreviewChat.online());updateScroll();};
- await PreviewChat.select(student.id);PreviewChat.subscribe(refreshClientChat);refreshClientChat();bindPreviewComposer(document.getElementById('client-composer'),'client',refreshClientChat);
+ await PreviewChat.select(student.id);PreviewChat.subscribe(refreshClientChat);refreshClientChat();bindPreviewComposer(document.getElementById('client-composer'),'client',refreshClientChat);UIChat.mountEmoji(document.getElementById('client-composer'));
  document.dispatchEvent(new Event('student-chat-ready'));
 })();
 

@@ -1,6 +1,6 @@
 /* Shared rounded 24px outline icons. Static SVG only; no device emoji or remote icon runtime. */
 'use strict';
-if(document.body.classList.contains('dashboard')){try{document.body.dataset.adminTheme=localStorage.getItem('vanessa-admin-theme')==='night'?'night':'day';}catch{}}
+if(document.body?.classList?.contains('dashboard')){try{document.body.dataset.adminTheme=localStorage.getItem('vanessa-admin-theme')==='night'?'night':'day';}catch{}}
 window.AdminIcons=(()=>{
  const shapes={
  chat:'<path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 9 9 0 0 1-4-.9L3 21l1.9-5a9 9 0 0 1-.9-4 8.4 8.4 0 0 1 8.5-9H13a8.4 8.4 0 0 1 8 8v.5Z"/>',
@@ -15,7 +15,7 @@ window.AdminIcons=(()=>{
  bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',
  external:'<path d="M14 3h7v7M21 3 10 14M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/>',
  back:'<path d="M20 12H4m6-6-6 6 6 6"/>',next:'<path d="M4 12h16m-6-6 6 6-6 6"/>',close:'<path d="m6 6 12 12M6 18 18 6"/>',
- send:'<path d="m21 3-7 18-4-7-7-4 18-7ZM21 3 10 14"/>',reply:'<path d="m9 4-6 6 6 6M3 10h11a7 7 0 0 1 7 7v3"/>',
+ send:'<path d="m21 3-7 18-4-7-7-4 18-7ZM21 3 10 14"/>',reply:'<path d="M9 5 3 11l6 6v-4h4c4 0 6 2 8 6v-3c0-6-3-9-8-9H9V5Z"/>',
  download:'<path d="M12 3v12m-5-5 5 5 5-5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>',
  key:'<circle cx="8" cy="8" r="5"/><path d="m12 12 9 9m-4-4 3-3m-6 3 3-3"/>',
  book:'<path d="M12 5C8 3 5 3 2 4v16c3-1 6-1 10 1V5m0 0c4-2 7-2 10-1v16c-3-1-6-1-10 1"/>',
@@ -43,7 +43,7 @@ window.AdminIcons=(()=>{
 })();
 
 // Authoring tools share the collection while keeping their established editor palette.
-if(!document.body.classList.contains('dashboard'))(()=>{
+if(document.body?.classList?.contains('builder')||document.body?.classList?.contains('academy-builder'))(()=>{
  function decorate(){document.querySelectorAll('button,a.textbtn,label.upload,.academy-nav a').forEach(el=>{
  if(el.closest('iframe,.emoji-picker'))return;const text=(el.getAttribute('aria-label')||el.textContent).trim().toLowerCase();
  let name=el.dataset.adminActionIcon;for(const [p,k] of [[/close|cancel/,'close'],[/remove|delete/,'trash'],[/^up\b|move up/,'up'],[/^down\b|move down/,'down'],[/save|publish|apply/,'check'],[/preview/,'photo'],[/copy/,'copy'],[/reset|refresh/,'refresh'],[/back|dashboard/,'back'],[/add|insert/,'applications'],[/upload|image/,'photo'],[/desktop|tablet|mobile/,'overview'],[/sign in|access/,'key'],[/edit/,'edit']])if(!name&&p.test(text))name=k;

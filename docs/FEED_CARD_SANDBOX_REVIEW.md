@@ -6,7 +6,7 @@ Subs can now use Square card fields in the donation popup, with the same Retry a
 
 The full regression suite, zero-vulnerability production dependency audit and 115-asset build were run. Targeted checks cover Sub/owner boundaries, CSRF, server price snapshots, wrong amounts, pending checkout reuse across tabs, card declines, unknown confirmation, same-payment retries, token disposal, cross-Sub privacy and queued modal close events.
 
-Browser verification used actual Square Sandbox SDK fields/tokenization, public Sandbox card values, disposable local data and a fake provider transport. No actual Square payment was made. Mobile 390×844 and desktop 1280×900 day/night layouts, validation errors, card decline, confirmation Retry, Success and returning to the feed were verified with no browser warning/error logs. Hosted endpoint/header and exact-asset checks are recorded in BUGFIX_LOGBOOK.md after deployment.
+Browser verification used actual Square Sandbox SDK fields/tokenization, public Sandbox card values, disposable local data and a fake provider transport. No actual Square payment was made. Mobile 390×844 and desktop 1280×900 day/night layouts, validation errors, card decline, confirmation Retry, Success and returning to the feed were verified with no browser warning/error logs. The hosted Sandbox deployment passed 155 checks: 145 primary checks including 115 exact assets, plus 10 card-specific authorization/CSP/readiness checks. Code commit 23c421007c3fdc15498b4a9515515b5048c74aab, deployment dpl_6RmgCuLZeLe9jxpXVb5BJupuACUE, READY on the Sandbox alias. A live bank-app/3DS challenge was not exercised; the existing timing and cancellation behavior is covered by regression tests.
 
 ## Security boundaries
 

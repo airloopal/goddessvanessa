@@ -1,6 +1,7 @@
-export const release={version:'2026.10.06.4',date:'2026-10-06',title:'Reply controls outside message bubbles'};
+export const release={version:'2026.10.06.5',date:'2026-10-06',title:'Access requests in Notifications'};
 export const changelog=[
- {...release,changes:['Moved reply buttons outside sent and received bubbles, toward the centre of the stream, for Sub and Goddess on mobile and web.']},
+ {...release,changes:['Moved access-code decisions to Notifications and revealed an approved private code for Goddess to copy and share.']},
+ {...{version:'2026.10.06.4',date:'2026-10-06',title:'Reply controls outside message bubbles'},changes:['Moved reply buttons outside sent and received bubbles, toward the centre of the stream, for Sub and Goddess on mobile and web.']},
  {...{version:'2026.10.06.3',date:'2026-10-06',title:'Shared emoji and reply controls'},changes:['Removed the duplicate emoji glyph and shared one SVG smile control between Sub and Goddess.','Added a compact themed reply silhouette beside the timestamp on web and mobile.']},
  {...{version:'2026.10.06.2',date:'2026-10-06',title:'Dashboard contrast and unified rounded icons'},changes:['Unified admin control icons using a local rounded SVG collection.','Corrected day/night dashboard surfaces, text, selected rows, dialogs and semantic states.','Labeled notification topics, grouped message previews by chat and removed duplicate icons.']},
  {...{version:'2026.10.06.1',date:'2026-10-06',title:'Compact conversations and live dashboard activity'},changes:['Opened shared photos/videos in an in-chat lightbox with an accessible close button.','Compacted chat selector/profile cards, aligned tier badges and mobile tools, and expanded paragraph inputs.','Put Overview first in navigation and attention tasks below live statistics with approximate city/country locations.','Added concise crucial notifications, a live number ticker and deduplicated notification chimes.']},

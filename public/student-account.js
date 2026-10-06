@@ -15,18 +15,20 @@ function setupStudentAccount(){
  }
 
  const requestNotice=document.createElement('button');requestNotice.type='button';requestNotice.className='quiet code-request-notice';requestNotice.hidden=true;requestNotice.style.cssText='display:block;margin:12px auto;max-width:calc(100% - 32px)';requestNotice.onclick=()=>showCodeRequest();menu.closest('.chat-header').after(requestNotice);
- function notice(r){if(r?.status==='used')r=null;requestNotice.hidden=!r;requestNotice.style.display=r?'block':'none';requestNotice.textContent=r?.status==='pending'?'Access-code request awaiting review':r?.status==='approved'?'Replacement code approved · Collect code':r?.status==='issued'?'Your replacement access code · View':r?.status==='declined'?'Access-code request declined · View details':'';}
+ function notice(r){if(r?.status==='used')r=null;requestNotice.hidden=!r;requestNotice.style.display=r?'block':'none';requestNotice.textContent=r?.status==='pending'?'Access-code request awaiting review':r?.status==='approved'?'Replacement code approved · Collect code':r?.status==='issued'?(r.issuedBy==='goddess'?'Replacement code ready · Vanessa will share it':'Your replacement access code · View'):r?.status==='declined'?'Access-code request declined · View details':'';}
  async function refreshCodeRequest(){try{const d=await chatAPI('request-code');notice(d.request);}catch{}}
  async function showCodeRequest(){
   show('Request new access code','<p role="status">Checking your request…</p>');
   try{const d=await chatAPI('request-code'),r=d.request;notice(r);const expired=r?.reviewedAt&&Date.now()-r.reviewedAt>=86400000;
    let copy='Request a replacement for your next sign-in. Vanessa will approve or decline it from her dashboard. Your current chat stays open.',button='Send request',collect=false;
    if(r?.status==='pending'){copy='Your request has been sent and is awaiting review. Your current chat stays open.';button='Check status';}
+   else if(r?.status==='issued'&&r.issuedBy==='goddess'&&!expired){copy='Vanessa approved your replacement code and will share it privately. Your current chat stays open until you use the replacement.';button='Close';}
    else if(['approved','issued'].includes(r?.status)&&!expired){copy='Your replacement has been approved. Collect and copy your private access code before logging out. Using it will replace your current session.';button='View my code';collect=true;}
    else if(r?.status==='declined'){copy='Vanessa declined your request. Your current chat stays open. You can discuss this in your conversation.';button='Request again';}
    else if(expired)copy='Your previous approval has expired. You can request another code.';
    show('Request new access code','<p>'+copy+'</p><p id="code-request-feedback" role="status"></p><button class="p-button" id="submit-code-request">'+button+'</button>');
    document.getElementById('submit-code-request').onclick=async e=>{const b=e.currentTarget;b.disabled=true;try{
+    if(r?.issuedBy==='goddess'&&!expired){modal.close();return;}
     if(r?.status==='pending'){await showCodeRequest();return;}
     if(!collect){await chatAPI('request-code','POST',{});await showCodeRequest();return;}
     const result=await chatAPI('request-code','POST',{action:'collect'});

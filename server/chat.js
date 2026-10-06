@@ -155,6 +155,11 @@ async function chatCodeRequests(request,env,url,{owner,student,body,method,now,p
   const target=await db(env).prepare('SELECT id,user_id,status FROM chat_students WHERE id=?').bind(String(body.studentId||'')).first();
   if(!target)return json({error:'Sub not found.'},404);
   if(body.decision==='approved'&&(target.status!=='active'||!await squareAccessAllowed(env,target.user_id)))return json({error:'This sub needs active paid contract access before a replacement can be approved.'},402);
+  if(body.decision==='approved'&&body.issueCode===true){
+   const code=chatToken(),hash=await chatHash(code),expiresAt=Math.min(253402300799000,await squareAccessDeadline(env,target.user_id));
+   const issued=await db(env).prepare("WITH reviewed AS (UPDATE prototype_settings SET content=(content::jsonb || jsonb_build_object('status','issued','issuedBy','goddess','reviewedAt',?::bigint,'expiresAt',?::bigint))::text,revision=revision+1,updated_at=? WHERE id=? AND content::jsonb->>'id'=? AND content::jsonb->>'status'='pending' RETURNING content) UPDATE chat_students SET code_hash=?,code_expires=? WHERE id=? AND status='active' AND EXISTS(SELECT 1 FROM reviewed) RETURNING (SELECT content FROM reviewed) AS content").bind(now,expiresAt,new Date(now).toISOString(),'code-request:'+target.id,String(body.requestId||''),hash,expiresAt,target.id).first();
+   return issued?json({request:JSON.parse(issued.content),code,expiresAt}):json({error:'This request has already been reviewed. Refresh the list.'},409);
+  }
   const row=await db(env).prepare("UPDATE prototype_settings SET content=(content::jsonb || jsonb_build_object('status',?::text,'reviewedAt',?::bigint))::text,revision=revision+1,updated_at=? WHERE id=? AND content::jsonb->>'id'=? AND content::jsonb->>'status'='pending' RETURNING content").bind(body.decision,now,new Date(now).toISOString(),'code-request:'+target.id,String(body.requestId||'')).first();
   return row?json({request:JSON.parse(row.content)}):json({error:'This request has already been reviewed. Refresh the list.'},409);
  }
@@ -165,6 +170,7 @@ async function chatCodeRequests(request,env,url,{owner,student,body,method,now,p
  if(method!=='POST')return json({error:'Method not allowed'},405);
  if(body.action==='collect'){
   const existing=await read();
+  if(existing?.issuedBy==='goddess')return json({error:'Vanessa has issued your replacement and will share it privately.'},409);
   if(!existing||!['approved','issued'].includes(existing.status))return json({error:'Your replacement request needs approval first.'},409);
   if(now-existing.reviewedAt>=86400000)return json({error:'This approval expired. Request another code.'},410);
   const token=request.headers.get('cookie').match(/(?:^|;\s*)__Host-vanessa_student=([a-f0-9]{48})(?:;|$)/)[1];

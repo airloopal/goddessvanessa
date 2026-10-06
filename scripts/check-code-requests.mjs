@@ -14,7 +14,8 @@ const r=(await student('POST',{})).data.request;
 assert.equal(r.status,'pending');assert.equal((await student('POST',{})).data.request.id,r.id);
 assert.equal((await request('/api/chat/code-requests',{account:'owner'})).data.requests[0].studentId,target.id);
 assert.equal((await request('/api/chat/request-code',{method:'POST',cookie,origin:'https://evil.test',data:{}})).status,403);
-assert.equal((await review(r,'declined')).status,200);
+const beforeDecline=(await env.DB.prepare('SELECT code_hash FROM chat_students WHERE id=?').bind(target.id).first()).code_hash;
+assert.equal((await review(r,'declined')).status,200);assert.equal((await env.DB.prepare('SELECT code_hash FROM chat_students WHERE id=?').bind(target.id).first()).code_hash,beforeDecline,'decline leaves access unchanged');
 assert.equal((await student()).data.request.status,'declined');
 assert.equal((await student('POST',{action:'collect'})).status,409);
 assert.equal((await request('/api/chat/session',{cookie})).status,200);
@@ -31,4 +32,18 @@ const reused=await request('/api/chat/session',{method:'POST',data:{code:a.data.
 assert.equal((await request('/api/chat/session',{cookie})).status,401);
 const newCookie=reused.headers.get('set-cookie').split(';')[0];
 assert.equal((await request('/api/chat/request-code',{method:'POST',cookie:newCookie,data:{action:'collect'}})).status,409);
+// Notifications approval issues a code only in the authenticated decision response.
+const adminRequest=(await request('/api/chat/request-code',{method:'POST',cookie:newCookie,data:{}})).data.request;
+const payload={studentId:target.id,requestId:adminRequest.id,decision:'approved',issueCode:true};
+assert.equal((await request('/api/chat/code-requests',{method:'PATCH',cookie:newCookie,data:payload})).status,403);
+assert.equal((await request('/api/chat/code-requests',{method:'PATCH',account:'owner',origin:'https://evil.test',data:payload})).status,403);
+const approved=await request('/api/chat/code-requests',{method:'PATCH',account:'owner',data:payload});assert.equal(approved.status,200);assert.equal(approved.data.code.length,48);assert.equal(approved.data.request.status,'issued');assert.equal(approved.data.request.issuedBy,'goddess');assert.match(approved.headers.get('cache-control'),/no-store/);
+assert.equal((await request('/api/chat/code-requests',{method:'PATCH',account:'owner',data:payload})).status,409);
+const visible=await request('/api/chat/request-code',{cookie:newCookie});assert.equal(visible.data.request.issuedBy,'goddess');assert.ok(!JSON.stringify(visible.data).includes(approved.data.code));
+assert.equal((await request('/api/chat/request-code',{method:'POST',cookie:newCookie,data:{action:'collect'}})).status,409);
+assert.equal((await request('/api/chat/session',{cookie:newCookie})).status,200,'admin approval preserves current session');
+const secretRecord=await env.DB.prepare('SELECT content FROM prototype_settings WHERE id=?').bind('code-request:'+target.id).first();assert.ok(!secretRecord.content.includes(approved.data.code));
+const latestHash=(await env.DB.prepare('SELECT code_hash FROM chat_students WHERE id=?').bind(target.id).first()).code_hash;assert.notEqual(latestHash,approved.data.code);
+const adminCodeLogin=await request('/api/chat/session',{method:'POST',data:{code:approved.data.code}});assert.equal(adminCodeLogin.status,200);assert.equal((await request('/api/chat/session',{cookie:newCookie})).status,401);
+assert.equal((await request('/api/chat/session',{method:'POST',data:{code:a.data.code}})).status,401,'admin replacement revokes old code');
 console.log('Replacement code checks passed: authenticated requests, CSRF, admin-only review, duplicate suppression, atomic review, decline, recoverable collection, hashed storage, session continuity and contract-bound reuse and replacement revocation.');

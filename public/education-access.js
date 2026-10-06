@@ -7,7 +7,8 @@ document.getElementById('access-form').onsubmit=async e=>{e.preventDefault();con
 if(new URLSearchParams(location.search).get('notice')==='logout')document.getElementById('access-status').textContent='You have logged out.';
 eduAPI('published').then(p=>eduTheme(p.config)).catch(()=>{});
 
-PreviewAccess.check().then(student=>{if(student){const a=document.createElement('a');a.className='p-button';a.href='feed.html';a.textContent='Open your home';accessHost.prepend(a);}}).catch(()=>{});
+const resumeSubHome=()=>PreviewAccess.check().then(student=>{if(student)location.replace('/feed.html');}).catch(()=>{});
+resumeSubHome();window.addEventListener('pageshow',event=>{if(event.persisted)resumeSubHome();});
 
 const accessNotice=new URLSearchParams(location.search).get('notice');
 if(accessNotice==='application-saved')document.getElementById('access-status').textContent='Your application has been sent to Goddess Vanessa for review. Chat opens only after she issues your private access code.';

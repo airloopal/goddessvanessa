@@ -26,6 +26,30 @@ assert.equal((await call('chat/request-code',{method:'POST',data:{email:'student
 assert.equal((await call('chat/session',{cookie:a.cookie})).status,401);
 const issued=await call('chat/students',{method:'POST',user:owner,data:{reference:saved.data.enrolment.reference}});assert.equal(issued.status,200);assert.equal(issued.data.code.length,48);assert.equal(issued.data.emailSent,false);
 let login=await call('chat/session',{method:'POST',data:{code:issued.data.code}});assert.equal(login.status,200);const reused=await call('chat/session',{method:'POST',data:{code:issued.data.code}});assert.equal(reused.status,200);assert.equal((await call('chat/session',{cookie:login.cookie})).status,401);login=reused;assert.equal((await call('education/enrolment',{cookie:login.cookie})).data.enrolment.reference,saved.data.enrolment.reference);
+
+const appHeaders={'X-Education-Context':'application'},sharedCookie=b.cookie+'; '+login.cookie;
+const isolated=(await call('education/identity',{cookie:sharedCookie,headers:appHeaders})).data;
+assert.equal(isolated.signedIn,false);assert.equal(isolated.applicationInProgress,true);assert.equal(isolated.email,null);
+assert.equal((await call('education/enrolment',{cookie:sharedCookie,headers:appHeaders})).data.enrolment,null);
+assert.equal((await call('education/enrolment',{cookie:sharedCookie})).data.enrolment.reference,saved.data.enrolment.reference);
+const second={...enrol,name:'Applicant Two',review:{...enrol.review,email:'second@example.test',signature:'Applicant Two'}};
+const secondSaved=await call('education/enrolment',{method:'PUT',cookie:sharedCookie,headers:appHeaders,data:second});assert.equal(secondSaved.status,200);
+assert.notEqual(secondSaved.data.enrolment.reference,saved.data.enrolment.reference);
+assert.equal((await call('education/enrolment',{cookie:b.cookie})).data.enrolment.name,'Applicant Two');
+assert.equal((await call('education/enrolment',{cookie:login.cookie})).data.enrolment.name,'Applicant One');
+
+const hash=async text=>Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text))).toString('hex');
+const applicantB='application:'+await hash(b.cookie.split('=')[1]);
+const subUser=(await DB.prepare('SELECT user_id FROM chat_students LIMIT 1').first()).user_id;
+for(const [actor,id]of [[applicantB,'applicant-entry'],[subUser,'sub-entry']])await DB.prepare('INSERT INTO prototype_settings(id,content,revision,updated_at) VALUES(?,?,1,?)').bind('sq-off-e-'+(await hash(actor)).slice(0,24),JSON.stringify({stage:'entry',status:'pending',plan:{id,name:id,amount:100,currency:'GBP'}}),new Date().toISOString()).run();
+assert.equal((await call('education/payments',{cookie:sharedCookie,headers:appHeaders})).data.entry.plan.id,'applicant-entry');
+assert.equal((await call('education/payments',{cookie:sharedCookie})).data.entry.plan.id,'sub-entry');
+assert.equal((await call('chat/session',{cookie:sharedCookie})).status,200);
+assert.equal((await call('education/identity',{cookie:a.cookie+'; '+login.cookie,headers:appHeaders})).data.applicationInProgress,false);
+assert.equal((await call('education/enrolment',{method:'PUT',cookie:login.cookie,headers:appHeaders,data:second})).status,401);
+const newApplication=await call('education/application-session',{method:'POST',cookie:login.cookie,headers:appHeaders,data:{}});assert.match(newApplication.cookie,/^__Host-vanessa_application=/);
+assert.equal((await call('education/application-session',{method:'POST',cookie:sharedCookie,headers:appHeaders,data:{}})).cookie,undefined);
+assert.equal((await call('education/enrolment',{method:'PUT',cookie:sharedCookie,headers:appHeaders,data:second,origin:'https://untrusted.test'})).status,403);
 assert.equal((await call('chat/messages',{cookie:login.cookie})).status,200);assert.equal((await call('chat/messages',{cookie:a.cookie})).status,401);
 const replacement=await call('chat/request-code',{method:'POST',cookie:login.cookie,data:{email:'student@example.test'}});assert.equal(replacement.status,200);assert.equal(replacement.data.request.status,'pending');assert.equal((await call('chat/request-code',{method:'POST',cookie:login.cookie,data:{action:'collect'}})).status,409);
 const authResponse=await authAPI(new Request('https://academy.test/api/auth/email',{method:'POST',headers:{origin:'https://academy.test','content-type':'application/json'},body:JSON.stringify({email:'student@example.test'})}),{client:{auth:{signInWithOtp(){throw Error('Student must not trigger auth email');}}}},{});assert.equal(authResponse.status,403);

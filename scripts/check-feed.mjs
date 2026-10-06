@@ -1,0 +1,84 @@
+import assert from 'node:assert/strict';
+import worker from '../dist/server/index.js';
+import {request,env} from './check-education.mjs';
+const target=await env.DB.prepare("SELECT id FROM chat_students WHERE user_id='other-test'").first();
+const issued=await request('/api/chat/students',{method:'POST',account:'owner',data:{studentId:target.id}}),login=await request('/api/chat/session',{method:'POST',data:{code:issued.data.code}}),cookie=login.headers.get('set-cookie').split(';')[0];
+const call=(path,method='GET',data,owner=false)=>request('/api/feed/'+path,{method,data,cookie:owner?undefined:cookie,account:owner?'owner':undefined});
+const id=crypto.randomUUID(),data={id,text:'A private post <script>unsafe text stays text</script>',donationAmount:1250,status:'draft',attachmentId:null};
+assert.equal((await request('/api/feed/posts')).status,401);
+assert.equal((await call('posts','POST',data)).status,403);
+assert.equal((await request('/api/feed/posts',{method:'POST',account:'owner',origin:'https://evil.test',data})).status,403);
+const draft=await call('posts','POST',data,true);assert.equal(draft.status,200);assert.equal((await call('posts')).data.posts.length,0);assert.equal((await call('like','PUT',{postId:id,liked:true})).status,404);
+const published=await call('posts','PUT',{...data,status:'published',revision:draft.data.post.revision},true);assert.equal(published.status,200);assert.equal((await call('posts')).data.posts[0].id,id);
+const likes=await Promise.all([call('like','PUT',{postId:id,liked:true}),call('like','PUT',{postId:id,liked:true})]);assert.ok(likes.every(r=>r.status===200));assert.equal((await call('posts')).data.posts[0].likes,1);assert.equal((await call('posts')).data.posts[0].liked,true);
+assert.equal((await call('like','PUT',{postId:id,liked:false})).status,200);assert.equal((await call('posts')).data.posts[0].likes,0);
+assert.equal((await call('posts','PUT',{...data,status:'published',revision:1},true)).status,409);
+for(const amount of [0,-1,1.1,100001])assert.equal((await call('posts','POST',{...data,id:crypto.randomUUID(),donationAmount:amount},true)).status,400);
+assert.equal((await call('posts','POST',{...data,id:crypto.randomUUID(),text:'',attachmentId:null},true)).status,400);
+// Fixture-only media. Private feed scope is distinct from chat and drafts stay owner-only.
+env.BUCKET={get:async()=>({body:new Uint8Array(16)}),put:async()=>{},signUpload:async()=> 'https://upload.example.test/fixture',staged:async()=>new Blob([new Uint8Array([255,216,255,0,1,2,3,4,5,6,7,8,9,10,11,12])],{type:'image/jpeg'}),deleteStaged:async()=>{}};
+const mediaId=crypto.randomUUID();await env.DB.prepare("INSERT INTO media_files(id,storage_key,student_id,user_id,scope,role,name,mime,size,created_at) VALUES(?,?,NULL,'goddess-feed','feed','admin','Photo','image/jpeg',16,?)").bind(mediaId,'fixture/feed/'+mediaId,Date.now()).run();
+const uploadId=crypto.randomUUID(),prepare={id:uploadId,name:'Post.jpg',size:16,type:'image/jpeg',scope:'feed'};
+assert.equal((await request('/api/media/prepare',{method:'POST',cookie,data:prepare})).status,403);
+assert.equal((await request('/api/media/prepare',{method:'POST',account:'owner',data:prepare})).status,200);
+assert.equal((await request('/api/media/complete',{method:'POST',account:'owner',data:{id:uploadId}})).status,200);
+assert.equal((await request('/api/media/prepare',{method:'POST',account:'owner',data:{...prepare,id:crypto.randomUUID(),type:'application/pdf'}})).status,415);
+const mediaPost=await call('posts','POST',{...data,id:crypto.randomUUID(),text:'Photo',attachmentId:mediaId},true);assert.equal(mediaPost.status,200);
+assert.equal((await request('/api/media/'+mediaId,{cookie})).status,404);
+const mediaPub=await call('posts','PUT',{...data,id:mediaPost.data.post.id,status:'published',attachmentId:mediaId,revision:mediaPost.data.post.revision},true);assert.equal(mediaPub.status,200);
+const image=await request('/api/media/'+mediaId,{cookie});assert.notEqual(image.status,404);
+assert.equal((await call('posts','POST',{...data,id:crypto.randomUUID(),attachmentId:crypto.randomUUID()},true)).status,403);
+const mediaRemoved=await call('posts','DELETE',{id:mediaPost.data.post.id,revision:mediaPub.data.post.revision},true);assert.equal(mediaRemoved.status,200);assert.equal((await request('/api/media/'+mediaId,{cookie})).status,404,'removed post media is no longer visible to Subs');
+const orders=new Map(),links=new Map(),payments=new Map();let count=0;Object.assign(env,{SQUARE_ENVIRONMENT:'sandbox',SQUARE_ACCESS_TOKEN:'fixture',SQUARE_LOCATION_ID:'fixture-location',SQUARE_WEBHOOK_SIGNATURE_KEY:'fixture-key',SQUARE_WEBHOOK_URL:'https://academy.test/api/education/payments/webhook',SQUARE_SITE_URL:'https://academy.test'});
+env.SQUARE_FETCH=async(url,options)=>{const path=new URL(url).pathname;if(path.endsWith('/online-checkout/payment-links')){const b=JSON.parse(options.body);assert.equal(b.order.line_items[0].base_price_money.amount,1250);assert.equal(b.order.line_items[0].base_price_money.currency,'GBP');assert.equal(new URL(b.checkout_options.redirect_url).pathname,'/feed.html');assert.equal(b.checkout_options.allow_tipping,false);if(!links.has(b.idempotency_key)){const orderId='feed-order-'+(++count);orders.set(orderId,{id:orderId,...b.order,tenders:[]});links.set(b.idempotency_key,{url:'https://sandbox.square.link/u/feed-'+count,order_id:orderId});}return Response.json({payment_link:links.get(b.idempotency_key)});}if(path.includes('/orders/'))return Response.json({order:orders.get(path.split('/').at(-1))});if(path.includes('/payments/'))return Response.json({payment:payments.get(path.split('/').at(-1))});throw Error('Unexpected donation provider request');};
+const attempt=crypto.randomUUID(),checkout={id:attempt,postId:id,revision:published.data.post.revision};
+assert.equal((await call('donate','POST',{...checkout,amount:1})).status,400);assert.equal((await call('donate','POST',{...checkout,revision:0})).status,409);assert.equal((await call('donate','POST',checkout,true)).status,403);
+const a=await call('donate','POST',checkout),b=await call('donate','POST',checkout);assert.equal(a.status,200);assert.equal(a.data.url,b.data.url);assert.equal(count,1);assert.equal(a.data.amount,1250);
+const competing=await call('donate','POST',{...checkout,id:crypto.randomUUID()});assert.equal(competing.data.id,attempt);assert.equal(count,1,'competing tabs reuse pending checkout');
+const pending=await call('donation-status','POST',{id:attempt,postId:id});assert.equal(pending.data.status,'pending','return redirect does not mark a donation paid');
+const order=orders.values().next().value;const payment={id:'feed-paid',order_id:order.id,location_id:'fixture-location',status:'COMPLETED',updated_at:new Date().toISOString(),amount_money:{amount:1250,currency:'GBP'},total_money:{amount:1250,currency:'GBP'}};payments.set(payment.id,payment);order.tenders=[{payment_id:payment.id}];
+const paid=await call('donation-status','POST',{id:attempt,postId:id});assert.equal(paid.status,200);assert.equal(paid.data.status,'paid');assert.equal((await request('/api/chat/session',{cookie})).status,200,'donation never revokes contract access');
+const removed=await call('posts','DELETE',{id,revision:published.data.post.revision},true);assert.equal(removed.status,200);assert.equal((await call('posts')).data.posts.some(p=>p.id===id),false);assert.equal((await call('like','PUT',{postId:id,liked:true})).status,404);assert.equal((await call('donation-status','POST',{id:attempt,postId:id})).data.status,'paid','removing a post retains donation evidence');
+console.log('Private feed passed: owner-only publish, draft/media isolation, CSRF, revision/amount validation, idempotent likes/checkout, fixed provider amount, paid reconciliation and unchanged contract access.');
+
+// Embedded donations: real API and private database, fake Square transport only.
+env.SQUARE_APPLICATION_ID='sandbox-fixture-app';
+const embeddedPost=await call('posts','POST',{...data,id:crypto.randomUUID(),text:'Card donation',status:'published'},true);assert.equal(embeddedPost.status,200);
+const embeddedId=embeddedPost.data.post.id,revision=embeddedPost.data.post.revision;
+const orderKeys=new Map(),chargeKeys=new Map();let orderCreates=0,chargeCreates=0,failConfirmation=false;
+env.SQUARE_FETCH=async(url,options)=>{const path=new URL(url).pathname,b=options.body?JSON.parse(options.body):null;
+ if(path.endsWith('/orders')){if(!orderKeys.has(b.idempotency_key)){const id='embedded-order-'+(++orderCreates);const order={...b.order,id,tenders:[]};orders.set(id,order);orderKeys.set(b.idempotency_key,order);}return Response.json({order:orderKeys.get(b.idempotency_key)});}
+ if(path.endsWith('/payments')){assert.equal(b.amount_money.amount,1250);assert.equal(b.amount_money.currency,'GBP');assert.equal(b.location_id,'fixture-location');assert.ok(b.order_id);
+  if(b.source_id==='cnon:decline')return Response.json({errors:[{code:'CARD_DECLINED'}]},{status:400});
+  if(!chargeKeys.has(b.idempotency_key)){const id='embedded-payment-'+(++chargeCreates);const amount=b.source_id==='cnon:mismatch'?1251:1250,payment={id,order_id:b.order_id,location_id:'fixture-location',status:'COMPLETED',updated_at:new Date().toISOString(),amount_money:{amount,currency:'GBP'},total_money:{amount,currency:'GBP'}};chargeKeys.set(b.idempotency_key,payment);payments.set(id,payment);orders.get(b.order_id).tenders=[{payment_id:id}];}
+  if(failConfirmation){failConfirmation=false;return Response.json({errors:[{code:'INTERNAL_SERVER_ERROR'}]},{status:500});}return Response.json({payment:chargeKeys.get(b.idempotency_key)});}
+ if(path.includes('/orders/'))return Response.json({order:orders.get(path.split('/').at(-1))});if(path.includes('/payments/'))return Response.json({payment:payments.get(path.split('/').at(-1))});throw Error('Unexpected card provider request');};
+const embeddedCall=async(path,body)=>{await env.DB.prepare("DELETE FROM chat_limits WHERE key LIKE 'feed-donate:%'").run();return call(path,'POST',body);};
+const form={id:crypto.randomUUID(),postId:embeddedId,revision};
+assert.equal((await embeddedCall('donate/charge',{...form,attemptId:crypto.randomUUID(),sourceId:'cnon:test'})).status,409);
+assert.equal((await embeddedCall('donate/prepare',{...form,amount:1})).status,400);
+assert.equal((await embeddedCall('donate/prepare',{...form,revision:0})).status,409);
+assert.equal((await request('/api/feed/donate/prepare',{method:'POST',cookie,origin:'https://evil.test',data:form})).status,403);
+assert.equal((await request('/api/feed/donate/prepare',{method:'POST',data:form})).status,401);
+assert.equal((await call('donate/prepare','POST',form,true)).status,403);
+const prepared=await embeddedCall('donate/prepare',form);assert.equal(prepared.status,200);assert.equal(prepared.data.applicationId,'sandbox-fixture-app');assert.equal(prepared.data.plan.amount,1250);assert.equal(prepared.data.resumeAttempt,null);assert.equal(prepared.data.url,undefined);
+const secondTab=await embeddedCall('donate/prepare',{...form,id:crypto.randomUUID()});assert.equal(secondTab.data.id,form.id);assert.equal(orderCreates,1);
+assert.equal((await embeddedCall('donate',form)).status,409);
+const attemptId=crypto.randomUUID();assert.equal((await embeddedCall('donate/charge',{...form,attemptId,sourceId:'4111111111111111'})).status,400);
+const decline=await embeddedCall('donate/charge',{...form,attemptId,sourceId:'cnon:decline'});assert.equal(decline.status,402);assert.equal(decline.data.retryCard,true);
+assert.equal((await embeddedCall('donate/charge',{...form,attemptId,sourceId:'cnon:good'})).status,402,'declined attempt cannot silently become a new charge');
+const nextAttempt=crypto.randomUUID();failConfirmation=true;const delayed=await embeddedCall('donate/charge',{...form,attemptId:nextAttempt,sourceId:'cnon:good'});assert.equal(delayed.status,503);assert.equal(delayed.data.retrySame,true);assert.equal(chargeCreates,1);
+const confirmed=await embeddedCall('donate/charge',{...form,attemptId:nextAttempt});assert.equal(confirmed.status,200);assert.equal(confirmed.data.paid,true);assert.equal(chargeCreates,1,'retry confirms original payment, never charges twice');
+const record=JSON.parse((await env.DB.prepare("SELECT content FROM prototype_settings WHERE content::jsonb->>'clientId'=? AND id LIKE 'sq-sandbox-f-%'").bind(form.id).first()).content);assert.equal(record.cardAttempt.request,undefined,'confirmed token discarded');assert.equal(record.cardAttempt.complete,true);
+assert.equal((await embeddedCall('donate/prepare',form)).data.paid,true);assert.equal((await request('/api/chat/session',{cookie})).status,200);
+const contractSnapshot=await env.DB.prepare("SELECT content FROM prototype_settings WHERE id LIKE 'sq-sandbox-c-%'").all();assert.equal(contractSnapshot.results.length,0,'donations do not create contract access');
+console.log('Embedded feed cards passed: Sub/CSRF authorization, fixed price, preflight, pending-tab reuse, card declines, safe same-payment recovery, confirmed token disposal and unchanged contract access.');
+const mismatchForm={...form,id:crypto.randomUUID()};assert.equal((await embeddedCall('donate/prepare',mismatchForm)).status,200);
+const mismatchAttempt=crypto.randomUUID(),mismatchResult=await embeddedCall('donate/charge',{...mismatchForm,attemptId:mismatchAttempt,sourceId:'cnon:mismatch'});assert.equal(mismatchResult.status,202);assert.equal(mismatchResult.data.paid,undefined);assert.equal(mismatchResult.data.retrySame,true,'wrong amount can never show Success');
+const resumed=await embeddedCall('donate/prepare',mismatchForm);assert.equal(resumed.data.resumeAttempt,mismatchAttempt);assert.equal(resumed.data.sourceId,undefined);assert.equal(resumed.data.request,undefined);
+assert.equal((await embeddedCall('donate/charge',{...mismatchForm,attemptId:crypto.randomUUID(),sourceId:'cnon:new'})).status,409,'unconfirmed charge cannot be replaced');
+const otherStudent=crypto.randomUUID(),otherToken='ab'.repeat(24);await env.DB.prepare('INSERT INTO chat_students(id,user_id,name,email,created_at) VALUES(?,?,?,?,?)').bind(otherStudent,'second-feed-fixture','Second fixture','second@example.test',Date.now()).run();await env.DB.prepare('INSERT INTO chat_sessions(hash,student_id,expires_at) VALUES(?,?,?)').bind(Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(otherToken))).toString('hex'),otherStudent,Date.now()+3600000).run();const otherCookie='__Host-vanessa_student='+otherToken;
+assert.equal((await request('/api/feed/donation-status',{method:'POST',cookie:otherCookie,data:{id:mismatchForm.id,postId:embeddedId}})).status,404);assert.equal((await request('/api/feed/donate/charge',{method:'POST',cookie:otherCookie,data:{...mismatchForm,attemptId:mismatchAttempt}})).status,409);
+console.log('Donation amount mismatch, pending-attempt lock, safe resume payload and cross-Sub payment privacy passed.');
+
+const feedPage=await request('/feed.html');assert.match(feedPage.headers.get('content-security-policy'),/form-action 'self' https:/);assert.match(feedPage.headers.get('content-security-policy'),/frame-src 'self' https:/);assert.ok(!(await request('/chat.html')).headers.get('content-security-policy').includes("form-action 'self' https:"));

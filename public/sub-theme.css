@@ -1,0 +1,18 @@
+/* Shared Sub colour contract: Home and Chat use one palette. */
+body.feed-page,body.chat-view{--sub-bg:#f8f1f5;--sub-panel:#fffafd;--sub-soft:#f1e3eb;--sub-ink:#2e2029;--sub-muted:#725969;--sub-line:#d6b5c8;--sub-accent:#9c345e;--sub-outgoing:#f1cddd;--feed-bg:var(--sub-bg);--feed-panel:var(--sub-panel);--feed-soft:var(--sub-soft);--feed-ink:var(--sub-ink);--feed-muted:var(--sub-muted);--feed-line:var(--sub-line);--feed-accent:var(--sub-accent);--chat-panel:var(--sub-panel);--chat-ink:var(--sub-ink);--chat-border:var(--sub-line);color-scheme:light}
+body[data-sub-theme=dark]{--sub-bg:#180f17;--sub-panel:#2b1c29;--sub-soft:#3e293a;--sub-ink:#fff4fa;--sub-muted:#d9baca;--sub-line:#775369;--sub-accent:#ed9dc3;--sub-outgoing:#442c3e;color-scheme:dark}
+body[data-sub-theme=pink]{--sub-bg:#f4dee9;--sub-panel:#fff6fb;--sub-soft:#e9c4d7;--sub-outgoing:#ecc3d7}
+body.chat-view .telegram-chat:is(.dark,.light,.pink){--chat-background:var(--sub-bg);--chat-panel:var(--sub-panel);--chat-input:var(--sub-soft);--chat-ink:var(--sub-ink);--chat-muted:var(--sub-muted);--chat-border:var(--sub-line);--chat-accent:#9c345e;--chat-outgoing:var(--sub-outgoing);--bubble:var(--sub-panel);--date-bg:var(--sub-panel);--receipt:var(--sub-accent);background:var(--sub-bg);color:var(--sub-ink)}
+body.chat-view .telegram-chat .chat-main,body.chat-view .telegram-chat .chat-header{background:var(--sub-panel);border-color:var(--sub-line);color:var(--sub-ink)}
+body.chat-view .telegram-chat .messages{background-color:var(--sub-bg);background-image:none}
+body.chat-view .telegram-chat .chat-compose-area{background:var(--sub-panel);border-color:var(--sub-line)}
+body.chat-view .telegram-chat .chat-compose-hint{color:var(--sub-muted)}
+/* The same floating Home/Chat pill on both pages, with room below the composer. */
+.chat-view #client-chat>.sub-nav{width:auto;bottom:max(12px,env(safe-area-inset-bottom));border:1px solid var(--sub-line);border-radius:24px;padding:6px;box-shadow:0 8px 26px #130b1b33;background:var(--sub-panel);color:var(--sub-ink)}
+.chat-view #client-chat .chat-shell{height:calc(100% - 82px - env(safe-area-inset-bottom))!important}
+.chat-view #client-chat.keyboard-open .chat-shell{height:100%!important}
+body.chat-view dialog:not(#work-cover){background:var(--sub-panel);color:var(--sub-ink);border-color:var(--sub-line)}
+body.chat-view #student-account-dialog :is(input,textarea,select){background:var(--sub-soft);color:var(--sub-ink);border-color:var(--sub-line)}
+body.chat-view #student-account-dialog :is(h2,p,label,small,.overline),body.chat-view #student-account-dialog .quiet{color:var(--sub-ink)}
+
+body.chat-view,body.chat-view #client-chat{background:var(--sub-bg);color:var(--sub-ink)}

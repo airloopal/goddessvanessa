@@ -16,7 +16,7 @@ CREATE INDEX idx_messages_student_seq ON academy.chat_messages(student_id,seq);
 CREATE TABLE academy.chat_state (student_id text NOT NULL REFERENCES academy.chat_students(id) ON DELETE CASCADE, role text NOT NULL CHECK(role IN ('admin','client')), typing_until bigint NOT NULL DEFAULT 0, read_seq bigint NOT NULL DEFAULT 0, PRIMARY KEY(student_id,role));
 CREATE TABLE academy.chat_limits (key text PRIMARY KEY, count integer NOT NULL, expires bigint NOT NULL);
 CREATE INDEX idx_limits_expiry ON academy.chat_limits(expires);
-CREATE TABLE academy.media_files (id text PRIMARY KEY, storage_key text NOT NULL UNIQUE, student_id text REFERENCES academy.chat_students(id) ON DELETE CASCADE, user_id text NOT NULL, scope text NOT NULL CHECK(scope IN ('chat','verification','background')), role text NOT NULL CHECK(role IN ('admin','client')), name text NOT NULL, mime text NOT NULL, size bigint NOT NULL CHECK(size>0 AND size<=52428800), created_at bigint NOT NULL);
+CREATE TABLE academy.media_files (id text PRIMARY KEY, storage_key text NOT NULL UNIQUE, student_id text REFERENCES academy.chat_students(id) ON DELETE CASCADE, user_id text NOT NULL, scope text NOT NULL CHECK(scope IN ('chat','verification','background','feed')), role text NOT NULL CHECK(role IN ('admin','client')), name text NOT NULL, mime text NOT NULL, size bigint NOT NULL CHECK(size>0 AND size<=52428800), created_at bigint NOT NULL);
 CREATE INDEX idx_media_student ON academy.media_files(student_id);
 CREATE INDEX idx_media_user ON academy.media_files(user_id,scope);
 -- Upload reservations authorize direct uploads and protect the per-student quota.

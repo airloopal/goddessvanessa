@@ -8,7 +8,7 @@ async function squareCall(env,path,body){
  if(!r.ok){const data=await r.json().catch(()=>({}));const e=Error('Square request failed ('+r.status+').');e.squareCodes=(data.errors||[]).map(x=>x.code);throw e;}return r.json();
 }
 async function squareRecord(env,key){const r=await db(env).prepare('SELECT content,revision FROM prototype_settings WHERE id=?').bind(key).first();return r?{...JSON.parse(r.content),_revision:r.revision}:null;}
-async function squareWrite(env,key,value,revision){const {_revision,...clean}=value;return db(env).prepare('UPDATE prototype_settings SET content=?,revision=revision+1,updated_at=? WHERE id=? AND revision=?').bind(JSON.stringify(clean),new Date().toISOString(),key,revision).run();}
+async function squareWrite(env,key,value,revision){const {_revision,_key,...clean}=value;return db(env).prepare('UPDATE prototype_settings SET content=?,revision=revision+1,updated_at=? WHERE id=? AND revision=?').bind(JSON.stringify(clean),new Date().toISOString(),key,revision).run();}
 const squareKey=async(env,user,stage)=>'sq-'+squareMode(env)+'-'+stage[0]+'-'+(await chatHash(user)).slice(0,24);
 function squarePromo(code){return typeof code==='string'&&code.trim().toUpperCase()==='SUB50'?'SUB50':null;}
 function squaredAmountMismatch(plan,signed,promo){return signed.amount!==squarePriced(plan,promo).amount||(promo&&promo!=='SUB50');}
@@ -48,13 +48,14 @@ async function squareApplyPayment(env,paymentId){
   else if(['FAILED','CANCELED'].includes(p.status)&&r.status!=='paid')status='pending';
   const paidAt=r.paidAt||(status==='paid'?(p.card_details?.card_payment_timeline?.captured_at||p.updated_at):null);
   const next={...r,orderId:p.order_id,paymentId:p.id,status,paidAt,providerStatus:p.status,providerUpdatedAt:p.updated_at,receiptUrl:p.receipt_url||null,expiresAt:r.stage==='contract'&&paidAt?squareExpiry(r.plan.id,paidAt):null};
+  if(r.stage==='donation'&&r.cardAttempt&&['paid','refund_review'].includes(status))next.cardAttempt={id:r.cardAttempt.id,complete:true};
   const result=await squareWrite(env,key,next,r._revision);if(result.meta.changes)return;
  }
  throw Error('Concurrent payment update; retry required.');
 }
 async function squareReconcile(env,r){
- if(!r)return;
- if(r.paymentId){await squareApplyPayment(env,r.paymentId);r=await squareRecord(env,await squareKey(env,r.user,r.stage));if(!r||r.status!=='pending')return;}
+ if(!r)return;const recordKey=r._key||await squareKey(env,r.user,r.stage);
+ if(r.paymentId){await squareApplyPayment(env,r.paymentId);r=await squareRecord(env,recordKey);if(!r||r.status!=='pending')return;}
  if(!r.orderId)return;
  const {order}=await squareCall(env,'orders/'+encodeURIComponent(r.orderId));
  if(order?.id!==r.orderId||order.location_id!==env.SQUARE_LOCATION_ID)return;

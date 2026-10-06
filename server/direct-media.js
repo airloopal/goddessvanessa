@@ -28,6 +28,8 @@ async function directMediaAPI(request,env,url){
  if(body.scope==='chat'||body.scope==='background'&&owner){
   const sid=owner?body.student:student?.id;if(!sid||(!owner&&body.student!==sid))return json({error:'Conversation unavailable.'},403);
   target=await db(env).prepare("SELECT id,user_id FROM chat_students WHERE id=? AND status='active'").bind(sid).first();if(!target)return json({error:'Conversation unavailable.'},403);userId=target.user_id;
+ }else if(body.scope==='feed'&&owner){
+  if(! /^(image|video)\//.test(body.type))return json({error:'Choose a photo or video.'},415);userId='goddess-feed';
  }else if(body.scope==='verification'&&owner){
   if(typeof body.request!=='string'||!body.request.startsWith('education-verification:'))return json({error:'Choose a verification request.'},400);
   if(!await db(env).prepare('SELECT id FROM prototype_settings WHERE id=?').bind(body.request).first())return json({error:'Request not found.'},404);

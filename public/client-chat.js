@@ -11,7 +11,7 @@
  const shell=clientHost.querySelector('.chat-shell'),log=document.getElementById('messages'),jump=document.getElementById('chat-jump-latest'),cover=document.getElementById('work-cover');
  installChatViewport(clientHost,log);
  let tone='dark';try{tone=localStorage.getItem('chat-appearance')||'dark';}catch{}if(!['dark','light','pink'].includes(tone))tone='dark';
- const theme=()=>{shell.className='chat-shell telegram-chat '+tone;document.getElementById('mobile-theme').setAttribute('title','Appearance: '+({dark:'Midnight',light:'Pearl',pink:'Rose'}[tone]));};theme();
+ const theme=()=>{document.body.dataset.subTheme=tone;shell.className='chat-shell telegram-chat '+tone;document.getElementById('mobile-theme').setAttribute('title','Appearance: '+({dark:'Midnight',light:'Pearl',pink:'Rose'}[tone]));};theme();
  document.getElementById('mobile-theme').onclick=()=>{tone=['dark','light','pink'][(['dark','light','pink'].indexOf(tone)+1)%3];theme();try{localStorage.setItem('chat-appearance',tone);}catch{}};
  let coverReason=null;
  function conceal(reason='manual'){if(typeof reason!=='string')reason='manual';if(!cover.open||reason==='manual')coverReason=reason;if(CHAT_EDITOR)return;document.getElementById('throne-gift-dialog')?.close();document.getElementById('student-account-dialog')?.close();document.querySelectorAll('#messages audio,#messages video').forEach(media=>media.pause());window.ChatDiscreet=true;document.title='Workspace';if(!cover.open)cover.showModal();PreviewChat.setTyping('client',false);}

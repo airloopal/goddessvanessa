@@ -225,3 +225,12 @@ Record confirmed incidents and fixes here, newest first. Dates use Europe/Warsaw
 - Provider references: https://developer.squareup.com/docs/web-payments/take-card-payment and https://developer.squareup.com/docs/web-payments/content-security-policy.
 
 - Security review for FEATURE-2026-10-06-017: Supabase prototype_settings remains RLS-enabled with no anon/authenticated SELECT grants in both schemas. Existing 22 INFO private-table RLS/no-policy notices unchanged. Existing leaked-password protection WARN unchanged: https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection. No database or auth setting modified.
+
+
+## UI-2026-10-07-020 — Sandbox mobile admin navigation
+
+- **Request:** Home, Feed, Chats, All Subs, More in the mobile bottom bar; move Edit into More.
+- **Patch:** Promote the existing authenticated feed route into the five-item bottom navigation, hide Content from the mobile bar, and expose Edit in the More sheet. Reuse the shared rounded Home/feed and Edit icons, existing theme, routing, viewport and keyboard behaviour. Increment navigation asset cache versions. Desktop navigation remains unchanged.
+- **Validation:** 390×844 browser fixture verified visual left-to-right ordering, equal widths, one icon per item, direct Feed routing, Edit sheet routing/closure, and active More state on Edit. Build passed with 115 assets; production dependency audit found zero known vulnerabilities. Full regression suite and deployed verification recorded below.
+- **Scope/data:** Sandbox only, based on `087f421592d7631064663832188fb681b572b4c2`; Live remains `ca9368d56d8c69df7540a22f973e5c5ac464d3c5`. No backend, schema, session, payment, permissions, email, customer data or credentials changed.
+- **Status:** Full npm test passed (including authentication, CSRF, private media, payment, feed and applicant isolation checks); build passed (115 assets) and production audit found zero vulnerabilities. Desktop Feed and Edit remain visible at 1280×900. Awaiting Sandbox deployment verification; physical device acceptance remains open.

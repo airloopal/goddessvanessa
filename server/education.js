@@ -15,6 +15,7 @@ async function educationAPI(request,env,url){
   if(!applicant)response.headers.set('Set-Cookie','__Host-vanessa_application='+chatToken()+'; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=2592000');
   return response;
  }
+ if(path==='/api/education/application-funnel')return applicationFunnel(request,env,url,{owner,applicant});
  if(path==='/api/education/identity'&&request.method==='GET')return json({signedIn:!applicationContext&&!!(codeStudent||dispatchUser),application:!!user,applicationInProgress:!!applicant&&applicant!==codeStudent?.user_id,owner,email:email||null});
  if(['/api/education/verification','/api/education/verifications'].includes(path))return educationVerificationAPI(request,env,url,{user,email,owner});
  if(path.startsWith('/api/education/payments'))return squareAPI(request,env,url,{user,owner});

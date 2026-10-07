@@ -1,6 +1,7 @@
-export const release={version:'2026.10.07.2',date:'2026-10-07',title:'Private Sub profile bios — Sandbox'};
+export const release={version:'2026.10.07.3',date:'2026-10-07',title:'Live application funnel — Sandbox'};
 export const changelog=[
- {...release,changes:['Added a private editable Sub profile card on Home and Chat, visible to Goddess on Sub profiles.','Added safe bio saving with conflict protection and refreshed mobile admin navigation.']},
+ {...release,changes:['Added live application starts and step progress to the private dashboard Overview.','Added start notifications and conversion counts with server-confirmed signing and payment.']},
+ {...{version:'2026.10.07.2',date:'2026-10-07',title:'Private Sub profile bios — Sandbox'},changes:['Added a private editable Sub profile card on Home and Chat, visible to Goddess on Sub profiles.','Added safe bio saving with conflict protection and refreshed mobile admin navigation.']},
  {...{version:'2026.10.06.9',date:'2026-10-06',title:'On-page feed donations — Sandbox'},changes:['Added secure Square card fields inside the feed donation popup.','Shared Retry and Success feedback with application checkout and preserved safe same-payment confirmation.']},
  {...{version:'2026.10.06.8',date:'2026-10-06',title:'Shared-device application isolation — Sandbox'},changes:['Kept application records and payments separate from an unrelated logged-in Sub.','Paused automatic Home entry when another application is present in the browser.']},
  {...{version:'2026.10.06.7',date:'2026-10-06',title:'Shared Sub theme and liquid glass — Sandbox'},changes:['Matched Chat to the Home feed palette and shared floating navigation.','Added a subtle glass trial to Sub controls and dashboard buttons/navigation.','Active Sub sessions now resume directly at Home.']},

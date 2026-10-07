@@ -257,3 +257,15 @@ Record confirmed incidents and fixes here, newest first. Dates use Europe/Warsaw
 - **Pre-deployment verification:** Full npm test passed, including new bio/funnel tests and Live exclusions. Assembled browser preview verified bio saving, existing manual Contract options, mobile navigation order, analytics totals and no console errors. Implementation commit `49d346a537ee00d72d2af2b3a87e6734321065ee` pushed to main; hosted checks follow.
 
 - **Production result:** Implementation `49d346a537ee00d72d2af2b3a87e6734321065ee`, Vercel `dpl_9joYyu3RhYFPoMoJrjUhkz7cx8LC` READY, production target and houseofvanessa.com alias confirmed. 172 hosted checks passed: 154 primary (118 exact assets plus private access/CSRF/headers/production mode), 10 card readiness/security and 8 explicit email/renewal exclusions. Anonymous bio/funnel reads/writes and cross-origin tracking reject access; native and embedded Square payments remain ready. Existing manual account options retained. Sandbox remains `d78ab1fe6d7b7e0bf1092e541a2d9727bf0e7c37`. No real payment, email, customer profile, or application record was created or changed by verification. Production release verified in the tested scope; existing security advisories and physical-device acceptance limits remain.
+
+
+## UI-2026-10-07-024 — Admin Feed compose icon
+
+- **Request:** Change only the Admin dashboard Feed icon to a compose-post symbol, retaining theme and colours; verify Sandbox then publish to Live.
+- **Patch:** Add static rounded square-and-pencil `compose` SVG to the existing local AdminIcons collection; select it only for admin Feed navigation, on mobile and desktop. Preserve `home` and Sub Home/Chat navigation. Use existing `currentColor`, stroke weight, 23px mobile sizing and selected/unselected palette. Version dashboard icon/navigation asset references for refresh.
+- **Validation:** Browser confirmed one compose SVG, 23px mobile size, dark text on selected blush tab, correct Feed routing and desktop visibility. No CSS, backend, payment, session, permissions, data or credential changes. Existing Sub navigation/feed modules untouched. Dependency audit zero vulnerabilities; full regression/build and deployment results follow.
+- **Authorization:** User explicitly authorized Sandbox verification followed by this narrowly scoped Live publication. Email and self-service renewal remain Sandbox-only. Existing security advisories/physical-device limits unchanged.
+
+- **Regression:** Full npm test passed independently in Sandbox and assembled Live source; builds passed with 120/118 assets respectively. Both production dependency audits reported zero known vulnerabilities. No backend or payment changes.
+
+- **Sandbox verified:** Commit `0e59d59f130b7ef824ec9ff6db867d19e6914b1e`, Vercel `dpl_ARp7A3FtoxHMuBWxk936XDXmvqak` READY with branch alias; 156 hosted checks passed including 120 exact assets, private access/CSRF/headers and Sandbox payment mode. Production base `1e0740877054768c8333dd309371ff1138eeb71c`; only three reviewed UI assets and this log entry are promoted.

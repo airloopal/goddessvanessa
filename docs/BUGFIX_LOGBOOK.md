@@ -264,3 +264,12 @@ Record confirmed incidents and fixes here, newest first. Dates use Europe/Warsaw
 - **Authorization:** User explicitly authorized Sandbox verification followed by this narrowly scoped Live publication. Email and self-service renewal remain Sandbox-only. Existing security advisories/physical-device limits unchanged.
 
 - **Regression:** Full npm test passed independently in Sandbox and assembled Live source; builds passed with 120/118 assets respectively. Both production dependency audits reported zero known vulnerabilities. No backend or payment changes.
+
+
+## UI-2026-10-07-025 — Exact supplied Admin Feed icon
+
+- **Correction:** User rejected the substitute pencil icon and required the actual attached `more.png`, for Admin Dashboard Feed only, Sandbox then Live.
+- **Patch:** Store the original 512×512 PNG unchanged as `/images/brand/admin-feed-compose.png` (SHA-256 `a81c4bf47229022989f068801bec82dbfac6bbfc6cf1b548e43696cc57a6a6a6`). Render its alpha as the existing theme’s `currentColor` through an SVG mask with unique generated IDs. This retains the attached rounded-square plus shape exactly; no redraw, regeneration, cropping or device emoji. Preserve mobile/desktop button sizing and Sub Home/Chat icons. Include the image in the build asset allowlist and version dashboard icon reference.
+- **Security/validation:** Original-byte equality checked in both sources; mobile/desktop browser confirmed one icon and the exact local image reference, alpha mask and inherited fill. Existing SVG guard now permits only this literal local image reference for compose while continuing to reject scripts, event attributes, foreignObject and other URLs. Original PNG hash is enforced. Dependency audits zero vulnerabilities. Full regression/build/hosted results follow. No backend, data, payments, access, email, renewal or credentials changed.
+
+- **Regression results:** Full npm test passed independently on Sandbox and assembled Live, including restricted image-reference/original-byte checks and Live email/renewal exclusions. Builds passed with 121/119 assets; both dependency audits found zero known vulnerabilities. Sandbox verification and Live promotion identifiers follow.

@@ -15,6 +15,7 @@ async function educationAPI(request,env,url){
   if(!applicant)response.headers.set('Set-Cookie','__Host-vanessa_application='+chatToken()+'; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=2592000');
   return response;
  }
+ if(path==='/api/education/application-funnel')return applicationFunnel(request,env,url,{owner,applicant});
  if(path==='/api/education/identity'&&request.method==='GET')return json({signedIn:!applicationContext&&!!(codeStudent||dispatchUser),application:!!user,applicationInProgress:!!applicant&&applicant!==codeStudent?.user_id,owner,email:email||null});
  if(['/api/education/verification','/api/education/verifications'].includes(path))return educationVerificationAPI(request,env,url,{user,email,owner});
  if(path.startsWith('/api/education/payments'))return squareAPI(request,env,url,{user,owner});
@@ -32,7 +33,7 @@ async function educationAPI(request,env,url){
  if(path==='/api/education/enrolments'){
   if(!owner)return json({error:'Only Goddess can view learner records.'},403);
   if(request.method!=='GET')return json({error:'Method not allowed'},405);
-  const rows=await db(env).prepare('SELECT user_id,reference,name,path_id,snapshot,completed,created_at,updated_at FROM education_enrolments ORDER BY updated_at DESC LIMIT 200').all();
+  const rows=await db(env).prepare("SELECT e.user_id,e.reference,e.name,e.path_id,e.snapshot,e.completed,e.created_at,e.updated_at,b.content::jsonb->>'bio' AS bio FROM education_enrolments e LEFT JOIN chat_students s ON s.user_id=e.user_id LEFT JOIN prototype_settings b ON b.id='sub-bio:'||s.id ORDER BY e.updated_at DESC LIMIT 200").all();
   return json({enrolments:await Promise.all((rows.results||[]).map(async r=>{const {user_id,...record}=r;const payments=squareMode(env)==='off'?null:await squarePaymentState(env,user_id);return {...record,snapshot:JSON.parse(r.snapshot),completed:JSON.parse(r.completed),payments:payments?{entry:squarePublic(payments.entry),contract:squarePublic(payments.contract)}:null};}))});
  }
  if(path!=='/api/education/enrolment'&&path!=='/api/education/progress')return json({error:'Not found'},404);

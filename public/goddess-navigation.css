@@ -36,3 +36,11 @@
 @media(prefers-reduced-motion:no-preference){#mobile-admin-tools[open]{animation:mobile-sheet-in .2s ease-out}@keyframes mobile-sheet-in{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}}
 
 .mobile-tool-symbol svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+/* A single floating island for the five mobile admin destinations. */
+@media(max-width:700px){
+ body.dashboard:not([data-admin-page=status]) #dashboard-nav{inset:auto auto max(12px,env(safe-area-inset-bottom)) 50%;transform:translateX(-50%);width:min(480px,calc(100% - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));box-sizing:border-box;min-height:0;padding:6px;border:1px solid var(--dash-border);border-radius:999px;background:var(--dash-surface)!important;box-shadow:inset 0 1px 0 #ffffff25,0 8px 28px #180c2030!important}
+ body.dashboard:not([data-admin-page=status]) #dashboard-nav button[data-mobile-label]{min-height:56px;border-radius:999px;background:transparent!important;background-image:none!important;box-shadow:none!important;padding:7px 2px}
+ body.dashboard:not([data-admin-page=status]) #dashboard-nav button[data-mobile-label][aria-current=page]{background:var(--dash-selected)!important;color:var(--dash-selected-ink)!important;box-shadow:inset 0 1px 0 #ffffff60,0 2px 8px #160c171a!important}
+ body.dashboard:not([data-admin-page=status]) #dashboard-nav button[data-mobile-label]:focus-visible{outline:2px solid var(--dash-focus);outline-offset:-2px}
+}

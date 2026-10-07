@@ -280,3 +280,13 @@ Record confirmed incidents and fixes here, newest first. Dates use Europe/Warsaw
 - **Regression results:** Full npm test passed independently on Sandbox and assembled Live, including restricted image-reference/original-byte checks and Live email/renewal exclusions. Builds passed with 121/119 assets; both dependency audits found zero known vulnerabilities. Sandbox verification and Live promotion identifiers follow.
 
 - **Sandbox verified before promotion:** `787923f0428e3f79dd8b8835396267ea855fd197`, Vercel `dpl_3aR2nk87P9fbqucBnDAnNwc1NDAu` READY; 157 hosted checks passed, including 121 exact assets and original PNG bytes. Production base `8664166af952e7dcf036b4e2096b7fd4e7680383`. Promote only the exact icon, its static renderer/build allowlist, restricted-reference test and log.
+
+
+## UI-2026-10-07-026 — Live floating Admin navigation island
+
+- **Request/scope:** LIVE only. Match the Sub pill/island format for mobile Admin Home → More with existing light/dark dashboard colours. Sandbox stays unchanged.
+- **Patch:** A single centred capsule (maximum 480px), safe-area-aware side/bottom spacing, rounded selected blush pill and transparent inactive controls. Retain all five routes and exact supplied Feed artwork. Existing More sheet and desktop sidebar preserved; status-page navigation excluded. Version navigation CSS/JS references. Reserve the actual island-to-viewport footprint for mobile chat rather than its height alone, retaining keyboard hide behaviour.
+- **Browser verification:** Night/light preview at 390×844, 366px island with 12px edge/bottom spacing; 320px viewport shows 296px island, minimum 56px button width and no horizontal overflow. Chat composer bottom 746px versus navigation top 759px (13px clearance). Simulated reduced keyboard viewport (450px) hides island and keeps composer at 449px. More opens/ closes correctly; desktop sidebar stays 220px with no transform. No console errors. Synthetic local accounts only. Physical iOS/Android acceptance remains open.
+- **Security/data:** CSS and viewport-only JS; no backend, credentials, permissions, payments, emails/renewals or customer records changed. Build 119 assets and production dependency audit zero vulnerabilities; full regression and deployed results follow. Production base `d437b7a77c68cb8b252c57948993f7445c38f6f4`; Sandbox remains `787923f0428e3f79dd8b8835396267ea855fd197`.
+
+- **Regression results:** Full npm test passed after adding a finite-position fallback; the additional floating-island clearance case passed. Build 119 assets, production audit zero vulnerabilities. Existing Live email/renewal exclusions and original icon hash checks retained. Production deployment verification follows.

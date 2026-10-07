@@ -29,4 +29,6 @@ adminDoc.activeElement={matches:()=>true};adminViewport.height=390;adminEvents.r
 adminViewport.offsetTop=50;adminEvents.scroll();assert.equal(adminStyles['--mobile-chat-top'],'50px');
 adminContext.innerHeight=390;adminEvents.resize();assert.equal(adminClasses['admin-keyboard-open'],true);
 adminDoc.activeElement=null;adminViewport.height=844;adminViewport.offsetTop=0;adminContext.innerHeight=844;adminEvents.focusout();assert.equal(adminClasses['admin-keyboard-open'],false);assert.equal(adminStyles['--mobile-chat-height'],'680px');
+// A floating island also reserves its safe-area/bottom gap.
+adminDoc.getElementById=id=>id==='dashboard-nav'?{getBoundingClientRect:()=>({height:74,top:744})}:adminLog;adminEvents.resize();assert.equal(adminStyles['--mobile-chat-height'],'664px','Composer stops above the island, including its bottom gap');
 console.log('Admin viewport checks passed: keyboard offset, resized layout viewport, history retention and keyboard dismissal.');

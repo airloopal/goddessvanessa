@@ -3,7 +3,7 @@
 if(document.body?.classList?.contains('dashboard')){try{document.body.dataset.adminTheme=localStorage.getItem('vanessa-admin-theme')==='night'?'night':'day';}catch{}}
 window.AdminIcons=(()=>{
  const shapes={
- compose:'<path d="M12 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6M14 5l5 5M9 15l1-4 8-8a2.1 2.1 0 0 1 3 3l-8 8-4 1Z"/>',
+ compose:'<path d=""/>',
  home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V10Z"/>',
  heart:'<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/>',
  chat:'<path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 9 9 0 0 1-4-.9L3 21l1.9-5a9 9 0 0 1-.9-4 8.4 8.4 0 0 1 8.5-9H13a8.4 8.4 0 0 1 8 8v.5Z"/>',
@@ -41,7 +41,8 @@ window.AdminIcons=(()=>{
  chevron:'<path d="m9 5 7 7-7 7"/>',chevronDown:'<path d="m6 9 6 6 6-6"/>',logout:'<path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4M13 8l5 4-5 4M8 12h13"/>',
  crown:'<path d="m3 6 5 4 4-7 4 7 5-4-2 13H5L3 6Z"/>',alert:'<path d="m12 3 10 18H2L12 3Z"/><path d="M12 9v4m0 4h.01"/>'
  };
- const svg=(name,extra='')=>'<svg class="admin-icon '+extra+'" data-admin-icon="'+(shapes[name]?name:'alert')+'" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'+(shapes[name]||shapes.alert)+'</svg>';
+ let composeSerial=0;
+ const svg=(name,extra='')=>'<svg class="admin-icon '+extra+'" data-admin-icon="'+(shapes[name]?name:'alert')+'" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'+(name==='compose'?'<defs><mask id="admin-compose-'+(++composeSerial)+'" style="mask-type:alpha"><image href="/images/brand/admin-feed-compose.png" width="24" height="24"/></mask></defs><rect width="24" height="24" fill="currentColor" stroke="none" mask="url(#admin-compose-'+composeSerial+')"/>':(shapes[name]||shapes.alert))+'</svg>';
  return Object.freeze({svg,names:Object.freeze(Object.keys(shapes))});
 })();
 

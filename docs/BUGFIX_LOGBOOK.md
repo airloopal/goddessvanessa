@@ -269,3 +269,14 @@ Record confirmed incidents and fixes here, newest first. Dates use Europe/Warsaw
 - **Regression:** Full npm test passed independently in Sandbox and assembled Live source; builds passed with 120/118 assets respectively. Both production dependency audits reported zero known vulnerabilities. No backend or payment changes.
 
 - **Sandbox verified:** Commit `0e59d59f130b7ef824ec9ff6db867d19e6914b1e`, Vercel `dpl_ARp7A3FtoxHMuBWxk936XDXmvqak` READY with branch alias; 156 hosted checks passed including 120 exact assets, private access/CSRF/headers and Sandbox payment mode. Production base `1e0740877054768c8333dd309371ff1138eeb71c`; only three reviewed UI assets and this log entry are promoted.
+
+
+## UI-2026-10-07-025 — Exact supplied Admin Feed icon
+
+- **Correction:** User rejected the substitute pencil icon and required the actual attached `more.png`, for Admin Dashboard Feed only, Sandbox then Live.
+- **Patch:** Store the original 512×512 PNG unchanged as `/images/brand/admin-feed-compose.png` (SHA-256 `a81c4bf47229022989f068801bec82dbfac6bbfc6cf1b548e43696cc57a6a6a6`). Render its alpha as the existing theme’s `currentColor` through an SVG mask with unique generated IDs. This retains the attached rounded-square plus shape exactly; no redraw, regeneration, cropping or device emoji. Preserve mobile/desktop button sizing and Sub Home/Chat icons. Include the image in the build asset allowlist and version dashboard icon reference.
+- **Security/validation:** Original-byte equality checked in both sources; mobile/desktop browser confirmed one icon and the exact local image reference, alpha mask and inherited fill. Existing SVG guard now permits only this literal local image reference for compose while continuing to reject scripts, event attributes, foreignObject and other URLs. Original PNG hash is enforced. Dependency audits zero vulnerabilities. Full regression/build/hosted results follow. No backend, data, payments, access, email, renewal or credentials changed.
+
+- **Regression results:** Full npm test passed independently on Sandbox and assembled Live, including restricted image-reference/original-byte checks and Live email/renewal exclusions. Builds passed with 121/119 assets; both dependency audits found zero known vulnerabilities. Sandbox verification and Live promotion identifiers follow.
+
+- **Sandbox verified before promotion:** `787923f0428e3f79dd8b8835396267ea855fd197`, Vercel `dpl_3aR2nk87P9fbqucBnDAnNwc1NDAu` READY; 157 hosted checks passed, including 121 exact assets and original PNG bytes. Production base `8664166af952e7dcf036b4e2096b7fd4e7680383`. Promote only the exact icon, its static renderer/build allowlist, restricted-reference test and log.

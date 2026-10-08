@@ -151,11 +151,13 @@ async function squareAPI(request,env,url,{user,owner}){
  if(r.status==='paid')return json({paid:true,payment:squarePublic(r)});
  if(r.status==='refund_review')return json({error:'This payment needs an administrator review.'},409);
  if(url.pathname==='/api/education/payments/fallback'&&r.method==='embedded'){
-  // Switch only when no charge request has ever been recorded. A concurrent
-  // charge and fallback compete on the same revision; only one can win.
-  if(r.status!=='pending'||r.cardAttempt||r.paymentId)return json({error:'A payment is already being checked. Use Check payment status before another checkout.'},409);
-  const idempotencyKey=crypto.randomUUID();
-  await squareWrite(env,key,{...r,method:'hosted',orderId:null,idempotencyKey,request:{...r.request,idempotency_key:idempotencyKey}},r._revision);
+  // Reconciliation above must find no payment. A server-recorded definitive
+  // failure (with its charge request discarded) may recover on hosted checkout.
+  // Unknown/in-flight attempts remain locked; charge/fallback compete on revision.
+  const failedAttempt=r.cardAttempt?.failed===true&&!r.cardAttempt.complete&&!r.cardAttempt.request;
+  if(r.status!=='pending'||(r.cardAttempt&&!failedAttempt)||r.paymentId)return json({error:'A payment is already being checked. Use Check payment status before another checkout.'},409);
+  const idempotencyKey=crypto.randomUUID(),{cardAttempt:discardedAttempt,...recoverable}=r;
+  await squareWrite(env,key,{...recoverable,method:'hosted',orderId:null,idempotencyKey,request:{...r.request,idempotency_key:idempotencyKey}},r._revision);
   r=await squareRecord(env,key);
   if(r.method!=='hosted')return json({error:'Checkout changed. Check payment status before continuing.'},409);
  }

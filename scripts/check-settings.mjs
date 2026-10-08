@@ -49,7 +49,7 @@ const uiHost={innerHTML:'',querySelectorAll(selector){if(selector==='[data-path-
 const uiDocument={getElementById(id){if(id==='education-app')return uiHost;if(!uiElements.has(id))uiElements.set(id,{addEventListener(){},textContent:''});return uiElements.get(id);}};
 const ui=vm.createContext({structuredClone,URLSearchParams,document:uiDocument,location:{search:'?preview=1'},parent:{postMessage(){}},window:{addEventListener(){}}});
 vm.runInContext(fs.readFileSync('public/education-config.js','utf8'),ui);
-vm.runInContext("const educationPreview=true;const eduTheme=()=>{};const eduEscape=s=>String(s);const squareEnabled=()=>false;const bindReview=()=>{};const bindEntryLightbox=()=>{};const squareDecorate=()=>{};let entryReviewed=false;",ui);
+vm.runInContext("const educationPreview=true;const eduTheme=()=>{};const eduEscape=s=>String(s);const squareEnabled=()=>false;const bindReview=()=>{};const bindContactFields=()=>{};const contactFields=()=>'';const bindEntryLightbox=()=>{};const squareDecorate=()=>{};let entryReviewed=false;",ui);
 vm.runInContext(fs.readFileSync('public/education-app.js','utf8'),ui);ui.currentConfig=original;
 const question=original.questions[0];uiInputs=question.options.map((_,index)=>({name:question.id,value:String(index),checked:false}));
 vm.runInContext("course=currentConfig;screen='questions';renderLearning();",ui);

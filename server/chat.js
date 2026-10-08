@@ -81,11 +81,14 @@ async function chatAPI(request,env,url){
  }
  if(path==='broadcast'){
   if(!owner)return json({error:'Goddess access required.'},403);
-  if(method!=='POST')return json({error:'Method not allowed'},405);
+  if(!['GET','POST'].includes(method))return json({error:'Method not allowed'},405);
+  if(method==='GET'){const targets=await db(env).prepare("SELECT id,user_id,name FROM chat_students WHERE status='active' ORDER BY name LIMIT 1000").all(),students=[];for(const t of targets.results)if(await squareAccessAllowed(env,t.user_id)&&await chatConversationEnabled(env,t.id))students.push({id:t.id,name:t.name});return json({students});}
   if(typeof body.text!=='string'||!body.text.trim()||body.text.length>1000||typeof body.id!=='string'||! /^[a-f0-9-]{36}$/.test(body.id)||chatLinkCandidates(body.text).some(x=>!chatSafeLink(x)))return json({error:'Write up to 1,000 characters using approved links only.'},400);
+  if(Object.keys(body).some(k=>!['id','text','studentIds'].includes(k))||(body.studentIds!==undefined&&(!Array.isArray(body.studentIds)||!body.studentIds.length||body.studentIds.length>1000||body.studentIds.some(id=>typeof id!=='string'||! /^[a-f0-9-]{36}$/.test(id))||new Set(body.studentIds).size!==body.studentIds.length)))return json({error:'Choose valid broadcast recipients.'},400);
   if(!await chatLimit(env,'broadcast:admin',10,3600000))return json({error:'Broadcast limit reached. Try later.'},429);
   const targets=await db(env).prepare("SELECT id,user_id FROM chat_students WHERE status='active' ORDER BY id LIMIT 1000").all(),eligible=[];
-  for(const t of targets.results)if(await squareAccessAllowed(env,t.user_id)&&await chatConversationEnabled(env,t.id))eligible.push(t);
+  for(const t of targets.results)if((!body.studentIds||body.studentIds.includes(t.id))&&await squareAccessAllowed(env,t.user_id)&&await chatConversationEnabled(env,t.id))eligible.push(t);
+  if(body.studentIds&&eligible.length!==body.studentIds.length)return json({error:'Some recipients are unavailable. Reopen Broadcast to update the list.'},409);
   const deliveryIds=await Promise.all(eligible.map(async t=>{const h=await chatHash('broadcast:'+body.id+':'+t.id);return h.slice(0,8)+'-'+h.slice(8,12)+'-'+h.slice(12,16)+'-'+h.slice(16,20)+'-'+h.slice(20,32);}));
   await db(env).batch(eligible.map((t,i)=>db(env).prepare("INSERT INTO chat_messages(id,student_id,sender,body,created_at) VALUES(?,?,'admin',?,?) ON CONFLICT(id) DO NOTHING").bind(deliveryIds[i],t.id,body.text.trim(),now)));
   return json({ok:true,recipients:eligible.length});

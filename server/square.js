@@ -15,7 +15,8 @@ function squaredAmountMismatch(plan,signed,promo){return signed.amount!==squareP
 function squarePriced(plan,promo){return promo?{...plan,originalAmount:plan.amount,amount:Math.round(plan.amount/2),promoCode:promo}:plan;}
 function squarePublic(r){return r?{stage:r.stage,plan:r.plan,status:r.status,receiptUrl:r.receiptUrl||null,paidAt:r.paidAt||null,expiresAt:r.expiresAt||null,canChangePromo:r.stage==='entry'&&r.method==='embedded'&&r.status==='pending'&&!r.cardAttempt&&!r.paymentId}:null;}
 function squareExpiry(plan,start){const d=new Date(start);if(plan==='infinite')return null;if(plan==='day')return new Date(d.getTime()+86400000).toISOString();const day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+(plan==='quarter'?3:1));const last=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();d.setUTCDate(Math.min(day,last));return d.toISOString();}
-async function squarePaymentState(env,user){const [entry,contract]=await Promise.all(['entry','contract'].map(async stage=>squareRecord(env,await squareKey(env,user,stage))));return {entry,contract};}
+function squareContractExpiry(r,paidAt){const normal=squareExpiry(r.plan.id,paidAt);if(normal===null)return null;const grant=Date.parse(r.grantedExpiresAt);return Number.isFinite(grant)?new Date(Math.max(Date.parse(normal),grant)).toISOString():normal;}
+async function squarePaymentState(env,user){const [entry,contract,support]=await Promise.all(['entry','contract','support'].map(async stage=>squareRecord(env,await squareKey(env,user,stage))));if(contract?.status==='paid'&&contract.expiresAt&&support?.status==='paid'&&Date.parse(support.expiresAt)>Date.parse(contract.expiresAt))contract.expiresAt=support.expiresAt;return {entry,contract};}
 async function squareAccessDeadline(env,user){
  if(squareMode(env)==='off')return Infinity;
  const {entry,contract}=await squarePaymentState(env,user);
@@ -47,9 +48,10 @@ async function squareApplyPayment(env,paymentId){
   if(p.status==='COMPLETED')status=p.refunded_money?.amount>0||r.status==='refund_review'?'refund_review':'paid';
   else if(['FAILED','CANCELED'].includes(p.status)&&r.status!=='paid')status='pending';
   const paidAt=r.paidAt||(status==='paid'?(p.card_details?.card_payment_timeline?.captured_at||p.updated_at):null);
-  const next={...r,orderId:p.order_id,paymentId:p.id,status,paidAt,providerStatus:p.status,providerUpdatedAt:p.updated_at,receiptUrl:p.receipt_url||null,expiresAt:r.stage==='contract'&&paidAt?squareExpiry(r.plan.id,paidAt):null};
+  const next={...r,orderId:p.order_id,paymentId:p.id,status,paidAt,providerStatus:p.status,providerUpdatedAt:p.updated_at,receiptUrl:p.receipt_url||null,expiresAt:r.stage==='contract'&&paidAt?squareContractExpiry(r,paidAt):null};
+  if(r.stage==='support'&&status==='paid'){const contract=await squareRecord(env,await squareKey(env,r.user,'contract'));if(!contract||contract.status!=='paid')return;next.expiresAt=r.expiresAt||squareExpiry('month',new Date(Math.max(Date.parse(paidAt),contract.expiresAt?Date.parse(contract.expiresAt):Date.parse(paidAt))).toISOString());}
   if(r.stage==='donation'&&r.cardAttempt&&['paid','refund_review'].includes(status))next.cardAttempt={id:r.cardAttempt.id,complete:true};
-  const result=await squareWrite(env,key,next,r._revision);if(result.meta.changes)return;
+  const result=await squareWrite(env,key,next,r._revision);if(result.meta.changes){if(r.stage==='support'&&status==='paid')await db(env).prepare("UPDATE chat_students SET code_expires=GREATEST(code_expires,?) WHERE user_id=? AND status='active' AND code_hash IS NOT NULL").bind(Date.parse(next.expiresAt),r.user).run();return;}
  }
  throw Error('Concurrent payment update; retry required.');
 }
@@ -82,6 +84,7 @@ async function squareAPI(request,env,url,{user,owner}){
   const state=user?await squarePaymentState(env,user):{};const contact=user?await db(env).prepare('SELECT content FROM prototype_settings WHERE id=?').bind('sub-contact:'+user).first():null;
   return json({contact:contact?JSON.parse(contact.content):null,mode,ready,embeddedReady:ready&&!!env.SQUARE_APPLICATION_ID,applicationId:env.SQUARE_APPLICATION_ID||null,locationId:env.SQUARE_LOCATION_ID||null,entry:squarePublic(state.entry),contract:squarePublic(state.contract)});
  }
+ if(url.pathname==='/api/education/payments/support')return squareSupportPayment(request,env,url);
  if(!user)return json({error:'Start your application in this browser first.'},401);
  if(request.method!=='POST')return json({error:'Method not allowed'},405);
  const body=await educationBody(request,url,4000);if(body instanceof Response)return body;
@@ -127,7 +130,7 @@ async function squareAPI(request,env,url,{user,owner}){
  if(c!==undefined&&(!c||typeof c!=='object'||Array.isArray(c)))return json({error:'Enter a valid email address or leave it blank.'},400);
  const supplied=c?.email;if(supplied!==undefined&&typeof supplied!=='string')return json({error:'Enter a valid email address or leave it blank.'},400);
  const optionalEmail=(supplied||'').trim();if(optionalEmail&&(optionalEmail.length>254||!/^\S+@[^\s@]+\.[^\s@]+$/.test(optionalEmail)))return json({error:'Enter a valid email address or leave it blank.'},400);
- await db(env).prepare('INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?) ON CONFLICT(id) DO UPDATE SET content=excluded.content,revision=prototype_settings.revision+1,updated_at=excluded.updated_at').bind('sub-contact:'+user,JSON.stringify({email:optionalEmail,pathId:config.paths.some(p=>p.id===body.pathId)?body.pathId:null}),new Date().toISOString()).run();email=optionalEmail||null;}
+ await db(env).prepare('INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?) ON CONFLICT(id) DO UPDATE SET content=(prototype_settings.content::jsonb || excluded.content::jsonb)::text,revision=prototype_settings.revision+1,updated_at=excluded.updated_at').bind('sub-contact:'+user,JSON.stringify({email:optionalEmail,pathId:config.paths.some(p=>p.id===body.pathId)?body.pathId:null}),new Date().toISOString()).run();email=optionalEmail||null;}
 
  if(!r){
   const initial={method:embedded?'embedded':'hosted',user,stage:body.stage,plan,agreementId,mode,status:'pending',idempotencyKey:crypto.randomUUID(),createdAt:new Date().toISOString()};
@@ -216,4 +219,25 @@ async function squareEmbedded(request,env,url,body,key,r){
   return json({paid:current.status==='paid',payment:squarePublic(current)});
  }
  return json({error:'Your payment is still being confirmed. Check payment status before trying another card.',retrySame:true},202);
+}
+
+// Private administrator-approved one-off support offer. No self-service plan creation.
+async function squareSupportPayment(request,env,url){
+ if(request.method!=='POST')return json({error:'Method not allowed.'},405);
+ const body=await educationBody(request,url,1000);if(body instanceof Response)return body;
+ if(Object.keys(body).some(k=>!['token','checkout'].includes(k))||typeof body.token!=='string'||! /^[a-f0-9]{64}$/.test(body.token)||typeof body.checkout!=='boolean')return json({error:'This payment link is unavailable.'},400);
+ if(!squareReady(env))return json({error:'Payments are temporarily unavailable. Please retry.'},503);
+ if(!await chatLimit(env,'support-offer-ip:'+await chatHash(request.headers.get('cf-connecting-ip')||'unknown'),300,60000))return json({error:'Please wait before retrying.'},429);
+ const hash=await chatHash(body.token);if(!await chatLimit(env,'support-offer:'+hash,20,60000))return json({error:'Please wait before retrying.'},429);
+ const row=await db(env).prepare("SELECT id,content,revision FROM prototype_settings WHERE id LIKE ? AND content::jsonb->>'offerHash'=? LIMIT 1").bind('sq-'+squareMode(env)+'-s-%',hash).first();if(!row)return json({error:'This payment link is unavailable.'},404);
+ const key=row.id;let r={...JSON.parse(row.content),_revision:row.revision,_key:key};
+ if(r.stage!=='support'||r.mode!==squareMode(env)||r.plan?.id!=='month'||!Number.isSafeInteger(r.plan.amount)||r.plan.amount<1)return json({error:'This payment link is unavailable.'},404);
+ await squareReconcile(env,r);r=await squareRecord(env,key);
+ if(r.status==='paid')return json({paid:true,amount:r.plan.amount,expiresAt:r.expiresAt});
+ if(r.status==='refund_review')return json({error:'This payment needs Goddess’s review.'},409);
+ if(r.offerExpiresAt<Date.now())return json({error:'This offer has expired. Please contact Goddess.'},410);
+ if(!body.checkout)return json({paid:false,amount:r.plan.amount});
+ if(!r.request){const request={idempotency_key:r.idempotencyKey,order:{location_id:env.SQUARE_LOCATION_ID,reference_id:key,line_items:[{name:'One-off access · 1 month · 50% discount',quantity:'1',base_price_money:{amount:r.plan.amount,currency:'GBP'}}]},checkout_options:{redirect_url:new URL('/support-payment.html',url.origin).href+'#'+body.token,allow_tipping:false,ask_for_shipping_address:false}};await squareWrite(env,key,{...r,request},r._revision);r=await squareRecord(env,key);}
+ if(!r.checkoutUrl){const result=await squareCall(env,'online-checkout/payment-links',r.request),link=result.payment_link;let target;try{target=new URL(link?.url);}catch{return json({error:'Checkout unavailable. Please retry.'},503);}if(target.protocol!=='https:'||target.hostname!==(squareMode(env)==='production'?'square.link':'sandbox.square.link')||!link.order_id)return json({error:'Checkout unavailable. Please retry.'},503);for(let i=0;i<5;i++){r=await squareRecord(env,key);if(r.checkoutUrl)break;const saved=await squareWrite(env,key,{...r,checkoutUrl:link.url,orderId:link.order_id,linkId:link.id},r._revision);if(saved.meta.changes)break;}}
+ r=await squareRecord(env,key);return r.checkoutUrl?json({paid:false,amount:r.plan.amount,url:r.checkoutUrl}):json({error:'Checkout is being prepared. Please retry.'},503);
 }

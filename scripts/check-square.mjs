@@ -220,7 +220,8 @@ for(const [index,contact] of [undefined,{email:''},{email:'   '},{email:'  optio
 assert.equal((await call('payments',{user:'unrelated-optional-email'})).data.contact,null,'optional email remains session-private');
 const ui={course:config,learnerName:'',screen:'entry',eduEscape:s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;')};vm.createContext(ui);vm.runInContext(fs.readFileSync('public/education-review.js','utf8'),ui);
 vm.runInContext("entryId='basic'",ui);assert.equal(vm.runInContext('contactValid()',ui),true,'blank optional email allows entry');
-const markup=vm.runInContext('entryChoices()',ui);assert.ok(markup.indexOf('id="entry-email"')>markup.indexOf('name="entry-plan"'));assert.equal((markup.match(/type="email"/g)||[]).length,1);assert.ok(!markup.includes('Your contact details')&&!markup.includes('Phone number')&&!markup.includes('Full name'));assert.ok(!/id="entry-email"[^>]*required/.test(markup));
+const markup=vm.runInContext('entryChoices()',ui);assert.ok(!markup.includes('id="entry-email"'),'contact fields moved to first step');const initialContact=vm.runInContext('contactFields()',ui);assert.match(initialContact,/Full name/);assert.match(initialContact,/Email address/);assert.ok(/id="entry-email"[^>]*required/.test(initialContact));
+
 vm.runInContext("learnerEmail='bad'",ui);assert.equal(vm.runInContext('contactValid()',ui),false);vm.runInContext("learnerEmail='  optional@example.test  '",ui);assert.equal(vm.runInContext('contactValid()',ui),true);
 assert.equal(vm.runInContext('reviewValid()',ui),false,'optional entry email does not waive signed-contract identity requirements');
 console.log('Optional entry email checks passed: blank/missing/whitespace accepted, malformed/type/length rejected, private email-only records, unchanged prices and idempotency, optional field after plans, contract identity retained.');

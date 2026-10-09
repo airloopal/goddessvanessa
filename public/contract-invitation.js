@@ -1,0 +1,2 @@
+'use strict';
+(async()=>{const status=document.getElementById('invitation-status');try{const r=await fetch('/api/education/contract-invitation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:location.hash.slice(1)})}),data=await r.json();if(!r.ok)throw Error(data.error||'Invitation unavailable.');history.replaceState(null,'',location.pathname);location.replace('/application.html?invitation=1');}catch(error){status.textContent=error.message;}})();

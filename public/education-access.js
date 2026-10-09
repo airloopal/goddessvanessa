@@ -7,7 +7,7 @@ document.getElementById('access-form').onsubmit=async e=>{e.preventDefault();con
 if(new URLSearchParams(location.search).get('notice')==='logout')document.getElementById('access-status').textContent='You have logged out.';
 eduAPI('published').then(p=>eduTheme(p.config)).catch(()=>{});
 
-const resumeSubHome=()=>PreviewAccess.check().then(async student=>{if(!student||student.id==='editor-preview')return;const r=await fetch('/api/education/identity',{cache:'no-store',credentials:'same-origin',headers:{'X-Education-Context':'application'}});if(r.ok&&(await r.json()).applicationInProgress===false)location.replace('/feed.html');}).catch(()=>{});
+const resumeSubHome=()=>new URLSearchParams(location.search).get('invitation')==='1'?Promise.resolve():PreviewAccess.check().then(async student=>{if(!student||student.id==='editor-preview')return;const r=await fetch('/api/education/identity',{cache:'no-store',credentials:'same-origin',headers:{'X-Education-Context':'application'}});if(r.ok&&(await r.json()).applicationInProgress===false)location.replace('/feed.html');}).catch(()=>{});
 resumeSubHome();window.addEventListener('pageshow',event=>{if(event.persisted)resumeSubHome();});
 
 const accessNotice=new URLSearchParams(location.search).get('notice');

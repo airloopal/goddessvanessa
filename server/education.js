@@ -5,6 +5,7 @@ async function educationConfig(env,which='published'){const row=await db(env).pr
 async function educationAPI(request,env,url){
  if(url.pathname==='/api/education/contract-invitation')return redeemContractInvite(request,env,url);
  const path=url.pathname,dispatchUser=request.headers.get('oai-authenticated-user-id'),dispatchEmail=request.headers.get('oai-authenticated-user-email'),owner=!!dispatchUser&&dispatchEmail?.toLowerCase()===EDUCATION_OWNER;
+ if(path==='/api/education/payment-status')return adminPaymentsAPI(request,env,owner);
  if(path==='/api/education/individual-contracts')return contractEditorAPI(request,env,url,owner);
  const codeStudent=owner?null:await chatStudent(request,env),applicant=await applicationUser(request,env),applicationContext=request.headers.get('x-education-context')==='application';
  // Application pages use their own host-only capability, never an unrelated chat session.
@@ -37,7 +38,7 @@ async function educationAPI(request,env,url){
   if(!owner)return json({error:'Only Goddess can view learner records.'},403);
   if(request.method!=='GET')return json({error:'Method not allowed'},405);
   const rows=await db(env).prepare("SELECT e.user_id,e.reference,e.name,e.path_id,e.snapshot,e.completed,e.created_at,e.updated_at,b.content::jsonb->>'bio' AS bio FROM education_enrolments e LEFT JOIN chat_students s ON s.user_id=e.user_id LEFT JOIN prototype_settings b ON b.id='sub-bio:'||s.id ORDER BY e.updated_at DESC LIMIT 200").all();
-  return json({enrolments:await Promise.all((rows.results||[]).map(async r=>{const {user_id,...record}=r;const payments=squareMode(env)==='off'?null:await squarePaymentState(env,user_id);return {...record,snapshot:JSON.parse(r.snapshot),completed:JSON.parse(r.completed),payments:payments?{entry:squarePublic(payments.entry),contract:squarePublic(payments.contract)}:null};}))});
+  return json({enrolments:await Promise.all((rows.results||[]).map(async r=>{const {user_id,...record}=r;const payments=squareMode(env)==='off'?null:await squarePaymentState(env,user_id);return {...record,snapshot:JSON.parse(r.snapshot),completed:JSON.parse(r.completed),payments:payments?{entry:squareAdminPayment(payments.entry),contract:squareAdminPayment(payments.contract)}:null};}))});
  }
  if(path!=='/api/education/enrolment'&&path!=='/api/education/progress')return json({error:'Not found'},404);
  if(!user)return json({error:'Start your application in this browser before saving.'},401);

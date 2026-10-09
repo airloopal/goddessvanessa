@@ -24,8 +24,8 @@ async function contractEditorAPI(request,env,url,owner){
   return json({contracts});
  }
  if(request.method!=='PUT')return json({error:'Method not allowed.'},405);
- const p=await educationBody(request,url,40000);if(p instanceof Response)return p;
- if(Object.keys(p).some(k=>!['id','revision','agreement'].includes(k))||typeof p.id!=='string'||!/^entry-grant:application:[a-f0-9]{64}$/.test(p.id)||!Number.isInteger(p.revision)||!p.agreement||typeof p.agreement!=='object'||Array.isArray(p.agreement)||Object.keys(p.agreement).some(k=>!['title','body','acceptableUse'].includes(k))||!['title','body','acceptableUse'].every(k=>typeof p.agreement[k]==='string'&&p.agreement[k].trim().length>0&&p.agreement[k].length<=(k==='title'?160:15000)))return json({error:'Provide a title, contract text and acceptable-use policy.'},400);
+ const p=await educationBody(request,url,INDIVIDUAL_CONTRACT_LIMITS.requestBytes);if(p instanceof Response)return p;
+ if(Object.keys(p).some(k=>!['id','revision','agreement'].includes(k))||typeof p.id!=='string'||!/^entry-grant:application:[a-f0-9]{64}$/.test(p.id)||!Number.isInteger(p.revision)||!p.agreement||typeof p.agreement!=='object'||Array.isArray(p.agreement)||Object.keys(p.agreement).some(k=>!['title','body','acceptableUse'].includes(k))||!validIndividualContractText(p.agreement))return json({error:'Provide a title (up to 160 characters), contract text (up to 250,000) and acceptable-use policy (up to 100,000).'},400);
  const user=p.id.slice(12),grant=await contractEntryGrant(env,user);if(!grant||!grant.skipQuestions)return json({error:'Individual contract not found.'},404);
  if(grant.contractLocked||await db(env).prepare('SELECT reference FROM education_enrolments WHERE user_id=?').bind(user).first()||(await squarePaymentState(env,user)).contract)return json({error:'This contract is signed or checkout has started. Its terms are locked.'},409);
  const next={...grant,agreementUpdatedAt:new Date().toISOString(),agreementUpdatedBy:'goddess',agreement:Object.fromEntries(Object.entries(p.agreement).map(([k,v])=>[k,v.trim()])),agreementRevision:(grant.agreementRevision||0)+1};

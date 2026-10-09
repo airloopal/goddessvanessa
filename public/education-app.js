@@ -37,7 +37,7 @@ function offerSettingsRefresh(){
  const button=document.createElement('button');button.type='button';button.className='quiet';button.textContent='Load updated application';
  button.onclick=async()=>{button.disabled=true;try{
   const published=await eduAPI('published'),next=educationWithAgreement(published.config);
-  if(!validEducation(next))throw Error('Could not load valid application settings. Please retry.');
+  if(!(published.individualRevision>0?validIndividualEducation(next):validEducation(next)))throw Error('Could not load valid application settings. Please retry.');
   answers=next.features.questionnaire?Object.fromEntries(next.questions.filter(q=>validEducationAnswer(q,answers[q.id])).map(q=>[q.id,answers[q.id]])):{};
   course=next;configRevision=published.revision;individualRevision=published.individualRevision||0;
   if(!course.paths.some(p=>p.id===pathId))pathId='';

@@ -51,6 +51,7 @@ const ui=vm.createContext({structuredClone,URLSearchParams,document:uiDocument,l
 vm.runInContext(fs.readFileSync('public/education-config.js','utf8'),ui);
 vm.runInContext("const educationPreview=true;const eduTheme=()=>{};const eduEscape=s=>String(s);const squareEnabled=()=>false;const bindReview=()=>{};const bindContactFields=()=>{};const contactFields=()=>'';const bindEntryLightbox=()=>{};const squareDecorate=()=>{};let entryReviewed=false;",ui);
 vm.runInContext(fs.readFileSync('public/education-app.js','utf8'),ui);ui.currentConfig=original;
+vm.runInContext("course=currentConfig;screen='paths';renderLearning();",ui);assert.ok(!uiHost.innerHTML.includes('data-contact=')&&!uiHost.innerHTML.includes('learner-name'),'first step contains only selectors');
 const question=original.questions[0];uiInputs=question.options.map((_,index)=>({name:question.id,value:String(index),checked:false}));
 vm.runInContext("course=currentConfig;screen='questions';renderLearning();",ui);
 assert(uiHost.innerHTML.includes('type="checkbox"'));assert(uiHost.innerHTML.includes('Select all that apply'));

@@ -4,7 +4,7 @@ let squareSDKPromise=null;
 function squareAwait(promise,ms,message){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(message)),ms);})]).finally(()=>clearTimeout(timer));}
 async function squareTokenize(card,details,ms=180000){
  let blocked;
- const policy=new Promise((_,reject)=>{blocked=e=>{if(['form-action','frame-src'].includes(e.effectiveDirective))reject(Object.assign(Error('Bank verification could not open securely. Continue on Square to complete payment.'),{code:'bank_policy_blocked'}));};window.addEventListener('securitypolicyviolation',blocked);});
+ const policy=new Promise((_,reject)=>{blocked=e=>{if(['form-action','frame-src'].includes(e.effectiveDirective))reject(Object.assign(Error('Bank verification could not open securely. Close and reopen the card form to retry.'),{code:'bank_policy_blocked'}));};window.addEventListener('securitypolicyviolation',blocked);});
  try{return await squareVerificationAwait(Promise.race([card.tokenize(details),policy]),ms,'Bank verification timed out. No payment was submitted by this attempt. Reopen checkout to try again.');}
  finally{window.removeEventListener('securitypolicyviolation',blocked);}
 }

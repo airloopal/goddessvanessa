@@ -14,7 +14,7 @@ export default {async fetch(request,env){
  if(pathname==='/api/media/upload'&&env.DIRECT_UPLOADS)return json({error:'Use the direct upload flow.'},410);
  if(pathname.startsWith('/api/media/')){try{return await mediaAPI(request,env,url);}catch(error){console.error('media_api_failed',error.message);return json({error:'File storage is temporarily unavailable. Please retry.'},503);}}
  if(pathname.startsWith('/api/chat/')){try{return await chatAPI(request,env,url);}catch(error){console.error('chat_api_failed',error.message);return json({error:'Chat is temporarily unavailable. Please retry.'},503);}}
- if(pathname.startsWith('/api/education/')){try{return await educationAPI(request,env,url);}catch(error){console.error('education_api_failed',error.message);return json({error:'The learning service is unavailable. Keep your work open and retry.'},503);}}
+ if(pathname.startsWith('/api/education/')){try{return await educationAPI(request,env,url);}catch(error){console.error('education_api_failed',error.name);await recordEducationFailure(env,pathname,error);return json({error:'The learning service is unavailable. Keep your work open and retry.'},503);}}
  if(pathname.startsWith('/api/'))return json({error:'This earlier prototype endpoint has been retired. Use the educational platform.'},410);
  const redirects={'/journey.html':'/application.html','/agreement.html':'/application.html','/copy-studio.html':'/studio.html','/walkthrough.html':'/application.html','/studio':'/studio.html'};
  if(redirects[pathname])return Response.redirect(url.origin+redirects[pathname],302);

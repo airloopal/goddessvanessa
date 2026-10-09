@@ -5,7 +5,7 @@ function squareReady(env){return squareMode(env)!=='off'&&!!(env.SQUARE_ACCESS_T
 async function squareCall(env,path,body){
  const base=squareMode(env)==='production'?'https://connect.squareup.com':'https://connect.squareupsandbox.com';
  const r=await (env.SQUARE_FETCH||fetch)(base+'/v2/'+path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+env.SQUARE_ACCESS_TOKEN,'Content-Type':'application/json','Square-Version':'2025-01-23'},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(15000)});
- if(!r.ok){const data=await r.json().catch(()=>({}));const e=Error('Square request failed ('+r.status+').');e.squareCodes=(data.errors||[]).map(x=>x.code);throw e;}return r.json();
+ if(!r.ok){const data=await r.json().catch(()=>({}));const e=Error('Square request failed ('+r.status+').');e.squareCodes=(data.errors||[]).map(x=>x.code);e.squareStatus=r.status;e.squareOperation=path==='online-checkout/payment-links'?'checkout-link':path==='orders'?'order-create':path.startsWith('orders/')?'order-read':path==='payments'?'payment-create':path.startsWith('payments/')?'payment-read':'other';throw e;}return r.json();
 }
 async function squareRecord(env,key){const r=await db(env).prepare('SELECT content,revision FROM prototype_settings WHERE id=?').bind(key).first();return r?{...JSON.parse(r.content),_revision:r.revision}:null;}
 async function squareWrite(env,key,value,revision){const {_revision,_key,...clean}=value;return db(env).prepare('UPDATE prototype_settings SET content=?,revision=revision+1,updated_at=? WHERE id=? AND revision=?').bind(JSON.stringify(clean),new Date().toISOString(),key,revision).run();}

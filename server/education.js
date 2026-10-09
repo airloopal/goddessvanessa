@@ -81,3 +81,12 @@ async function educationAPI(request,env,url){
  return json({enrolment:await read(),access:{status:'awaiting_admin',codeIssued:false}});
 }
 async function educationBody(request,url,limit){if(request.headers.get('origin')!==url.origin)return json({error:'Request origin rejected'},403);if(!request.headers.get('content-type')?.startsWith('application/json'))return json({error:'JSON required'},415);let raw;try{raw=await boundedText(request,limit);}catch(error){return json({error:error.status===413?'Request too large':'Invalid request body'},error.status===413?413:400);}try{const p=JSON.parse(raw);return p&&typeof p==='object'&&!Array.isArray(p)?p:json({error:'Invalid JSON object'},400);}catch{return json({error:'Invalid JSON'},400);}}
+
+// Curated private failure metadata: never raw provider payloads, card tokens or customer text.
+async function recordEducationFailure(env,path,error){
+ try{const at=new Date().toISOString(),value={at,area:'education',status:503,issue:'service_error',source:'server',errorType:['Error','TypeError','ReferenceError','RangeError','AbortError','TimeoutError'].includes(error.name)?error.name:'Error',route:['/api/education/payments/prepare','/api/education/payments/fallback','/api/education/payments/checkout','/api/education/payments/refresh','/api/education/enrolment','/api/education/published'].includes(path)?path:'other'};
+ const missing=error.name==='ReferenceError'&&error.message?.match(/^([A-Za-z_$][A-Za-z0-9_$]{0,80}) is not defined$/);if(missing)value.missingSymbol=missing[1];if(typeof error.code==='string'&&/^[0-9A-Z]{5}$/.test(error.code))value.databaseCode=error.code;
+ if(Number.isInteger(error.squareStatus)&&error.squareStatus>=400&&error.squareStatus<=599){value.providerStatus=error.squareStatus;value.operation=['checkout-link','order-create','order-read','payment-create','payment-read','other'].includes(error.squareOperation)?error.squareOperation:'other';value.providerCodes=(error.squareCodes||[]).filter(c=>typeof c==='string'&&/^[A-Z_]{1,60}$/.test(c)).slice(0,5);}
+ await db(env).prepare('INSERT INTO prototype_settings(id,content,revision,updated_at) VALUES(?,?,1,?)').bind('education-failure:'+crypto.randomUUID(),JSON.stringify(value),at).run();await db(env).prepare("DELETE FROM prototype_settings WHERE id IN (SELECT id FROM prototype_settings WHERE id LIKE 'education-failure:%' ORDER BY updated_at DESC,id DESC OFFSET 30)").run();
+ }catch{/* Never replace or expose the original failure. */}
+}

@@ -246,3 +246,6 @@ body.dashboard[data-mobile-admin-tab=chats] #admin-thread>.message,body.dashboar
 .chat-view #client-chat.keyboard-open .telegram-chat .chat-composer textarea{max-height:80px}
 
 .chat-view .telegram-chat .goddess-chat-avatar{position:absolute;inset:0;display:block;width:100%;height:100%;border-radius:50%;object-fit:cover;object-position:50% 40%}
+
+/* Frame the supplied portrait from halo to neck; keep the presence dot outside the crop. */
+.chat-view .telegram-chat .goddess-avatar-frame{position:absolute;inset:0;display:block;overflow:hidden;border-radius:50%}.chat-view .telegram-chat .goddess-avatar-frame .goddess-chat-avatar{inset:auto;left:-71.052632%;top:-17.105263%;width:231.578947%;height:auto;max-width:none;border-radius:0;object-fit:contain}

@@ -8,6 +8,21 @@ async function squareCall(env,path,body){
  if(!r.ok){const data=await r.json().catch(()=>({}));const e=Error('Square request failed ('+r.status+').');e.squareCodes=(data.errors||[]).map(x=>x.code);e.squareStatus=r.status;e.squareOperation=path==='online-checkout/payment-links'?'checkout-link':path==='orders'?'order-create':path.startsWith('orders/')?'order-read':path==='payments'?'payment-create':path.startsWith('payments/')?'payment-read':'other';throw e;}return r.json();
 }
 async function squareRecord(env,key){const r=await db(env).prepare('SELECT content,revision FROM prototype_settings WHERE id=?').bind(key).first();return r?{...JSON.parse(r.content),_revision:r.revision}:null;}
+// A definitive email-prefill rejection creates no checkout. Recover once without
+// that optional field; retain contact data, order/price and one shared retry key.
+async function squareCheckoutLink(env,key,r){
+ try{return await squareCall(env,'online-checkout/payment-links',r.request);}catch(error){
+  if(error.squareStatus!==400||!error.squareCodes?.includes('INVALID_EMAIL_ADDRESS')||typeof r.request?.pre_populated_data?.buyer_email!=='string')throw error;
+  const current=await squareRecord(env,key);if(current.checkoutUrl)return {payment_link:{url:current.checkoutUrl,order_id:current.orderId}};
+  if(current.method!=='hosted'||current.status!=='pending'||current.paymentId||current.cardAttempt)throw error;
+  if(typeof current.request?.pre_populated_data?.buyer_email==='string'){
+   const prefill={...current.request.pre_populated_data};delete prefill.buyer_email;const request={...current.request,idempotency_key:crypto.randomUUID()};if(Object.keys(prefill).length)request.pre_populated_data=prefill;else delete request.pre_populated_data;
+   await squareWrite(env,key,{...current,idempotencyKey:request.idempotency_key,request},current._revision);
+  }
+  const retry=await squareRecord(env,key);if(retry.checkoutUrl)return {payment_link:{url:retry.checkoutUrl,order_id:retry.orderId}};if(retry.method!=='hosted'||retry.status!=='pending'||retry.paymentId||retry.cardAttempt)throw error;
+  return squareCall(env,'online-checkout/payment-links',retry.request);
+ }
+}
 async function squareWrite(env,key,value,revision){const {_revision,_key,...clean}=value;return db(env).prepare('UPDATE prototype_settings SET content=?,revision=revision+1,updated_at=? WHERE id=? AND revision=?').bind(JSON.stringify(clean),new Date().toISOString(),key,revision).run();}
 const squareKey=async(env,user,stage)=>'sq-'+squareMode(env)+'-'+stage[0]+'-'+(await chatHash(user)).slice(0,24);
 function squarePromo(code){return typeof code==='string'&&code.trim().toUpperCase()==='SUB50'?'SUB50':null;}
@@ -169,7 +184,7 @@ async function squareAPI(request,env,url,{user,owner}){
  if(embedded){if(r.method==='hosted'&&url.pathname.endsWith('/prepare'))return json({hosted:true,plan:r.plan,mode});return squareEmbedded(request,env,url,body,key,r);}
  if(r.method==='embedded')return json({error:'Please use the on-page card form.'},409);
  if(!r.checkoutUrl){
-  const result=await squareCall(env,'online-checkout/payment-links',r.request),link=result.payment_link;
+  const result=await squareCheckoutLink(env,key,r),link=result.payment_link;
   if(!link?.url||!link.order_id)throw Error('Square did not return a checkout.');
   const target=new URL(link.url);if(target.protocol!=='https:'||!['square.link','sandbox.square.link'].includes(target.hostname))throw Error('Unexpected checkout host.');
   for(let attempt=0;attempt<5;attempt++){

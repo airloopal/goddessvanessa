@@ -5,6 +5,7 @@ async function educationConfig(env,which='published'){const row=await db(env).pr
 async function educationAPI(request,env,url){
  if(url.pathname==='/api/education/contract-invitation')return redeemContractInvite(request,env,url);
  const path=url.pathname,dispatchUser=request.headers.get('oai-authenticated-user-id'),dispatchEmail=request.headers.get('oai-authenticated-user-email'),owner=!!dispatchUser&&dispatchEmail?.toLowerCase()===EDUCATION_OWNER;
+ if(path==='/api/education/individual-contracts')return contractEditorAPI(request,env,url,owner);
  const codeStudent=owner?null:await chatStudent(request,env),applicant=await applicationUser(request,env),applicationContext=request.headers.get('x-education-context')==='application';
  // Application pages use their own host-only capability, never an unrelated chat session.
  const user=applicationContext&&(!owner||request.headers.get('x-education-invite')==='contract')?applicant:codeStudent?.user_id||dispatchUser||applicant,email=applicationContext&&!owner?null:codeStudent?.email||dispatchEmail;
@@ -24,7 +25,7 @@ async function educationAPI(request,env,url){
  const which=path.split('/').at(-1);
  if(path==='/api/education/published'||path==='/api/education/draft'){
   if(!(which==='published'&&request.method==='GET')&&!owner)return json({error:'Sign in with the Goddess account to edit or publish courses.'},403);
-  if(request.method==='GET')return json(await educationConfig(env,which));
+  if(request.method==='GET'){const published=await educationConfig(env,which);if(which==='published'&&request.headers.get('x-education-invite')==='contract'&&!applicant)return json({error:'Invitation unavailable.'},403);if(which==='published'&&applicationContext&&applicant)return json(await individualContractConfig(env,applicant,published));return json(published);}
   if(request.method!=='PUT')return json({error:'Method not allowed'},405);
   const p=await educationBody(request,url,400000);if(p instanceof Response)return p;
   if(!Number.isInteger(p.revision)||p.revision<0||!validEducation(p.config))return json({error:educationSettingsErrors(p.config)[0]||'Check the fields: keep at least one path and lesson, use unique answer options, and supply a valid HTTPS URL for video blocks.'},400);
@@ -45,7 +46,7 @@ async function educationAPI(request,env,url){
  if(request.method!=='PUT')return json({error:'Method not allowed'},405);
  const p=await educationBody(request,url,20000);if(p instanceof Response)return p;
  if(path==='/api/education/enrolment'&&!await chatLimit(env,'application-submit:'+await chatHash(request.headers.get('cf-connecting-ip')||'unknown'),20,3600000))return json({error:'Too many submissions. Try again later.'},429);
- const {config,revision}=await educationConfig(env);
+ const {config,revision,individualRevision}=await individualContractConfig(env,user,await educationConfig(env));
  const now=new Date().toISOString();
  if(path==='/api/education/progress'){
   if(!owner&&!await squareAccessAllowed(env,user))return json({error:'Your paid access is unavailable or has expired.'},402);
@@ -60,6 +61,7 @@ async function educationAPI(request,env,url){
  if(!p.review||p.review.revision!==revision)return json({error:'Application settings changed. Load the updated version and review it before confirming.',code:'settings_changed'},409);
  if(typeof p.name!=='string'||p.name.trim().length<2||p.name.length>100||!config.paths.some(x=>x.id===p.pathId)||p.accepted!==true||!p.answers||typeof p.answers!=='object'||Array.isArray(p.answers))return json({error:'Enter your name, choose a learning path and confirm your enrolment.'},400);
  const grant=await contractEntryGrant(env,user),invited=grant?.contractId==='month'&&grant?.promoCode==='SUB50'&&grant?.skipQuestions===true;
+ if(invited&&((p.review.individualRevision||0)!==individualRevision||(grant.agreementRevision||0)!==individualRevision))return json({error:'Your individual agreement changed. Reload and review it again.',code:'settings_changed'},409);
  if(invited&&(p.review.contractId!=='month'||p.review.promoCode!=='SUB50'))return json({error:'This invitation is for the monthly contract with SUB50.'},400);
  const answerKeys=Object.keys(p.answers);if(answerKeys.some(k=>!config.questions.some(q=>q.id===k)))return json({error:'The questionnaire changed. Please reload and review your answers.'},409);
  if(!invited&&config.features.questionnaire&&config.questions.some(q=>!validEducationAnswer(q,p.answers[q.id])))return json({error:'Choose at least one current option for each question.'},400);
@@ -70,7 +72,8 @@ async function educationAPI(request,env,url){
  let entry=config.agreement.entryPlans.find(x=>x.id===review.entryId),contract=config.agreement.contractPlans.find(x=>x.id===review.contractId);
  if(!entry||!contract||typeof review.email!=='string'||review.email.length>254||!/^\S+@[^\s@]+\.[^\s@]+$/.test(review.email)||typeof review.signature!=='string'||review.signature.trim()!==p.name.trim()||review.ageConfirmed!==true||review.aupAccepted!==true||review.read!==true||review.entryReviewed!==true)return json({error:'Confirm your email, scroll through the agreement, type your matching full name and accept the age and acceptable-use confirmations.'},400);
  if(squareMode(env)!=='off'){const paid=await squarePaymentState(env,user);const promo=paid.entry?.plan.promoCode||squarePromo(review.promoCode);if(review.promoCode&&!squarePromo(review.promoCode))return json({error:'Invalid promo code.'},400);entry=paid.entry.plan;contract=squarePriced(contract,promo);}
- const agreement={id:'REVIEW-'+crypto.randomUUID(),revision,title:config.agreement.title,body:config.agreement.body,acceptableUse:config.agreement.acceptableUse,entry,contract,email:review.email.trim(),...(typeof review.phone==='string'&&/^[+0-9 ()-]{7,32}$/.test(review.phone)?{phone:review.phone.trim()}:{}),signature:review.signature.trim(),ageConfirmed:true,aupAccepted:true,acknowledgedAt:now,paymentStatus:squareMode(env)==='off'?'not_collected':grant?'entry_granted_contract_due':'entry_paid_contract_due',scope:squareMode(env)==='off'?'Educational review preview':'Educational application'};
+ if(invited&&!grant.contractLocked){const locked=await squareWrite(env,'entry-grant:'+user,{...grant,contractLocked:true},grant._revision);if(!locked.meta.changes)return json({error:'Your agreement changed. Reload and review it again.',code:'settings_changed'},409);}
+ const agreement={individualRevision,id:'REVIEW-'+crypto.randomUUID(),revision,title:config.agreement.title,body:config.agreement.body,acceptableUse:config.agreement.acceptableUse,entry,contract,email:review.email.trim(),...(typeof review.phone==='string'&&/^[+0-9 ()-]{7,32}$/.test(review.phone)?{phone:review.phone.trim()}:{}),signature:review.signature.trim(),ageConfirmed:true,aupAccepted:true,acknowledgedAt:now,paymentStatus:squareMode(env)==='off'?'not_collected':grant?'entry_granted_contract_due':'entry_paid_contract_due',scope:squareMode(env)==='off'?'Educational review preview':'Educational application'};
  const snapshot={path:config.paths.find(x=>x.id===p.pathId),questions:config.features.questionnaire&&!invited?config.questions.map(q=>({title:q.title,answer:p.answers[q.id]})):[],notice:squareMode(env)==='off'?'Educational review preview. No payment collected.':grant?'Entry granted by Goddess. No entry payment is claimed; contract payment is separate.':'Entry payment confirmed. Contract payment is separate.',agreement};
  const enrolmentWrite=db(env).prepare('INSERT INTO education_enrolments (user_id,reference,name,path_id,answers,snapshot,completed,created_at,updated_at) VALUES (?,?,?,?,?,?,?, ?,?) ON CONFLICT(user_id) DO UPDATE SET name=excluded.name,path_id=excluded.path_id,answers=excluded.answers,snapshot=excluded.snapshot,updated_at=excluded.updated_at').bind(user,'LEARN-'+crypto.randomUUID(),p.name.trim(),p.pathId,JSON.stringify(p.answers),JSON.stringify(snapshot),'[]',now,now);
  const reviewWrite=db(env).prepare('INSERT INTO prototype_settings (id,content,revision,updated_at) VALUES (?,?,1,?)').bind('education-review-'+agreement.id,JSON.stringify({userId:user,name:p.name.trim(),...agreement}),now);

@@ -120,7 +120,8 @@ async function squareAPI(request,env,url,{user,owner}){
   const {entry}=await squarePaymentState(env,user);if(!entryEntitled(entry))return json({error:'Complete your entry payment first.'},409);
   const row=await db(env).prepare('SELECT snapshot FROM education_enrolments WHERE user_id=?').bind(user).first();
   const agreement=row?JSON.parse(row.snapshot).agreement:null;
-  if(!agreement||agreement.revision!==revision||agreement.contract.id!==plan.id||agreement.entry.id!==entry.plan.id)return json({error:'Save and sign the current agreement before paying.'},409);
+  const individualGrant=await contractEntryGrant(env,user);
+  if(!agreement||(agreement.individualRevision||0)!==(individualGrant?.agreementRevision||0)||agreement.revision!==revision||agreement.contract.id!==plan.id||agreement.entry.id!==entry.plan.id)return json({error:'Save and sign the current agreement before paying.'},409);
   agreementId=agreement.id;email=agreement.email;promo=agreement.contract.promoCode||null;
   if(squaredAmountMismatch(plan,agreement.contract,promo))return json({error:'Review and sign the current contract price again.'},409);
  }

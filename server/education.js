@@ -1,12 +1,13 @@
 const EDUCATION_OWNER='danielvernontp@gmail.com';
 // A private browser capability for applications, never a chat login.
-async function applicationUser(request,env){if(request.headers.get('x-education-invite')==='contract')return env?contractInviteSession(request,env):null;const token=request.headers.get('cookie')?.match(/(?:^|;\s*)__Host-vanessa_application=([a-f0-9]{48})(?:;|$)/)?.[1];return token?'application:'+await chatHash(token):null;}
+async function applicationUser(request,env){if(request.headers.get('x-education-invite')==='contract')return env?contractInviteSession(request,env):null;const token=request.headers.get('cookie')?.match(/(?:^|;\s*)__Host-vanessa_application=([a-f0-9]{48})(?:;|$)/)?.[1];if(!token)return null;const hash=await chatHash(token);if(env){const session=await squareRecord(env,'application-recovery-session:'+hash);if(session){const recovery=await squareRecord(env,session.recoveryKey);return session.expiresAt>Date.now()&&recovery?.status==='active'&&recovery.expiresAt>Date.now()?recovery.user:null;}}return 'application:'+hash;}
 async function educationConfig(env,which='published'){const row=await db(env).prepare('SELECT content,revision,updated_at FROM prototype_settings WHERE id = ?').bind('education-'+which).first();return {config:educationWithAgreement(row?JSON.parse(row.content):EDUCATION_DEFAULTS),revision:row?.revision||0,updatedAt:row?.updated_at||null};}
 async function educationAPI(request,env,url){
  if(url.pathname==='/api/education/contract-invitation')return redeemContractInvite(request,env,url);
  const path=url.pathname,dispatchUser=request.headers.get('oai-authenticated-user-id'),dispatchEmail=request.headers.get('oai-authenticated-user-email'),owner=!!dispatchUser&&dispatchEmail?.toLowerCase()===EDUCATION_OWNER;
  if(path==='/api/education/payment-status')return adminPaymentsAPI(request,env,owner);
  if(path==='/api/education/individual-contracts')return contractEditorAPI(request,env,url,owner);
+ if(path==='/api/education/application-recovery')return applicationRecovery(request,env,url,owner);
  const codeStudent=owner?null:await chatStudent(request,env),applicant=await applicationUser(request,env),applicationContext=request.headers.get('x-education-context')==='application';
  // Application pages use their own host-only capability, never an unrelated chat session.
  const user=applicationContext&&(!owner||request.headers.get('x-education-invite')==='contract')?applicant:codeStudent?.user_id||dispatchUser||applicant,email=applicationContext&&!owner?null:codeStudent?.email||dispatchEmail;
@@ -90,4 +91,19 @@ async function recordEducationFailure(env,path,error){
  if(Number.isInteger(error.squareStatus)&&error.squareStatus>=400&&error.squareStatus<=599){value.providerStatus=error.squareStatus;value.operation=['checkout-link','order-create','order-read','payment-create','payment-read','other'].includes(error.squareOperation)?error.squareOperation:'other';value.providerCodes=(error.squareCodes||[]).filter(c=>typeof c==='string'&&/^[A-Z_]{1,60}$/.test(c)).slice(0,5);}
  await db(env).prepare('INSERT INTO prototype_settings(id,content,revision,updated_at) VALUES(?,?,1,?)').bind('education-failure:'+crypto.randomUUID(),JSON.stringify(value),at).run();await db(env).prepare("DELETE FROM prototype_settings WHERE id IN (SELECT id FROM prototype_settings WHERE id LIKE 'education-failure:%' ORDER BY updated_at DESC,id DESC OFFSET 30)").run();
  }catch{/* Never replace or expose the original failure. */}
+}
+
+// Private administrator recovery capability restores an existing application, never its payment status.
+async function applicationRecovery(request,env,url,owner){
+ if(request.method!=='POST')return json({error:'Method not allowed.'},405);
+ const body=await educationBody(request,url,1000);if(body instanceof Response)return body;
+ if(typeof body.token!=='string'||! /^[a-f0-9]{64}$/.test(body.token)||Object.keys(body).some(k=>k!=='token'))return json({error:'This recovery link is unavailable.'},400);
+ if(!await chatLimit(env,'application-recovery:'+await chatHash(request.headers.get('cf-connecting-ip')||'unknown'),30,3600000))return json({error:'Please wait before retrying.'},429);
+ const key='application-recovery:'+await chatHash(body.token),recovery=await squareRecord(env,key);
+ if(!recovery||recovery.status!=='active'||recovery.expiresAt<=Date.now()||!/^application:[a-f0-9]{64}$/.test(recovery.user||''))return json({error:'This recovery link has expired or is unavailable. Contact Goddess.'},404);
+ const saved=await db(env).prepare('SELECT reference FROM education_enrolments WHERE user_id=? AND reference=?').bind(recovery.user,recovery.reference).first(),state=await squarePaymentState(env,recovery.user);
+ if(!saved||state.entry?.status!=='paid'||state.entry.providerStatus!=='COMPLETED'||!state.entry.paymentId)return json({error:'This application cannot be recovered through this link. Contact Goddess.'},409);
+ const token=chatToken(),expiresAt=Math.min(recovery.expiresAt,Date.now()+48*3600000);
+ await db(env).prepare('INSERT INTO prototype_settings(id,content,revision,updated_at) VALUES(?,?,1,?)').bind('application-recovery-session:'+await chatHash(token),JSON.stringify({recoveryKey:key,expiresAt}),new Date().toISOString()).run();
+ const response=json({ok:true});response.headers.set('Set-Cookie','__Host-vanessa_application='+token+'; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age='+Math.max(1,Math.floor((expiresAt-Date.now())/1000)));return response;
 }

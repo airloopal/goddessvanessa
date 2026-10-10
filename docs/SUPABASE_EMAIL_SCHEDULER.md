@@ -4,7 +4,7 @@ Selected by the user on 10 October 2026. Resend setup is underway separately.
 
 Status: shared extensions and disabled Sandbox job installed with explicit approval.
 A dedicated secret is stored in Vault and branch-scoped sensitive Vercel settings.
-Domain DNS records are verified. Activation tests are underway; no Live deployment.
+Domain DNS records are verified. Controlled activation passed; no Live deployment.
 
 ## Preflight evidence
 
@@ -65,3 +65,22 @@ account. It does not hide other accounts from Dashboard unread activity. An inva
 value disables sending. This restriction stays in place after activation tests so
 existing Sandbox notifications are not flushed. All test recipients remain fixed to
 info@houseofvanessa.com. Expanding test scope requires deliberate configuration.
+
+## Verified activation — 10 October 2026
+
+- Configured recipient: info@houseofvanessa.com, corrected by the user.
+- Resend reported Delivered for both unread variants and the expiry test.
+- Supabase authenticated disabled check returned 200 / enabled=false / sent=0.
+- Enabled fixture check returned 200 / sent=3. Read/extension cancellation and
+  duplicate check returned 200 / sent=0, with both stale notices skipped.
+- The one-minute job is active. Its first automatic run succeeded and the HTTP
+  response was 200 / enabled=true / sent=0. Job status alone is not HTTP proof.
+- Disposable test records were removed. SANDBOX_EMAIL_TEST_STUDENT_ID remains
+  restricted to the removed test ID, so ordinary Sandbox accounts do not trigger
+  email. Select a new approved Sandbox test account before further delivery tests.
+  Do not clear the restriction or enable customer delivery without explicit approval.
+- The previously pasted key was revoked by the user; only its replacement remains.
+- Full regression/build passed, dependency audit zero vulnerabilities, 154 hosted
+  checks passed and Supabase security advisor showed zero warnings/errors.
+- Supabase still shows an outstanding-invoices notice. Inbox placement/spam was not
+  independently inspected; Delivered is Resend's receiving-server delivery status.

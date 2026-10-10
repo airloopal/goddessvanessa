@@ -44,7 +44,7 @@ Its official FAQ documents one-minute execution, custom request headers and fail
 5. If Preview Deployment Protection blocks the scheduler, use Vercel's supported protection bypass header configured privately for this job. Do not make the dashboard public or weaken its authentication.
 6. We are not reintroducing Supabase Cron/pg_net; the earlier attempt was removed because networking grants could not be restricted through that connection.
 
-## Remaining activation test
+## Controlled activation procedure
 
 After setup, use disposable Sandbox messages/contracts only. Set `TRANSACTIONAL_EMAIL_ENABLED=true` in **Preview / `square-sandbox`** and redeploy, then enable the one-minute job. This sends both reminder variants to Goddess's test inbox only.
 
@@ -63,3 +63,9 @@ Code and templates can be verified using intercepted delivery and a disposable d
 The selected Supabase job and its credential transfer were explicitly approved.
 SANDBOX_EMAIL_TEST_STUDENT_ID keeps activation confined to one disposable account;
 all variants go to Goddess's test inbox, with no existing backlog dispatch.
+
+Controlled Supabase activation is verified. Both unread variants and expiry were
+reported Delivered to info@houseofvanessa.com. The one-minute scheduler is active
+and its HTTP response was verified. Test records have been removed and the
+account restriction remains, preventing ordinary Sandbox/customer delivery. See
+SUPABASE_EMAIL_SCHEDULER.md for evidence and remaining billing/inbox-placement limits.

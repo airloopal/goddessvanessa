@@ -11,3 +11,6 @@
 @media(max-width:480px){.square-notice{padding:18px 14px}.square-notice>strong{font-size:18px}.square-notice-detail{font-size:13px}}
 
 .square-action{display:inline-flex!important;align-items:center;justify-content:center;gap:9px;white-space:normal}.square-action-icon{width:20px;height:20px;flex:0 0 20px}
+
+/* Final fee notice stays visible through card preparation and payment retries. */
+.square-refund-notice{margin:16px 0 12px;padding:12px 14px;border:1px solid #dfbdce;border-radius:12px;background:#f9eaf2;color:#532438;font-size:14px;font-weight:600;line-height:1.5;overflow-wrap:anywhere}

@@ -8,6 +8,8 @@ let release;const stuck=api.squareTokenize({tokenize:()=>new Promise(r=>{release
 const blocked=api.squareTokenize({tokenize:()=>new Promise(()=>{})},{},50);listeners.get('securitypolicyviolation')({effectiveDirective:'form-action'});await assert.rejects(blocked,/could not open securely/);assert.equal(listeners.size,0);
 const plan={id:'basic',amount:8500};api.setState({entry:{plan,canChangePromo:true}},'SUB50');assert.equal(api.squareDisplayPlan(plan,'entry').amount,4250);
 api.setState({entry:{plan,canChangePromo:false}},'SUB50');assert.equal(api.squareDisplayPlan(plan,'entry').amount,8500);
+api.setState({entry:{plan,canChangePromo:true}},'SUB25');assert.equal(api.squareDisplayPlan(plan,'entry').amount,6375);
+api.setState({entry:{plan:{id:'basic',amount:4250,promoCode:'SUB50'},canChangePromo:false}},'SUB25');assert.equal(api.squareDisplayPlan(plan,'entry').amount,4250,'confirmed saved prices stay unchanged');
 const config=JSON.parse(fs.readFileSync('vercel.json','utf8'));const base=config.headers[0].headers.find(h=>h.key==='Content-Security-Policy').value;const payment=config.headers.filter(r=>r.source==='/application.html').flatMap(r=>r.headers).find(h=>h.key==='Content-Security-Policy').value;
 assert(base.includes("form-action 'self';"));assert(!base.includes("frame-src 'self' https:;"));assert(payment.includes("form-action 'self' https:;"));assert(payment.includes("frame-src 'self' https:;"));assert(!payment.includes("script-src 'self' https:;"));assert(!payment.includes("'unsafe-eval'"));assert(payment.includes("object-src 'none'"));
 console.log('Payment client checks passed: stalled verification, blocked bank form, late tokens ignored, listener cleanup, promo display and checkout-only bank authentication CSP.');

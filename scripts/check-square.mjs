@@ -123,6 +123,17 @@ assert.equal(discounted.status,200,JSON.stringify(discounted.data));assert.equal
 const discountContract=await embedded('charge','promo-user',{stage:'contract',planId:'month',attemptId:crypto.randomUUID(),sourceId:'cnon:valid',amount:1});
 assert.equal(discountContract.data.payment.plan.amount,12500);assert.equal(discountContract.data.payment.plan.originalAmount,25000);
 assert.equal((await embedded('prepare','promo-user',{promoCode:'FAKE'})).status,400);
+// SUB25 quotes, signed snapshots and tokenized charges all use server-owned 25% discounts.
+const quote25=await call('payments/promo',{method:'POST',user:'promo25-user',data:{promoCode:' sub25 '}});
+assert.equal(quote25.status,200);assert.equal(quote25.data.promoCode,'SUB25');assert.deepEqual(quote25.data.entryPlans.map(p=>p.amount),[6375,9375]);assert.deepEqual(quote25.data.contractPlans.map(p=>p.amount),[7500,18750,56250,375000]);
+assert.equal((await embedded('prepare','promo25-user',{promoCode:'SUB25'})).data.plan.amount,6375);
+assert.equal((await embedded('charge','promo25-user',{promoCode:'SUB25',attemptId:crypto.randomUUID(),sourceId:'cnon:valid',amount:1})).data.payment.plan.amount,6375);
+const signed25=await call('enrolment',{method:'PUT',user:'promo25-user',data:{...payload,review:{...payload.review,promoCode:'SUB25'}}});
+assert.equal(signed25.status,200,JSON.stringify(signed25.data));assert.equal(signed25.data.enrolment.snapshot.agreement.entry.amount,6375);assert.equal(signed25.data.enrolment.snapshot.agreement.contract.amount,18750);
+const charged25=await embedded('charge','promo25-user',{stage:'contract',planId:'month',attemptId:crypto.randomUUID(),sourceId:'cnon:valid',amount:1});assert.equal(charged25.data.payment.plan.amount,18750);assert.equal(charged25.data.payment.plan.originalAmount,25000);
+assert.equal((await embedded('prepare','promo25-user',{promoCode:'SUB50'})).status,409,'paid entry cannot be repriced');
+const fallback25=await embedded('fallback','promo25-hosted',{promoCode:'SUB25',amount:1});assert.equal(fallback25.status,200);assert.equal((await call('payments',{user:'promo25-hosted'})).data.entry.plan.amount,6375);
+assert.equal((await call('payments/promo',{method:'POST',user:'promo25-user',data:{promoCode:'SUB25,SUB50'}})).status,400,'codes cannot stack');
 // Opening checkout must not freeze an untouched entry price before applying SUB50.
 const beforePromo=await embedded('prepare','late-promo');assert.equal(beforePromo.data.plan.amount,8500);
 const beforeOrders=orderResults.size;

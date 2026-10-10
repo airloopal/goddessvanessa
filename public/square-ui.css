@@ -11,3 +11,8 @@
 @media(max-width:480px){.square-notice{padding:18px 14px}.square-notice>strong{font-size:18px}.square-notice-detail{font-size:13px}}
 
 .square-action{display:inline-flex!important;align-items:center;justify-content:center;gap:9px;white-space:normal}.square-action-icon{width:20px;height:20px;flex:0 0 20px}
+
+/* Fine-print payment acknowledgement: a compact, readable label with a generous tap target. */
+.square-payment-acknowledgement{display:flex;align-items:flex-start;gap:9px;margin:12px 0 10px;padding:8px 0;min-height:44px;color:#654350;font-size:12px;font-weight:400;line-height:1.5;cursor:pointer;overflow-wrap:anywhere}
+.square-payment-acknowledgement input{flex:0 0 16px;width:16px;height:16px;margin:2px 0 0;accent-color:#9b305f;cursor:pointer}
+.square-payment-acknowledgement input:focus-visible{outline:2px solid #9b305f;outline-offset:3px}

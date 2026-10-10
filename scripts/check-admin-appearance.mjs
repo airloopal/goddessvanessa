@@ -16,3 +16,5 @@ assert.match(context.window.AdminIcons.svg('<script>'),/data-admin-icon="alert"/
 const notices=fs.readFileSync('public/chat-refinements.js','utf8');assert.match(notices,/notification-topic/);assert.match(notices,/groups\.has\(group\)/);assert.match(notices,/AdminIcons\?\.svg/);
 const navigation=fs.readFileSync('public/goddess-navigation.js','utf8');assert.match(navigation,/closest\('\.crucial-notification'\)/);
 console.log('Admin appearance checks passed: both theme token pairs meet 4.5:1, rounded static icon collection has no executable SVG/device emoji, and notification rows have explicit topics with chat grouping and no extra decorator icons.');
+
+assert.match(css,/body\.dashboard #student-code-dialog\{background:var\(--dash-panel\);color:var\(--dash-ink\);border-color:var\(--dash-border\)/);

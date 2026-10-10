@@ -60,7 +60,20 @@ async function chatAPI(request,env,url){
    let record;if(body.reference)record=await db(env).prepare('SELECT user_id,name,snapshot FROM education_enrolments WHERE reference=?').bind(String(body.reference)).first();
    else if(body.studentId)record=await db(env).prepare('SELECT user_id,name,email FROM chat_students WHERE id=?').bind(String(body.studentId)).first();
    if(!record)return json({error:'Choose a saved application or sub.'},404);
-   const deadline=await squareAccessDeadline(env,record.user_id);if(deadline<=now)return json({error:'The contract payment is incomplete, refunded or expired.'},402);
+   // Reconcile only this applicant's pending orders; never create a checkout or charge.
+   if(squareMode(env)!=='off'){
+    const paymentState=await squarePaymentState(env,record.user_id),pending=[paymentState.entry,paymentState.contract].filter(r=>r?.status==='pending');
+    if(pending.length){
+     if(!squareReady(env))return json({error:'Payment verification is temporarily unavailable. No code was issued. Please try again shortly.'},503);
+     if(!await chatLimit(env,'code-payment-check:'+await chatHash(record.user_id),6,60000))return json({error:'Please wait a minute before checking this payment again.'},429);
+     try{for(const payment of pending)await squareReconcile(env,payment);}catch{return json({error:'Square payment status could not be verified. No code was issued. Please try again shortly.'},503);}
+    }
+   }
+   const deadline=await squareAccessDeadline(env,record.user_id);if(deadline<=Date.now()){
+    const state=await squarePaymentState(env,record.user_id);
+    if(state.contract?.status==='pending')return json({error:'Contract payment is not confirmed. Ask the Sub to reopen their application and use Check payment status. Entry payment alone does not unlock access.'},402);
+    return json({error:'The contract payment is incomplete, refunded or expired.'},402);
+   }
    const codeExpires=Math.min(253402300799000,deadline);
    const email=record.email||(record.snapshot?JSON.parse(record.snapshot).agreement?.email:'')||'';
    const code=chatToken(),id=crypto.randomUUID();const result=await db(env).prepare("INSERT INTO chat_students (id,user_id,name,email,status,code_hash,code_expires,created_at) VALUES (?,?,?,?,'active',?,?,?) ON CONFLICT(user_id) DO UPDATE SET code_hash=excluded.code_hash,code_expires=excluded.code_expires,status='active',name=excluded.name,email=excluded.email RETURNING id").bind(id,record.user_id,record.name,email,await chatHash(code),codeExpires,now).first();

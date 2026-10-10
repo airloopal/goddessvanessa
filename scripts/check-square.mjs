@@ -45,13 +45,22 @@ assert.equal((await call('enrolment',{method:'PUT',data:payload,user:'other'})).
 const enrol=await call('enrolment',{method:'PUT',data:payload});assert.equal(enrol.status,200,JSON.stringify(enrol.data));
 const contract=await post('contract','month');assert.equal(contract.status,200,JSON.stringify(contract.data));assert.equal(creations,2);
 assert.equal((await call('enrolment',{method:'PUT',data:payload})).status,409);
+const codeRequest={method:'POST',user:'owner',data:{reference:enrol.data.enrolment.reference}};
+assert.equal((await call('/api/chat/students',{...codeRequest,user:'other',extraEnv:{SQUARE_FETCH:async()=>{throw Error('Unauthorized request reached Square');}}})).status,403);
+assert.equal((await call('/api/chat/students',{...codeRequest,origin:'https://evil.test'})).status,403);
+assert.equal((await call('/api/chat/students',{...codeRequest,extraEnv:{SQUARE_FETCH:async()=>{throw Error('Fixture provider outage');}}})).status,503);
+complete('order-2',1);assert.equal((await call('/api/chat/students',codeRequest)).status,402,'wrong amount cannot unlock a code');
+assert.equal((await env.DB.prepare('SELECT COUNT(*) n FROM chat_students').first()).n,0,'failed verification never creates access');
 const denied=await call('/api/chat/students',{method:'POST',user:'owner',data:{reference:enrol.data.enrolment.reference}});assert.equal(denied.status,402);
 const contractId=complete('order-2',25000);
 // The browser return only asks the server to reconcile; Square remains authoritative.
 assert.equal((await call('payments/refresh',{method:'POST',data:{}})).data.contract.status,'paid');
 const paid=(await call('payments')).data.contract;assert.ok(paid.expiresAt);const paidAt=paid.paidAt;await webhook(contractId);assert.equal((await call('payments')).data.contract.paidAt,paidAt);
 const admin=(await call('enrolments',{user:'owner'})).data.enrolments;assert.equal(admin[0].payments.contract.status,'paid');assert.ok(!('user_id' in admin[0]));
-const issued=await call('/api/chat/students',{method:'POST',user:'owner',data:{reference:enrol.data.enrolment.reference}});assert.equal(issued.status,200);assert.ok(issued.data.code);
+// A missed callback must not require a second payment before owner code issuance.
+await env.DB.prepare('UPDATE prototype_settings SET content=? WHERE id=?').bind(JSON.stringify({user:'applicant',stage:'contract',method:'hosted',status:'pending',plan:{id:'month',name:'1 month',amount:25000},orderId:'order-2'}),orders.get('order-2').reference_id).run();
+const paymentCallsBefore=creations;
+const issued=await call('/api/chat/students',{method:'POST',user:'owner',data:{reference:enrol.data.enrolment.reference}});assert.equal(issued.status,200);assert.ok(issued.data.code);assert.equal(creations,paymentCallsBefore,'code issuance never opens or charges a checkout');assert.equal((await call('payments')).data.contract.status,'paid','owner issuance reconciles completed Square order');
 const contractKey=orders.get('order-2').reference_id;const row=await env.DB.prepare('SELECT content FROM prototype_settings WHERE id=?').bind(contractKey).first();const stored=JSON.parse(row.content);await env.DB.prepare('UPDATE prototype_settings SET content=? WHERE id=?').bind(JSON.stringify({...stored,expiresAt:'2020-01-01T00:00:00Z'}),contractKey).run();assert.equal((await call('/api/chat/students',{method:'POST',user:'owner',data:{reference:enrol.data.enrolment.reference}})).status,402);await env.DB.prepare('UPDATE prototype_settings SET content=? WHERE id=?').bind(row.content,contractKey).run();
 // Codes and sessions must end with a near-expiry paid contract.
 const nearEnd=Date.now()+3600000;

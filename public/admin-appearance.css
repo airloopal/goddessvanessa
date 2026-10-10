@@ -43,3 +43,9 @@ body.dashboard[data-admin-theme=day] .message.outgoing .message-meta{color:var(-
 body.dashboard #dashboard-nav button[data-mobile-label]{color:var(--dash-muted)!important}body.dashboard #dashboard-nav button[data-mobile-label][aria-current=page]{color:var(--dash-selected-ink)!important}
 
 @media(max-width:700px){body.dashboard[data-admin-page=status]{padding-bottom:0}body.dashboard[data-admin-page=status] #dashboard-nav{position:static!important;display:flex!important;flex-direction:row!important;min-height:0!important;padding:10px;gap:6px;flex-wrap:wrap}body.dashboard[data-admin-page=status] #dashboard-nav>a{display:flex!important;width:auto;flex:1;min-width:80px;flex-direction:row;font-size:12px;padding:10px 8px}body.dashboard[data-admin-page=status] #status-main{padding:20px 16px}}
+
+/* The code dialog's legacy ID selector must not pair a light surface with night text. */
+body.dashboard #student-code-dialog{background:var(--dash-panel);color:var(--dash-ink);border-color:var(--dash-border);color-scheme:inherit}
+body.dashboard #student-code-dialog :is(h2,p,label){color:var(--dash-ink)}
+body.dashboard #student-code-dialog input{background:var(--dash-surface);color:var(--dash-ink);border-color:var(--dash-border)}
+body.dashboard #student-code-dialog .quiet{background:var(--dash-surface);color:var(--dash-ink);border-color:var(--dash-border)}

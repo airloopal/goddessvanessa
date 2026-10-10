@@ -288,3 +288,12 @@ Record confirmed incidents and fixes here, newest first. Dates use Europe/Warsaw
 - Scope: Sandbox only; parent b5d77addb6e319cc1ab1453866bfa899a2e3875d. Live remains 44da90cb27b2209d93c43922999071489c80e0f3. No application-stage, rate, promo, server, schema, credential or provider-mode changes. Email/member renewal work remains Sandbox-only.
 - Validation: build (121 assets), full regression suite, targeted mocked native/hosted consent and retry checks, dependency audit (0 known vulnerabilities), mobile 390px and desktop preview. No payment, signature or personal data submitted. Hosted asset/private endpoint/security-header checks run after deployment; final results recorded locally.
 - Limits: this is a client acknowledgement UI, not a new server audit of acceptance or a legal assessment of refund terms. Visual card form was a local fixture; provider charge behaviour was verified using mocks and the existing regression suite.
+
+
+## EMAIL-2026-10-10-008 — Sandbox reminder previews and safe activation
+
+Scope: square-sandbox only. Added themed owner-only email previews under Notifications, five-minute unread reminders for Sub and Goddess, and contract reminders at seven days, 24 hours and one hour where applicable. Sandbox sends require explicit enablement, verified Resend configuration and a fixed Goddess test inbox; production access-code mail behavior remains unchanged. Sandbox links stay on the Sandbox origin. An external authenticated scheduler is documented, not provisioned.
+
+Security: preserved owner/session authorization and CSRF gateway, escaped short previews with private-code/link redaction, no attachments or access codes, stable provider idempotency with bounded retries, stale payload cleanup, rechecks after read/extension, private scheduler heartbeat and no customer/provider details in previews. No managed schema, grants, production credentials, stages, payment flow or renewal activation changed.
+
+Validation: complete Sandbox build and test suite passed; final targeted reminder checks passed after stale-payload cleanup; provider calls mocked and disposable local database fixtures only. Dependency audit: zero known vulnerabilities. Supabase advisor: zero warnings/errors; 22 existing informational notices. Mobile preview reviewed using sample content, not real messages. Hosted asset/private-route sweep follows deployment. Real delivery and scheduler activation remain unverified because Resend and scheduler setup are not complete.

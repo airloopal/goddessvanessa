@@ -4,7 +4,7 @@ export default {async fetch(request,env){
  const url=new URL(request.url),pathname=url.pathname;
  if(pathname.startsWith('/api/feed/')){try{return await feedAPI(request,env,url);}catch{return json({error:'The feed is temporarily unavailable. Please retry.'},503);}}
  if(pathname==='/api/chat/ui-activity')return dashboardActivity(request,env,url);
- if(pathname==='/api/cron/notifications'||pathname==='/api/chat/activity')return notificationAPI(request,env,url);
+ if(pathname==='/api/cron/notifications'||pathname==='/api/chat/activity'||pathname==='/api/chat/email-previews'){try{return await notificationAPI(request,env,url);}catch{return json({error:'Email reminders are temporarily unavailable. Please retry.'},503);}}
  if(pathname.startsWith('/api/member/'))return membershipAPI(request,env,url);
  if(pathname.startsWith('/api/visual/')){
   if(!['/api/visual/published','/api/visual/draft'].includes(pathname))return json({error:'Not found'},404);

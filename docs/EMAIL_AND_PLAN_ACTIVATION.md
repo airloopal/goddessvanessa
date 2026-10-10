@@ -1,44 +1,61 @@
-# Transactional email and Sub plan activation
+# Sandbox email reminders and activation
 
-The implementation is deployed in stages. Emails and production plan checkout must stay disabled until this checklist passes. Sandbox checkout uses sandbox Square credentials and never sends real emails.
+Current scope is **Sandbox only**. Live email/renewal runtime remains excluded. Resend, domain verification and an external scheduler are not set up yet. Nothing is sending email automatically.
 
-## Agreed behavior
+## Finished behavior
 
-- Resend sends transactional service emails from `House of Vanessa <no-reply@houseofvanessa.com>`.
-- Goddess unread reminders go to `goddess@houseofvanessa.com`. Her login identity remains unchanged.
-- Both parties receive one short reminder after a conversation has unread messages for at least five minutes. Messages are rechecked before sending. The email uses at most 120 text characters, or “Shared attachment”; it includes no file, filename, access code or recipient list. One reminder per unread episode avoids repeatedly emailing the same backlog.
-- Payment, application, access-ready, contract-extension and expiry events are supported. Expiry reminders use 7 days, 24 hours and 1 hour where applicable; 24-hour contracts use the final-hour reminder rather than an immediate renewal prompt.
-- The admin notification centre includes overdue unread conversations and account events.
-- Each Sub purchase is full-price. Duration begins after the current expiry, or now if already expired. No proration or automatic recurring charge. An infinite contract does not require extension.
-- Expired users can open billing with their current code; that capability cannot read chat or media. Replacing the code revokes billing access. Approved legacy users can recover a reusable code after a confirmed own-account renewal.
-- Marketing is separate. No audience enrolment, marketing email or promotional campaign is enabled by this work.
+- One reminder per unread episode after **at least five minutes**, for both Sub and Goddess. With a one-minute scheduler, the first check normally happens between five and six minutes; scheduler/provider delays can add time.
+- A preview contains at most 120 characters. Attachments use “Shared attachment”; filenames, private codes, long card-like numbers and message links are omitted. HTML text is escaped, with no tracking images.
+- Read status is checked again immediately before sending. A message read before dispatch cancels its reminder. Existing queued episodes do not block later conversations from being queued.
+- Expiry reminders use **7 days, 24 hours and 1 hour**, where the contract is longer than the corresponding interval. A 24-hour contract gets the final-hour reminder. Ended/infinite contracts are not reminded. Extending a contract cancels reminders for the old expiry.
+- Sandbox uses Sandbox contract records and Sandbox URLs. Native card payment, application stages and rates are unchanged.
+- Sender: `House of Vanessa <no-reply@houseofvanessa.com>`. Intended Goddess recipient: `goddess@houseofvanessa.com`.
+- **All Sandbox test delivery is restricted to `goddess@houseofvanessa.com`, including the Sub version.** A different test recipient or missing opt-in disables delivery. Access-code emails are suppressed in Sandbox even after a Resend key is added.
+- Resend responses are recorded as **accepted by email service**, not delivered. Provider ID is retained privately. Retry uses the original body and idempotency key; recipient changes or an uncertain retry beyond 20 hours require review. Accepted/skipped messages discard cached payloads.
+- Admin Dashboard → Notifications → **Email reminders** shows three preview templates, configuration status, queue counts and the last authenticated scheduler check. Templates use sample text only and cannot send emails. The preview endpoint requires Goddess access and never returns customer addresses, previews, provider IDs or secrets.
 
-## Resend and mailbox setup
+## Set up Resend
 
-1. Create the two mailboxes with your mailbox provider. Resend provides sending and does not replace the mailbox service.
-2. Add `houseofvanessa.com` in https://resend.com/domains and add the exact DNS verification records Resend supplies. Keep the existing website DNS and mailbox MX records; sending/return-path records are distinct. Verify the domain before enabling delivery.
-3. Create a restricted Resend sending API key. Add it directly to Vercel project settings as production-only sensitive `RESEND_API_KEY`. Do not paste keys into chat or commit them.
-4. Already configured: `EMAIL_FROM`, `ADMIN_NOTIFICATION_EMAIL`, `TRANSACTIONAL_EMAIL_ENABLED=false`, production `MEMBER_CHECKOUT_ENABLED=false`, preview `MEMBER_CHECKOUT_ENABLED=true`.
+1. Create/sign into https://resend.com and add `houseofvanessa.com` under Domains. Add **only the DNS records Resend provides**, preserving existing website and mailbox records. Verify the domain. Resend sends emails; existing mailboxes still need a mailbox provider.
+2. Create a restricted sending API key. Add it directly to Vercel as sensitive `RESEND_API_KEY`, target **Preview**, branch **`square-sandbox`**. Never paste it into chat or commit it.
+3. In the same Preview/`square-sandbox` scope, set:
+   - `EMAIL_FROM=House of Vanessa <no-reply@houseofvanessa.com>`
+   - `ADMIN_NOTIFICATION_EMAIL=goddess@houseofvanessa.com`
+   - `SANDBOX_EMAIL_TEST_TO=goddess@houseofvanessa.com`
+   - `TRANSACTIONAL_EMAIL_ENABLED=false` until the fixture test is ready.
+4. Keep existing Sandbox Square credentials, schema, `SQUARE_ENVIRONMENT` and `SQUARE_SITE_URL` unchanged. Do not copy production credentials or enable Live email.
 
-## External scheduler
+Official references: https://resend.com/docs/dashboard/domains/introduction and https://resend.com/docs/dashboard/emails/idempotency-keys.
 
-A standard HTTPS scheduler is supported. cron-job.org is an option: its official FAQ documents one-minute execution and custom headers (https://cron-job.org/en/faq/). No scheduler account or job has been created yet.
+## Recommended external scheduler: cron-job.org
 
-1. Generate a random secret of at least 32 characters and save it as production-only sensitive `CRON_SECRET` in Vercel.
-2. Set the job to GET `https://houseofvanessa.com/api/cron/notifications` every minute.
-3. Set its private request header `Authorization: Bearer <the same CRON_SECRET>`. Keep credentials out of the URL and public response/status pages. The job receives counts only, not message content or recipients.
-4. Enable failure alerts for the scheduler owner. Check execution history; a five-minute unread threshold is checked on the next available run, not an exact-to-the-second delivery promise.
-5. A Supabase Cron/pg_net setup was attempted without credentials, but its internal-admin-owned networking objects retained public grants that this connection could not remove. The new job and both extensions were removed before any authenticated request or email. The external scheduler avoids storing trigger credentials in that networking queue. Application-table RLS/grants are unchanged.
+Its official FAQ documents one-minute execution, custom request headers and failure alerts: https://cron-job.org/en/faq/. No account/job has been created by this work.
 
-## Activation acceptance
+1. Create/sign into https://console.cron-job.org. Generate a random secret of at least 32 characters and save it as sensitive **Preview / `square-sandbox`** `CRON_SECRET` in Vercel.
+2. Redeploy Sandbox with those settings.
+3. Create a job with these exact settings:
+   - URL: `https://goddessvanessa-git-square-sandbox-system-admin.vercel.app/api/cron/notifications`
+   - Method: **GET**
+   - Schedule: **every minute**
+   - Private header: `Authorization: Bearer <the same CRON_SECRET>`
+   - Timeout: **30 seconds**
+   - Failure alerts: **enabled**
+4. Keep the secret out of URLs, public logs, screenshots and chat. The job receives only enabled/sent counts, never message content or recipients. Keep the job disabled until setup/fixture testing is ready.
+5. If Preview Deployment Protection blocks the scheduler, use Vercel's supported protection bypass header configured privately for this job. Do not make the dashboard public or weaken its authentication.
+6. We are not reintroducing Supabase Cron/pg_net; the earlier attempt was removed because networking grants could not be restricted through that connection.
 
-- Redeploy with verified domain, sending key and scheduler secret.
-- Enable `TRANSACTIONAL_EMAIL_ENABLED=true` only after an authorized fixture to Goddess's mailbox confirms accepted delivery and inbox receipt. Provider acceptance alone does not establish delivery.
-- Verify five-minute reminder, read-before-send cancellation, expiry reminder, both recipient roles and scheduler history using disposable accounts/messages only.
-- Verify a sandbox extension, repeated confirmation and refunded extension. Duration is applied once under concurrent callbacks. Original provider prices stay immutable; an applied renewal refund places access into review.
-- Then enable production `MEMBER_CHECKOUT_ENABLED=true` and redeploy. Production checkout also requires configured transactional mail and a long scheduler secret; its flag alone cannot bypass setup.
-- Run full regression tests, dependency audit, build and deployed endpoint/header checks after activation. Do not make a real charge during routine testing.
+## Remaining activation test
 
-## Limits
+After setup, use disposable Sandbox messages/contracts only. Set `TRANSACTIONAL_EMAIL_ENABLED=true` in **Preview / `square-sandbox`** and redeploy, then enable the one-minute job. This sends both reminder variants to Goddess's test inbox only.
 
-Live delivery, mailbox receipt, an actual external scheduler run and physical-device payment-return acceptance remain pending until configuration. Provider errors retry with stable idempotency data inside a bounded 20-hour window; uncertain sends outside that window go to review rather than risking duplicate mail. Review-state queue records currently require operator inspection. No Resend bounce/delivery webhook, marketing campaigns or automatic renewal is included.
+Verify:
+- Resend acceptance **and inbox receipt**, both roles, a five-minute unread case, read-before-send cancellation, attachment redaction and no repeat backlog email.
+- An expiry reminder and cancellation after a Sandbox extension.
+- Actual cron-job.org execution history and the Dashboard's last-check time.
+- No change in Live delivery, stages, payment flow or customer records.
+
+General self-service contract renewal remains separate Sandbox work: a full-price purchase adds duration after the current expiry, or begins now if expired. No automatic billing or marketing audience is enabled. Do not promote email or renewal runtime to Live until explicitly approved and the delivery checks above pass.
+
+## Verification limits
+
+Code and templates can be verified using intercepted delivery and a disposable database without a sending key. Real Resend delivery, DNS verification, inbox receipt and external scheduler execution remain pending. Provider acceptance alone is not proof of delivery. Bounce/delivery webhooks and marketing campaigns are outside this change.

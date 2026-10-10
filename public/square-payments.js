@@ -32,16 +32,25 @@ function squareReportBankIssue(stage,error){
  void squareFetchTimed('/api/education/payments/diagnostic',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({stage,issue})},5000).catch(()=>{});
 }
 async function squareHostedRecovery(stage,button,message){
+ if(button.disabled||!squareRequireAcknowledgement(stage,message))return;squareSetPaymentReady(stage,button,false);
  const alternative=button.parentElement.querySelector('[data-square-hosted-recovery]');if(alternative)alternative.disabled=true;
  button.disabled=true;squareNotice(message,'loading','Opening Square checkout','You’ll return here after completing payment.');squareSaveDraft();
  try{await squareDisposeCard();const result=await eduAPI('payments/fallback','POST',{stage,planId:stage==='entry'?entryId:contractId,revision:configRevision,promoCode:squarePromoCode,pathId,contact:{email:learnerEmail.trim()}});
   if(result.paid){await squareRefresh();if(stage==='entry')squareEntryDialog();return;}
   const url=new URL(result.url);if(url.protocol!=='https:'||url.hostname!==(squareState.mode==='sandbox'?'sandbox.square.link':'square.link'))throw Error('The checkout address could not be verified.');location.assign(url.href);
- }catch(error){squareNotice(message,'retry','Checkout needs another try',error.message);squareButton(button,'retry','Continue on Square');button.onclick=()=>squareHostedRecovery(stage,button,message);button.disabled=false;if(alternative)alternative.disabled=false;}
+ }catch(error){squareNotice(message,'retry','Checkout needs another try',error.message);squareButton(button,'retry','Continue on Square');button.onclick=()=>squareHostedRecovery(stage,button,message);squareSetPaymentReady(stage,button,true);}
 }
 let squareCard=null,squareFormVersion=0;
 async function squareDisposeCard(){squareFormVersion++;const card=squareCard;squareCard=null;if(card)await card.destroy().catch(()=>{});}
-function squareRefundNoticeHTML(stage){return '<p class="square-refund-notice" id="square-'+stage+'-refund-notice">This payment is non-refundable.</p>';}
+// Acknowledgements are scoped to this page and the selected fee, never persisted as payment proof.
+const squareAcknowledgements={entry:'',contract:''};
+function squareAcknowledgementKey(stage){return JSON.stringify([stage,stage==='entry'?entryId:contractId,configRevision,squarePromoCode]);}
+function squarePaymentAcknowledged(stage){const box=document.getElementById('square-'+stage+'-acknowledge');return box?box.checked:squareAcknowledgements[stage]===squareAcknowledgementKey(stage);}
+function squareRefundNoticeHTML(stage){const text=stage==='entry'?'I understand that this payment is a voluntary gift so therefore non-refundable.':'I understand this is a paid contractual agreement. The Agreement and Acceptable Use Policy applies.';return '<label class="square-payment-acknowledgement"><input type="checkbox" id="square-'+stage+'-acknowledge" required '+(squareAcknowledgements[stage]===squareAcknowledgementKey(stage)?'checked':'')+'><span id="square-'+stage+'-refund-notice">'+text+'</span></label>';}
+function squareBindAcknowledgement(stage,button){const box=document.getElementById('square-'+stage+'-acknowledge');if(!box)return;box.onchange=()=>{squareAcknowledgements[stage]=box.checked?squareAcknowledgementKey(stage):'';if(button.id==='enrol-now')updateReviewControls();else squareSyncPaymentReady(stage,button);};}
+function squareSyncPaymentReady(stage,button){const ready=button.dataset.squareReady==='1',confirmation=button.dataset.squareConfirmation==='1';button.disabled=!ready||(!confirmation&&!squarePaymentAcknowledged(stage));const recovery=button.parentElement.querySelector('[data-square-hosted-recovery]');if(recovery)recovery.disabled=!ready||!squarePaymentAcknowledged(stage);}
+function squareSetPaymentReady(stage,button,ready,confirmation=false){button.dataset.squareReady=ready?'1':'0';button.dataset.squareConfirmation=confirmation?'1':'0';squareSyncPaymentReady(stage,button);}
+function squareRequireAcknowledgement(stage,message){if(squarePaymentAcknowledged(stage))return true;squareNotice(message,'retry','Please tick the checkbox','Confirm the payment acknowledgement before continuing.');document.getElementById('square-'+stage+'-acknowledge')?.focus();return false;}
 function squareCardHTML(){return '<div id="square-card-container" aria-label="Secure card details"></div><p class="muted">Secured by Square. Your card details stay with Square.</p>';}
 function squareCheckout(stage){if(stage!=='contract')return;squareSaveDraft();screen='review';squareContractPanel();}
 function squareCheckoutActions(){
@@ -59,19 +68,19 @@ function squareEntrySuccess(plan){
 }
 async function squareMountCard(stage,buttonId,statusId){
  await squareDisposeCard();const version=squareFormVersion,button=document.getElementById(buttonId),message=document.getElementById(statusId);
- if(!button||!message)return;button.disabled=true;squareNotice(message,'loading','Preparing secure checkout','Your card form will appear here.');
+ if(!button||!message)return;squareBindAcknowledgement(stage,button);squareSetPaymentReady(stage,button,false);squareNotice(message,'loading','Preparing secure checkout','Your card form will appear here.');
  try{
   const prepared=await eduAPI('payments/prepare','POST',{stage,planId:stage==='entry'?entryId:contractId,revision:configRevision,promoCode:squarePromoCode,pathId,contact:{email:learnerEmail.trim()}});
   if(version!==squareFormVersion||!button.isConnected)return;
   if(prepared.paid){await squareRefresh();if(stage==='entry')squareEntryDialog();return;}
-  if(prepared.hosted){squareNotice(message,'retry','Continue your secure checkout','Complete payment on Square, then return here.');squareButton(button,'card','Continue on Square');button.onclick=()=>squareHostedRecovery(stage,button,message);button.disabled=false;return;}
+  if(prepared.hosted){squareNotice(message,'retry','Continue your secure checkout','Complete payment on Square, then return here.');squareButton(button,'card','Continue on Square');button.onclick=()=>squareHostedRecovery(stage,button,message);squareSetPaymentReady(stage,button,true);return;}
   let attemptId=prepared.resumeAttempt||null,pendingSource=null;
   button.parentElement.querySelector('[data-square-hosted-recovery]')?.remove();let recovery=null;
   if(!attemptId){await squareLoadSDK(squareState.mode);if(version!==squareFormVersion||!button.isConnected)return;const payments=window.Square.payments(prepared.applicationId,prepared.locationId);const card=await payments.card();if(version!==squareFormVersion||!button.isConnected){await card.destroy();return;}squareCard=card;await card.attach('#square-card-container');}
   if(!attemptId){recovery=document.createElement('button');recovery.type='button';recovery.className='quiet';recovery.dataset.squareHostedRecovery='';recovery.textContent='Pay on Square instead';recovery.onclick=()=>squareHostedRecovery(stage,button,message);button.after(recovery);}
-  if(attemptId)squareNotice(message,'retry','Let’s confirm your payment','A previous attempt is awaiting confirmation. Retry to check it safely.');else{message.replaceChildren();message.className='';}button.disabled=false;squareButton(button,attemptId?'retry':'card',attemptId?'Retry confirmation':'Confirm & Pay '+gbp(prepared.plan.amount));
+  if(attemptId)squareNotice(message,'retry','Let’s confirm your payment','A previous attempt is awaiting confirmation. Retry to check it safely.');else{message.replaceChildren();message.className='';}squareSetPaymentReady(stage,button,true,!!attemptId);squareButton(button,attemptId?'retry':'card',attemptId?'Retry confirmation':'Confirm & Pay '+gbp(prepared.plan.amount));
   button.onclick=async()=>{
-   if(button.disabled)return;button.disabled=true;if(recovery)recovery.disabled=true;squareNotice(message,'loading',attemptId?'Confirming your payment':'Verify with your bank',attemptId?'Checking the same payment safely.':'Complete any bank prompt, then return to this page. Bank approval is followed by payment confirmation.');squareSaveDraft();
+   if(button.disabled||(!attemptId&&!squareRequireAcknowledgement(stage,message)))return;squareSetPaymentReady(stage,button,false,!!attemptId);if(recovery)recovery.disabled=true;squareNotice(message,'loading',attemptId?'Confirming your payment':'Verify with your bank',attemptId?'Checking the same payment safely.':'Complete any bank prompt, then return to this page. Bank approval is followed by payment confirmation.');squareSaveDraft();
    try{
     let sourceId=pendingSource;
     if(!attemptId){const result=await squareAuthenticationSurface(()=>squareTokenize(squareCard,{amount:(prepared.plan.amount/100).toFixed(2),currencyCode:'GBP',intent:'CHARGE',customerInitiated:true,sellerKeyedIn:false,billingContact:{...(learnerEmail?{email:learnerEmail}:{})}}));if(result.status!=='OK')throw Error(result.status==='Cancel'?'Verification cancelled. No payment was submitted.':'Please check your card details and try again.');if(version!==squareFormVersion||!button.isConnected)return;sourceId=result.token;pendingSource=sourceId;attemptId=crypto.randomUUID();}
@@ -80,9 +89,9 @@ async function squareMountCard(stage,buttonId,statusId){
     if(!result.paid){if(result.retryCard){attemptId=null;await squareMountCard(stage,buttonId,statusId);squareNotice(message,'retry','Please try again',result.error||'Check your card details and retry.');return;}throw Error(result.error||'Your payment is being checked. Retry confirmation.');}
     await squareDisposeCard();squareState=await eduAPI('payments');entryReviewed=squareEntryPaid();
     if(stage==='entry'){renderLearning();squareEntryDialog();}else squareContractPanel();
-   }catch(error){if(version!==squareFormVersion||!button.isConnected)return;squareNotice(message,'retry',attemptId?'Confirmation is taking longer':'Please try again',error.name==='TimeoutError'?'The connection timed out. Retry confirmation to check this same payment safely.':error.message||'Retry to check the same payment safely.');squareButton(button,'retry',attemptId?'Retry confirmation':'Continue on Square');if(!attemptId){squareReportBankIssue(stage,error);await squareDisposeCard();button.onclick=()=>squareHostedRecovery(stage,button,message);}button.disabled=false;}
+   }catch(error){if(version!==squareFormVersion||!button.isConnected)return;squareNotice(message,'retry',attemptId?'Confirmation is taking longer':'Please try again',error.name==='TimeoutError'?'The connection timed out. Retry confirmation to check this same payment safely.':error.message||'Retry to check the same payment safely.');squareButton(button,'retry',attemptId?'Retry confirmation':'Continue on Square');if(!attemptId){squareReportBankIssue(stage,error);await squareDisposeCard();button.onclick=()=>squareHostedRecovery(stage,button,message);}squareSetPaymentReady(stage,button,true,!!attemptId);}
   };
- }catch(error){squareNotice(message,'retry','Checkout needs another try',error.message);button.disabled=false;squareButton(button,'retry','Retry checkout');button.onclick=()=>squareMountCard(stage,buttonId,statusId);}
+ }catch(error){squareNotice(message,'retry','Checkout needs another try',error.message);squareSetPaymentReady(stage,button,true);squareButton(button,'retry','Retry checkout');button.onclick=()=>squareMountCard(stage,buttonId,statusId);}
 }
 async function squareRefresh(){squareState={...squareState,...await eduAPI('payments/refresh','POST',{})};entryReviewed=squareEntryPaid();renderLearning();}
 function squareLabel(){return squareState.mode==='sandbox'?'Sandbox test · No real payment':'Secured by Square';}
@@ -90,7 +99,7 @@ function squareEntryDialog(){
  void squareDisposeCard();clearInterval(verificationPoll);entryDialogView='payment';const plan=entryPlan(),paid=squareEntryPaid();if(paid){squareEntrySuccess(squareState.entry.plan);return;}
  entryDialog.innerHTML='<div class="entry-lightbox-top"><span class="overline">'+squareLabel()+'</span><button class="quiet" id="lightbox-close" aria-label="Close entry checkout">×</button></div><h2 id="entry-lightbox-title" tabindex="-1">'+(paid?'Entry confirmed.':'Your entry fee.')+'</h2><section class="entry-payment-card"><span>'+eduEscape(plan?.name||'Select a plan')+'</span><strong>'+gbp(plan?.amount||0)+'</strong><small>One entry fee · Contract fee paid separately</small></section><p class="muted">'+(paid?'Square has confirmed this payment.':squareState.ready?'Enter your card details below to confirm your entry.':'Checkout is being configured. Please return shortly.')+'</p>'+(!paid&&squareState.ready?squareCardHTML():'')+'<div id="entry-lightbox-status" role="status"></div>'+squareRefundNoticeHTML('entry')+'<div class="entry-lightbox-actions"><button class="quiet" id="lightbox-verification">Request verification</button><button class="p-button" id="square-entry-pay" aria-describedby="square-entry-refund-notice" '+(!paid&&!squareState.ready?'disabled':'')+'>'+(paid?'Continue':'Pay '+gbp(plan?.amount||0))+'</button></div>'+(squareState.entry&&!paid?'<button class="quiet" id="square-refresh">Check payment status</button>':'');
  document.getElementById('lightbox-close').onclick=closeEntryLightbox;document.getElementById('lightbox-verification').onclick=showEntryVerification;
- document.getElementById('square-entry-pay').onclick=()=>{entryReviewed=true;closeEntryLightbox();move(screens()[screens().indexOf('intro')+1]);};
+ document.getElementById('square-entry-pay').disabled=true;
  squareCheckoutActions();
  if(!paid&&squareState.ready)void squareMountCard('entry','square-entry-pay','entry-lightbox-status');
  document.getElementById('square-refresh')?.addEventListener('click',async e=>{e.currentTarget.disabled=true;try{await squareRefresh();squareEntryDialog();}catch(error){document.getElementById('entry-lightbox-status').textContent=error.message;e.target.disabled=false;}});
@@ -113,7 +122,7 @@ function squareDecorate(){if(!squareEnabled())return;
  if(squarePromoCode&&!app.querySelector('.promo-code-panel')){const note=document.createElement('p');note.className='promo-applied';note.textContent='SUB50 applied · 50% off entry and contract fees.';app.querySelector('h1')?.after(note);}
  app.querySelectorAll('[name="entry-plan"]').forEach(el=>{if(squareState.entry)el.disabled=el.value!==squareState.entry.plan.id;});
  const statusEl=app.querySelector('.entry-payment-status');if(statusEl)statusEl.textContent=squareEntryPaid()?'Paid':'Not paid';
- const next=document.getElementById('enrol-now');if(next){squareButton(next,'sign','Confirm & Pay');next.setAttribute('aria-describedby','square-contract-refund-notice');if(!document.getElementById('square-contract-refund-notice'))next.closest('.step-actions').insertAdjacentHTML('beforebegin',squareRefundNoticeHTML('contract'));}
+ const next=document.getElementById('enrol-now');if(next){squareButton(next,'sign','Confirm & Pay');next.setAttribute('aria-describedby','square-contract-refund-notice');if(!document.getElementById('square-contract-refund-notice'))next.closest('.step-actions').insertAdjacentHTML('beforebegin',squareRefundNoticeHTML('contract'));squareBindAcknowledgement('contract',next);updateReviewControls();}
  const textMap=[['Payment processing is not connected. No money is collected in this preview.',squareLabel()],['Entry review confirmed · No payment collected.',squareEntryPaid()?'Entry paid · Confirmed by Square.':'Entry payment required.'],['No payment has been collected. An entry fee will only appear as paid after a payment provider confirms it.',squareEntryPaid()?'Your entry is paid. The contract fee is a separate one-off payment.':'Your entry payment must be completed first.'],['Review preview only · No payment is collected. Saved reviews remain in your sub record; chat messages are temporary.',squareLabel()+' · One-off payments. No automatic renewal.']];
  for(const el of app.querySelectorAll('p'))for(const [before,after]of textMap)if(el.textContent===before)el.textContent=after;
  const age=document.getElementById('review-age');if(age){const text=age.parentElement.lastChild;if(text.nodeType===3)text.textContent='I am 18 or older, have reviewed this agreement and accept its acceptable-use policy. I understand the contract fee is a separate one-off payment.';}

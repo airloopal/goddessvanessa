@@ -12,5 +12,7 @@
 
 .square-action{display:inline-flex!important;align-items:center;justify-content:center;gap:9px;white-space:normal}.square-action-icon{width:20px;height:20px;flex:0 0 20px}
 
-/* Final fee notice stays visible through card preparation and payment retries. */
-.square-refund-notice{margin:16px 0 12px;padding:12px 14px;border:1px solid #dfbdce;border-radius:12px;background:#f9eaf2;color:#532438;font-size:14px;font-weight:600;line-height:1.5;overflow-wrap:anywhere}
+/* Fine-print payment acknowledgement: a compact, readable label with a generous tap target. */
+.square-payment-acknowledgement{display:flex;align-items:flex-start;gap:9px;margin:12px 0 10px;padding:8px 0;min-height:44px;color:#654350;font-size:12px;font-weight:400;line-height:1.5;cursor:pointer;overflow-wrap:anywhere}
+.square-payment-acknowledgement input{flex:0 0 16px;width:16px;height:16px;margin:2px 0 0;accent-color:#9b305f;cursor:pointer}
+.square-payment-acknowledgement input:focus-visible{outline:2px solid #9b305f;outline-offset:3px}

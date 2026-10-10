@@ -5,7 +5,7 @@ const reviewPrice=(p,stage)=>typeof squareDisplayPlan==='function'?squareDisplay
 const entryPlan=()=>reviewPrice(course.agreement.entryPlans.find(p=>p.id===entryId),'entry');
 const contractPlan=()=>reviewPrice(course.agreement.contractPlans.find(p=>p.id===contractId),'contract');
 const emailValid=()=>learnerEmail.length<=254&&/^\S+@[^\s@]+\.[^\s@]+$/.test(learnerEmail);
-function reviewValid(){return learnerName.trim().length>=2&&emailValid()&&entryReviewed&&entryPlan()&&contractPlan()&&reviewReached&&reviewSignature.trim()===learnerName.trim()&&ageConfirmed&&aupAccepted;}
+function reviewValid(){return learnerName.trim().length>=2&&emailValid()&&entryReviewed&&entryPlan()&&contractPlan()&&reviewReached&&reviewSignature.trim()===learnerName.trim()&&ageConfirmed&&aupAccepted&&(!squareEnabled()||squarePaymentAcknowledged('contract'));}
 function invalidateAgreement(){reviewReached=false;ageConfirmed=false;aupAccepted=false;reviewSignature='';const box=document.getElementById('prototype-terms');if(box)box.scrollTop=0;updateReviewControls();}
 function contactFields(){return '<div class="entry-email"><label class="signature-label" for="entry-email">Email (optional)<input id="entry-email" data-contact="email" type="email" autocomplete="email" maxlength="254" value="'+eduEscape(learnerEmail)+'" placeholder="name@example.com"></label></div>';}
 function contactValid(){return !learnerEmail.trim()||(learnerEmail.trim().length<=254&&/^\S+@[^\s@]+\.[^\s@]+$/.test(learnerEmail.trim()));}

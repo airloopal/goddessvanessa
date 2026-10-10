@@ -1,7 +1,7 @@
 // Private transactional notification outbox. No card data, access codes or attachments.
 const noticeEmail=value=>typeof value==='string'&&value.length<=254&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)&&!/[\r\n]/.test(value);
 const noticePreview=text=>Array.from(String(text||'').replace(/https?:\/\/\S+/gi,'[link omitted]').replace(/\b[a-f0-9]{32,}\b/gi,'[private code omitted]').replace(/\b(?:\d[ -]?){13,19}\b/g,'[number omitted]').replace(/[\r\n\t]+/g,' ')).slice(0,120).join('');
-const noticeTestMode=env=>env.SQUARE_ENVIRONMENT==='sandbox'&&env.SANDBOX_EMAIL_TEST_TO==='goddess@houseofvanessa.com';
+const noticeTestMode=env=>env.SQUARE_ENVIRONMENT==='sandbox'&&env.SANDBOX_EMAIL_TEST_TO==='info@houseofvanessa.com';
 const noticeFixture=env=>env.SQUARE_ENVIRONMENT==='sandbox'&&/^[a-f0-9-]{36}$/i.test(env.SANDBOX_EMAIL_TEST_STUDENT_ID||'')?env.SANDBOX_EMAIL_TEST_STUDENT_ID:null;
 const noticeEnabled=env=>env.TRANSACTIONAL_EMAIL_ENABLED==='true'&&emailReady(env)&&(!env.SANDBOX_EMAIL_TEST_STUDENT_ID||!!noticeFixture(env))&&(env.SQUARE_ENVIRONMENT==='production'||noticeTestMode(env));
 const noticeOrigin=env=>{try{const u=new URL(env.SQUARE_SITE_URL);const hosts=env.SQUARE_ENVIRONMENT==='sandbox'?['goddessvanessa-git-square-sandbox-system-admin.vercel.app']:['houseofvanessa.com','www.houseofvanessa.com'];return u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&hosts.includes(u.hostname)?u.origin:null;}catch{return null;}};

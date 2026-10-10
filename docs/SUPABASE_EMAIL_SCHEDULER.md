@@ -46,7 +46,7 @@ must contain only enabled/sent counts, as the endpoint currently does.
 4. Redeploy Sandbox. Make one controlled authenticated disabled-dispatch test; verify
    enabled=false and no emails. Test private endpoint denials and hosted headers.
 5. Using disposable Sandbox fixtures, enable test delivery and then activate the named
-   job. All test emails still go to goddess@houseofvanessa.com, including Sub variants.
+   job. All test emails still go to info@houseofvanessa.com, including Sub variants.
 6. Verify actual one-minute execution history, five-minute unread reminders for both
    roles, read cancellation, expiry/extension cancellation, provider acceptance and
    inbox receipt. Re-run security advisors. Do not activate Live email or renewals.
@@ -64,4 +64,4 @@ SANDBOX_EMAIL_TEST_STUDENT_ID restricts queuing and dispatch to one disposable
 account. It does not hide other accounts from Dashboard unread activity. An invalid
 value disables sending. This restriction stays in place after activation tests so
 existing Sandbox notifications are not flushed. All test recipients remain fixed to
-goddess@houseofvanessa.com. Expanding test scope requires deliberate configuration.
+info@houseofvanessa.com. Expanding test scope requires deliberate configuration.

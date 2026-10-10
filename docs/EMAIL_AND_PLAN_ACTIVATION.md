@@ -9,8 +9,8 @@ Current scope is **Sandbox only**. Live email/renewal runtime remains excluded. 
 - Read status is checked again immediately before sending. A message read before dispatch cancels its reminder. Existing queued episodes do not block later conversations from being queued.
 - Expiry reminders use **7 days, 24 hours and 1 hour**, where the contract is longer than the corresponding interval. A 24-hour contract gets the final-hour reminder. Ended/infinite contracts are not reminded. Extending a contract cancels reminders for the old expiry.
 - Sandbox uses Sandbox contract records and Sandbox URLs. Native card payment, application stages and rates are unchanged.
-- Sender: `House of Vanessa <no-reply@houseofvanessa.com>`. Intended Goddess recipient: `goddess@houseofvanessa.com`.
-- **All Sandbox test delivery is restricted to `goddess@houseofvanessa.com`, including the Sub version.** A different test recipient or missing opt-in disables delivery. Access-code emails are suppressed in Sandbox even after a Resend key is added.
+- Sender: `House of Vanessa <no-reply@houseofvanessa.com>`. Intended Goddess recipient: `info@houseofvanessa.com`.
+- **All Sandbox test delivery is restricted to `info@houseofvanessa.com`, including the Sub version.** A different test recipient or missing opt-in disables delivery. Access-code emails are suppressed in Sandbox even after a Resend key is added.
 - Resend responses are recorded as **accepted by email service**, not delivered. Provider ID is retained privately. Retry uses the original body and idempotency key; recipient changes or an uncertain retry beyond 20 hours require review. Accepted/skipped messages discard cached payloads.
 - Admin Dashboard → Notifications → **Email reminders** shows three preview templates, configuration status, queue counts and the last authenticated scheduler check. Templates use sample text only and cannot send emails. The preview endpoint requires Goddess access and never returns customer addresses, previews, provider IDs or secrets.
 
@@ -20,8 +20,8 @@ Current scope is **Sandbox only**. Live email/renewal runtime remains excluded. 
 2. Create a restricted sending API key. Add it directly to Vercel as sensitive `RESEND_API_KEY`, target **Preview**, branch **`square-sandbox`**. Never paste it into chat or commit it.
 3. In the same Preview/`square-sandbox` scope, set:
    - `EMAIL_FROM=House of Vanessa <no-reply@houseofvanessa.com>`
-   - `ADMIN_NOTIFICATION_EMAIL=goddess@houseofvanessa.com`
-   - `SANDBOX_EMAIL_TEST_TO=goddess@houseofvanessa.com`
+   - `ADMIN_NOTIFICATION_EMAIL=info@houseofvanessa.com`
+   - `SANDBOX_EMAIL_TEST_TO=info@houseofvanessa.com`
    - `TRANSACTIONAL_EMAIL_ENABLED=false` until the fixture test is ready.
 4. Keep existing Sandbox Square credentials, schema, `SQUARE_ENVIRONMENT` and `SQUARE_SITE_URL` unchanged. Do not copy production credentials or enable Live email.
 

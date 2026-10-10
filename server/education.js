@@ -15,7 +15,7 @@ async function educationAPI(request,env,url){
   if(request.headers.get('x-education-invite')==='contract'&&!applicant)return json({error:'Reopen your private contract invitation to continue.'},403);
   if(request.method!=='POST')return json({error:'Method not allowed'},405);
   const body=await educationBody(request,url,1000);if(body instanceof Response)return body;
-  if(!await chatLimit(env,'application-session:'+await chatHash(request.headers.get('cf-connecting-ip')||'unknown'),30,3600000))return json({error:'Too many requests. Try again later.'},429);
+  if(!await chatLimit(env,'application-session:'+await chatHash(applicant||request.headers.get('cf-connecting-ip')||'unknown'),30,3600000))return json({error:'Too many requests. Try again later.'},429);
   const response=json({ok:true});response.headers.set('Cache-Control','private, no-store');
   if(!applicant)response.headers.set('Set-Cookie','__Host-vanessa_application='+chatToken()+'; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=2592000');
   return response;
@@ -100,8 +100,8 @@ async function applicationRecovery(request,env,url,owner){
  if(request.method!=='POST')return json({error:'Method not allowed.'},405);
  const body=await educationBody(request,url,1000);if(body instanceof Response)return body;
  if(typeof body.token!=='string'||! /^[a-f0-9]{64}$/.test(body.token)||Object.keys(body).some(k=>k!=='token'))return json({error:'This recovery link is unavailable.'},400);
- if(!await chatLimit(env,'application-recovery:'+await chatHash(request.headers.get('cf-connecting-ip')||'unknown'),30,3600000))return json({error:'Please wait before retrying.'},429);
  const key='application-recovery:'+await chatHash(body.token),recovery=await squareRecord(env,key);
+ if(!await chatLimit(env,recovery?.status==='active'&&recovery.expiresAt>Date.now()?'application-recovery-valid:'+key:'application-recovery-invalid:'+await chatHash(request.headers.get('cf-connecting-ip')||'unknown'),30,3600000))return json({error:'Please wait before retrying.'},429);
  if(!recovery||recovery.status!=='active'||recovery.expiresAt<=Date.now()||!/^application:[a-f0-9]{64}$/.test(recovery.user||''))return json({error:'This recovery link has expired or is unavailable. Contact Goddess.'},404);
  const saved=await db(env).prepare('SELECT reference FROM education_enrolments WHERE user_id=? AND reference=?').bind(recovery.user,recovery.reference).first(),state=await squarePaymentState(env,recovery.user);
  const checkoutResume=recovery.kind==='checkout_resume'&&recovery.entryKey===await squareKey(env,recovery.user,'entry')&&!!state.entry?.orderId&&['pending','paid'].includes(state.entry.status);

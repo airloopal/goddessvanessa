@@ -1,6 +1,6 @@
 # Sandbox email reminders and activation
 
-Current scope is **Sandbox only**. Live email/renewal runtime remains excluded. Resend, domain verification and an external scheduler are not set up yet. Nothing is sending email automatically.
+Current scope is **Sandbox only**. Live email/renewal runtime remains excluded. Resend sender domain and the Sandbox key are configured. Supabase scheduling was selected instead of the external scheduler; see SUPABASE_EMAIL_SCHEDULER.md. Controlled activation is restricted to a disposable test account. Live remains unchanged.
 
 ## Finished behavior
 
@@ -27,7 +27,7 @@ Current scope is **Sandbox only**. Live email/renewal runtime remains excluded. 
 
 Official references: https://resend.com/docs/dashboard/domains/introduction and https://resend.com/docs/dashboard/emails/idempotency-keys.
 
-## Recommended external scheduler: cron-job.org
+## Alternative external scheduler: cron-job.org (not selected)
 
 Its official FAQ documents one-minute execution, custom request headers and failure alerts: https://cron-job.org/en/faq/. No account/job has been created by this work.
 
@@ -59,3 +59,7 @@ General self-service contract renewal remains separate Sandbox work: a full-pric
 ## Verification limits
 
 Code and templates can be verified using intercepted delivery and a disposable database without a sending key. Real Resend delivery, DNS verification, inbox receipt and external scheduler execution remain pending. Provider acceptance alone is not proof of delivery. Bounce/delivery webhooks and marketing campaigns are outside this change.
+
+The selected Supabase job and its credential transfer were explicitly approved.
+SANDBOX_EMAIL_TEST_STUDENT_ID keeps activation confined to one disposable account;
+all variants go to Goddess's test inbox, with no existing backlog dispatch.

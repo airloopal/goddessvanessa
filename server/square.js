@@ -97,7 +97,8 @@ async function squareAPI(request,env,url,{user,owner}){
  const mode=squareMode(env),ready=squareReady(env);
  if(url.pathname==='/api/education/payments'&&request.method==='GET'){
   const state=user?await squarePaymentState(env,user):{};const contact=user?await db(env).prepare('SELECT content FROM prototype_settings WHERE id=?').bind('sub-contact:'+user).first():null;
-  const grant=user?await contractEntryGrant(env,user):null;return json({invitation:request.headers.get('x-education-invite')==='contract'&&grant?{contractId:grant.contractId,promoCode:grant.promoCode,pathId:grant.pathId}:null,contact:contact?JSON.parse(contact.content):null,mode,ready,embeddedReady:ready&&!!env.SQUARE_APPLICATION_ID,applicationId:env.SQUARE_APPLICATION_ID||null,locationId:env.SQUARE_LOCATION_ID||null,entry:squarePublic(state.entry),contract:squarePublic(state.contract)});
+  const draft=user?await squareRecord(env,'application-progress:'+user):null;
+  const grant=user?await contractEntryGrant(env,user):null;return json({applicationKey:user?(await chatHash(user)).slice(0,24):null,draft:draft?{...draft,revision:draft._revision}:null,invitation:request.headers.get('x-education-invite')==='contract'&&grant?{contractId:grant.contractId,promoCode:grant.promoCode,pathId:grant.pathId}:null,contact:contact?JSON.parse(contact.content):null,mode,ready,embeddedReady:ready&&!!env.SQUARE_APPLICATION_ID,applicationId:env.SQUARE_APPLICATION_ID||null,locationId:env.SQUARE_LOCATION_ID||null,entry:squarePublic(state.entry),contract:squarePublic(state.contract)});
  }
  if(url.pathname==='/api/education/payments/support')return squareSupportPayment(request,env,url);
  if(!user)return json({error:'Start your application in this browser first.'},401);

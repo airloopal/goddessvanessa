@@ -20,6 +20,8 @@ async function educationAPI(request,env,url){
   if(!applicant)response.headers.set('Set-Cookie','__Host-vanessa_application='+chatToken()+'; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=2592000');
   return response;
  }
+ if(path==='/api/education/application-progress')return applicationProgress(request,env,url,{applicant,applicationContext,owner});
+ if(path==='/api/education/application-resume-link')return applicationResumeLink(request,env,url,{applicant,applicationContext,owner});
  if(path==='/api/education/application-funnel')return applicationFunnel(request,env,url,{owner,applicant});
  if(path==='/api/education/identity'&&request.method==='GET')return json({signedIn:!applicationContext&&!!(codeStudent||dispatchUser),application:!!user,applicationInProgress:!!applicant&&applicant!==codeStudent?.user_id,owner,email:email||null});
  if(['/api/education/verification','/api/education/verifications'].includes(path))return educationVerificationAPI(request,env,url,{user,email,owner});
@@ -102,8 +104,34 @@ async function applicationRecovery(request,env,url,owner){
  const key='application-recovery:'+await chatHash(body.token),recovery=await squareRecord(env,key);
  if(!recovery||recovery.status!=='active'||recovery.expiresAt<=Date.now()||!/^application:[a-f0-9]{64}$/.test(recovery.user||''))return json({error:'This recovery link has expired or is unavailable. Contact Goddess.'},404);
  const saved=await db(env).prepare('SELECT reference FROM education_enrolments WHERE user_id=? AND reference=?').bind(recovery.user,recovery.reference).first(),state=await squarePaymentState(env,recovery.user);
- if(!saved||state.entry?.status!=='paid'||state.entry.providerStatus!=='COMPLETED'||!state.entry.paymentId)return json({error:'This application cannot be recovered through this link. Contact Goddess.'},409);
+ const checkoutResume=recovery.kind==='checkout_resume'&&recovery.entryKey===await squareKey(env,recovery.user,'entry')&&!!state.entry?.orderId&&['pending','paid'].includes(state.entry.status);
+ if(!checkoutResume&&(!saved||state.entry?.status!=='paid'||state.entry.providerStatus!=='COMPLETED'||!state.entry.paymentId))return json({error:'This application cannot be recovered through this link. Contact Goddess.'},409);
  const token=chatToken(),expiresAt=Math.min(recovery.expiresAt,Date.now()+48*3600000);
  await db(env).prepare('INSERT INTO prototype_settings(id,content,revision,updated_at) VALUES(?,?,1,?)').bind('application-recovery-session:'+await chatHash(token),JSON.stringify({recoveryKey:key,expiresAt}),new Date().toISOString()).run();
  const response=json({ok:true});response.headers.set('Set-Cookie','__Host-vanessa_application='+token+'; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age='+Math.max(1,Math.floor((expiresAt-Date.now())/1000)));return response;
+}
+
+async function applicationProgress(request,env,url,{applicant,applicationContext,owner}){
+ if(!applicant||!applicationContext||owner||request.headers.get('x-education-invite'))return json({error:'Use your application session.'},403);
+ if(request.method!=='POST')return json({error:'Method not allowed.'},405);
+ const p=await educationBody(request,url,20000);if(p instanceof Response)return p;
+ const allowed=['pathId','entryId','contractId','screen','answers','learnerName','learnerEmail','revision'];
+ if(Object.keys(p).some(k=>!allowed.includes(k))||!Number.isSafeInteger(p.revision)||p.revision<0||!['paths','entry','intro','questions','review'].includes(p.screen)||!p.answers||typeof p.answers!=='object'||Array.isArray(p.answers)||typeof p.learnerName!=='string'||p.learnerName.length>100||typeof p.learnerEmail!=='string'||p.learnerEmail.length>320)return json({error:'Invalid application draft.'},400);
+ const {config}=await educationConfig(env);
+ for(const [key,choices] of [['pathId',config.paths],['entryId',config.agreement.entryPlans],['contractId',config.agreement.contractPlans]])if(typeof p[key]!=='string'||p[key]&&!choices.some(x=>x.id===p[key]))return json({error:'Application choices have changed.'},409);
+ for(const [id,value]of Object.entries(p.answers)){const question=config.questions.find(q=>q.id===id);if(!question||!validEducationAnswer(question,value))return json({error:'Invalid draft answers.'},400);}
+ if(!await chatLimit(env,'application-progress:'+await chatHash(applicant),60,60000))return json({error:'Please wait before saving again.'},429);
+ const key='application-progress:'+applicant,value=JSON.stringify(Object.fromEntries(allowed.filter(k=>k!=='revision').map(k=>[k,p[k]]))),at=new Date().toISOString();
+ const result=p.revision===0?await db(env).prepare('INSERT INTO prototype_settings(id,content,revision,updated_at) VALUES(?,?,1,?) ON CONFLICT(id) DO NOTHING').bind(key,value,at).run():await db(env).prepare('UPDATE prototype_settings SET content=?,revision=revision+1,updated_at=? WHERE id=? AND revision=?').bind(value,at,key,p.revision).run();
+ return result.meta.changes?json({ok:true,revision:p.revision+1}):json({error:'Application draft changed in another tab.'},409);
+}
+async function applicationResumeLink(request,env,url,{applicant,applicationContext,owner}){
+ if(!applicant||!applicationContext||owner||request.headers.get('x-education-invite'))return json({error:'Use your application session.'},403);
+ if(request.method!=='POST')return json({error:'Method not allowed.'},405);
+ const p=await educationBody(request,url,1000);if(p instanceof Response)return p;if(Object.keys(p).length)return json({error:'No application selector is accepted.'},400);
+ const state=await squarePaymentState(env,applicant);if(!state.entry?.orderId||!['pending','paid'].includes(state.entry.status))return json({error:'Prepare your Entry checkout first.'},409);
+ if(!await chatLimit(env,'application-resume-link:'+await chatHash(applicant),10,3600000))return json({error:'Please wait before making another resume link.'},429);
+ const token=chatToken()+chatToken().slice(0,16),expiresAt=Date.now()+7*86400000,reference=await db(env).prepare('SELECT reference FROM education_enrolments WHERE user_id=?').bind(applicant).first();
+ await db(env).prepare('INSERT INTO prototype_settings(id,content,revision,updated_at) VALUES(?,?,1,?)').bind('application-recovery:'+await chatHash(token),JSON.stringify({kind:'checkout_resume',user:applicant,reference:reference?.reference||null,entryKey:await squareKey(env,applicant,'entry'),status:'active',expiresAt}),new Date().toISOString()).run();
+ return json({token,expiresAt});
 }

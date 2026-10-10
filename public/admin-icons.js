@@ -3,6 +3,8 @@
 if(document.body?.classList?.contains('dashboard')){try{document.body.dataset.adminTheme=localStorage.getItem('vanessa-admin-theme')==='night'?'night':'day';}catch{}}
 window.AdminIcons=(()=>{
  const shapes={
+ "chevron-left":'<path d="m15 5-7 7 7 7"/>',
+ "chevron-right":'<path d="m9 5 7 7-7 7"/>',
  compose:'<path d=""/>',
  home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V10Z"/>',
  heart:'<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/>',

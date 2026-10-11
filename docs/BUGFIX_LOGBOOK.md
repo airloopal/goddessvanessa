@@ -571,3 +571,9 @@ The corrected router authenticated successfully. Controlled dispatch was safely 
 - Final build passed (132 assets). Full npm test passed after the final override correction; production dependency audit reports zero known vulnerabilities. Existing signing, payments, promo, session/status, privacy, account management, email and payment-sound tests passed without live charges, signatures, customer emails or account changes.
 - Sandbox untouched. In particular the operator's standing instruction to leave older cleared-code accounts and their sessions unchanged remains in force; no account/code repair is part of this patch. Hosted acceptance will be recorded after deployment.
 
+### Hosted acceptance — Live readability
+
+- Production deployment dpl_4enFf8XAT1pxN4ALYcTxye8psvG1 is READY at houseofvanessa.com, serving 5d07b400e1b6132c366003d4c2e4d1cdfc2a1373; aliases verified with no errors.
+- Passed all 158 general hosted checks (including all 132 exact asset hashes) plus 8 account-route checks: 166 total. Production payment mode, private metadata denial, forged identity/cross-origin denial, security headers and private indexing preserved. Reports: docs/live-readability-security-oct11.json and docs/live-readability-guards-oct11.json.
+- Sandbox head unchanged at d8fb96449a9b6f489141d45b756d6f3e28463f56. No customer access code, status, contract or payment was changed. The active disposable sample preview is preserved for the operator's ongoing UI testing; it runs only on localhost with an isolated temporary database and payments off, and contains no production credentials or customer records. Browser viewport restored; completed extra inspection tab closed.
+

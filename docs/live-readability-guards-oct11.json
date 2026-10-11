@@ -1,0 +1,54 @@
+{
+  "origin": "https://houseofvanessa.com",
+  "checkedAt": "2026-10-11T04:50:51.728Z",
+  "checks": [
+    {
+      "path": "/api/chat/account-management",
+      "method": "GET",
+      "status": 401,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/account-management",
+      "method": "GET",
+      "status": 401,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/account-management",
+      "method": "POST",
+      "status": 401,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/account-management",
+      "method": "POST",
+      "status": 403,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/account-login",
+      "method": "POST",
+      "status": 401,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/account-login",
+      "method": "POST",
+      "status": 403,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/account",
+      "method": "DELETE",
+      "status": 401,
+      "noStore": true
+    },
+    {
+      "path": "/account.html",
+      "status": 200,
+      "privateMetadataAbsent": true,
+      "noIndex": true
+    }
+  ]
+}

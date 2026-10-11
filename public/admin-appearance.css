@@ -49,3 +49,31 @@ body.dashboard #student-code-dialog{background:var(--dash-panel);color:var(--das
 body.dashboard #student-code-dialog :is(h2,p,label){color:var(--dash-ink)}
 body.dashboard #student-code-dialog input{background:var(--dash-surface);color:var(--dash-ink);border-color:var(--dash-border)}
 body.dashboard #student-code-dialog .quiet{background:var(--dash-surface);color:var(--dash-ink);border-color:var(--dash-border)}
+
+/* Important Admin copy: readable sizes without changing chat or theme colours. */
+body.dashboard .overview-task,body.dashboard .overview-toolbar p{font-size:14px;line-height:1.5}
+body.dashboard #overview-totals .stat-card small{font-size:14px;line-height:1.4}
+body.dashboard #visitor-summary{font-size:14px;line-height:1.5}
+body.dashboard #visitor-summary h2{font-size:17px;line-height:1.35}
+body.dashboard #visitor-summary .visitor-metrics span{font-size:14px;line-height:1.4}
+body.dashboard .overview-recent-row strong{font-size:15px;line-height:1.45}
+body.dashboard .overview-recent-row small,body.dashboard .overview-recent-row time{font-size:12px;line-height:1.5}
+body.dashboard .profile-details,body.dashboard .profile-answers,body.dashboard .sub-bio-readonly p{font-size:14px;line-height:1.6}
+body.dashboard .content-fields label,body.dashboard .content-fields summary,body.dashboard .mobile-admin-tool-list small{font-size:14px;line-height:1.5}
+body.dashboard #notification-items .notification-topic{font-size:12px;line-height:1.4}
+body.dashboard #notification-items strong{font-size:15px;line-height:1.45}
+body.dashboard #notification-items .notification-preview{font-size:14px;line-height:1.55}
+body.dashboard #notification-items time{font-size:11px;line-height:1.4}
+body.dashboard #notification-items .notification-extra{font-size:12px;line-height:1.5}
+body.dashboard .application-funnel .funnel-summary span,body.dashboard .application-funnel .funnel-stage>div>span,body.dashboard .application-funnel .funnel-applicant>div>span,body.dashboard .application-funnel .funnel-conversion{font-size:14px;line-height:1.5}
+body.dashboard .application-funnel .funnel-applicant strong{font-size:15px;line-height:1.45}
+body.dashboard .application-funnel .funnel-presence,body.dashboard .application-funnel .funnel-applicant small,body.dashboard .application-funnel .funnel-current{font-size:12px;line-height:1.45}
+body.dashboard .application-funnel .funnel-freshness{font-size:12px!important;line-height:1.5}
+body.dashboard .payment-summary p,body.dashboard .payment-phase p,body.dashboard .payment-phase a,body.dashboard .payment-ledger-tools p{font-size:14px;line-height:1.55}
+body.dashboard .payment-applicant>header strong{font-size:15px;line-height:1.45}
+body.dashboard .payment-applicant>header small,body.dashboard .payment-status-badge{font-size:12px;line-height:1.45}
+body.dashboard #overview-recent .overview-section-title .quiet,body.dashboard .overview-details>summary{font-size:14px;line-height:1.4}
+body.dashboard .payment-ledger-tools label,body.dashboard .goddess-security-card .signature-label{font-size:14px;line-height:1.5}
+body.dashboard #overview-next .overview-task{font-size:14px;line-height:1.5;min-height:44px}
+body.dashboard .sub-profile-card .profile-details{font-size:14px!important;line-height:1.55;gap:8px!important}
+body.dashboard #admin-payment-summary p,body.dashboard #admin-payment-dialog .payment-phase p,body.dashboard #admin-payment-dialog .payment-phase a,body.dashboard #admin-payment-dialog .payment-ledger-tools label{font-size:14px;line-height:1.55}

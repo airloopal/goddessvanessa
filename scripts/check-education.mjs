@@ -140,7 +140,7 @@ await request(chat+'session',{method:'DELETE',cookie:cookie2,data:{}});
 assert.equal((await request(chat+'session',{cookie:cookie2})).status,401);
 const finalCode=(await request(chat+'students',{method:'POST',account:'owner',data:{studentId:sid}})).data.code;
 const finalLogin=await request(chat+'session',{method:'POST',data:{code:finalCode}}),finalCookie=finalLogin.headers.get('set-cookie').split(';')[0];
-assert.equal((await request(chat+'account',{method:'DELETE',cookie:finalCookie,data:{confirm:true}})).status,200);
+assert.equal((await request(chat+'account',{method:'DELETE',cookie:finalCookie,data:{confirm:true}})).status,403);await env.DB.prepare('INSERT INTO prototype_settings(id,content,revision,updated_at) VALUES(?,?,1,?)').bind('account-life:'+sid,JSON.stringify({until:Date.now()-1,deletion:'approved',reason:'Taking a personal break',decidedAt:Date.now()}),new Date().toISOString()).run();assert.equal((await request(chat+'account-management',{method:'POST',cookie:finalCookie,data:{action:'delete',revision:1}})).status,200);
 assert.equal((await env.DB.prepare('SELECT count(*) n FROM chat_messages WHERE student_id=?').bind(sid).first()).n,0);
 assert.equal((await request(endpoint+'enrolment',{account:'learner'})).data.enrolment.reference,ref);
 assert.equal((await request(chat+'session',{cookie:finalCookie})).status,401);

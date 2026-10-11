@@ -46,7 +46,9 @@ try{
  const latestCookie=emailLogin.headers.get('set-cookie').split(';')[0];
  const emailed=(await request('/api/chat/students',{method:'POST',account:'owner',data:{studentId:second}})).data;assert.equal(emailed.emailSent,false);assert.equal(emailed.emailStatus,'platform_only');
  globalThis.fetch=async()=>new Response('{}',{status:503});const failed=(await request('/api/chat/students',{method:'POST',account:'owner',data:{studentId:second}})).data;assert.equal(failed.emailSent,false);assert.equal(failed.emailStatus,'platform_only');assert.equal(failed.code.length,48);
- assert.equal((await request('/api/chat/account',{method:'DELETE',cookie:latestCookie,data:{confirm:true}})).status,200);
+ assert.equal((await request('/api/chat/account',{method:'DELETE',cookie:latestCookie,data:{confirm:true}})).status,403);
+ await env.DB.prepare('INSERT INTO prototype_settings(id,content,revision,updated_at) VALUES(?,?,1,?)').bind('account-life:'+issue.studentId,JSON.stringify({until:Date.now()-1,deletion:'approved',reason:'Taking a personal break',decidedAt:Date.now()}),new Date().toISOString()).run();
+ assert.equal((await request('/api/chat/account-management',{method:'POST',cookie:latestCookie,data:{action:'delete',revision:1}})).status,200);
  assert.equal(objects.size,1,'chat deletion removes its files, while separate verification record remains');
  assert.equal((await request(sent.data.file.url,{account:'owner'})).status,404);
 }finally{globalThis.fetch=realFetch;delete env.RESEND_API_KEY;delete env.EMAIL_FROM;}

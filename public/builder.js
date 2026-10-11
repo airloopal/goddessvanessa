@@ -1,7 +1,7 @@
 'use strict';
 const frame=document.getElementById('builder-frame'),page=document.getElementById('builder-page'),level=document.getElementById('builder-level'),picker=document.getElementById('element-picker'),status=document.getElementById('builder-status');
 const names=['Welcome','Your starting point','Inside the House','Meet Vanessa','Consent','Boundaries','Stop signals','A closer look','Reading room','Your space'];
-for(const [value,label] of [['landing','Homepage'],['homepage-notice','Homepage notice'],['expectations','What’s Expected'],['access','Sub Access'],['chat','Client chat'],...['paths','entry','intro','questions','review','lessons'].map(n=>['education:'+n,'Application · '+n]),['dashboard','Dashboard']]){const o=document.createElement('option');o.value=value;o.textContent=label;page.append(o);}
+for(const [value,label] of [['landing','Homepage'],['homepage-notice','Homepage notice'],['expectations','What’s Expected'],['access','Sub Login'],['chat','Client chat'],...['paths','entry','intro','questions','review','lessons'].map(n=>['education:'+n,'Application · '+n]),['dashboard','Dashboard']]){const o=document.createElement('option');o.value=value;o.textContent=label;page.append(o);}
 let currentScope='landing', courseConfig=null;
 let viewport='desktop';
 const styleSlot=()=>viewport==='mobile'?'mobileStyle':viewport==='tablet'?'tabletStyle':'style';

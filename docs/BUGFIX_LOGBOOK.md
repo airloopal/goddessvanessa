@@ -586,3 +586,8 @@ The corrected router authenticated successfully. Controlled dispatch was safely 
 - Release base: Live adbc833e2bf410e418798d5501688dd7232b213f; Sandbox d8fb96449a9b6f489141d45b756d6f3e28463f56 unchanged. Final pre-release suite/build/audit and hosted acceptance recorded below when complete. Browser sounds require prior interaction and an open dashboard; closed/suspended browser alerts are not covered.
 
 - Pre-release validation: final build passed with 133 assets; full npm test passed after final sample normalization; production audit found zero known vulnerabilities. Targeted sound checks cover supplied WAV format/level, one Entry/two Contract samples, non-overlap, deduplication, cached load and unchanged fairy twinkle. Independent audio decoder accepted the sample. Hosted acceptance pending deployment.
+
+### Hosted acceptance — Live fee sound
+
+- Production f61fb10584c3801c93a6c8fad428f1dacaf98d49 is READY in deployment dpl_C22mxpGXzqpVM7Nrpxk8A86H34nr, aliased to houseofvanessa.com without errors. Audio returns 200 as audio/wave, 77,802 bytes; exact deployed sample/source hashes verified.
+- All 159 general hosted checks (133 exact assets, private APIs, forged/cross-origin requests, headers and production payment mode) plus 8 account guards passed: 167 total. Reports: docs/live-fee-sound-security-oct11.json and docs/live-fee-sound-guards-oct11.json. No real payment/customer action was performed. Sandbox remains d8fb96449a9b6f489141d45b756d6f3e28463f56. Actual speaker loudness depends on device/browser sound settings; browser interaction remains required.

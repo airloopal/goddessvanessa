@@ -537,3 +537,9 @@ The corrected router authenticated successfully. Controlled dispatch was safely 
 - Mobile and desktop browser checks used a disposable local account; verified offer trigger, reason submission, notification-to-request navigation, Settings and day/night Admin contrast. No customer account, payment, signature or message was changed during tests. Supabase advisor returned only 22 informational private-schema RLS-deny findings; no warning/error findings. No migrations, credentials, grants, cron jobs or Sandbox promotion.
 - Release procedure: commit only this approved main scope; verify canonical Live assets/private API denial/security headers/production payment mode, and append hosted acceptance after deployment. Application stages, Entry/Contract purchase flow, public promo codes and existing Sub-only email reminders are preserved. Details: docs/ACCOUNT_MANAGEMENT_RELEASE.md.
 
+### Hosted acceptance — Live account management
+
+- Production deployment `dpl_27wxoVm7ZCrThNKKdRif1pDXqMGa` is READY at `houseofvanessa.com`, serving code commit `eec9c156697b3938262d8e6d9b100669f8c289a8`; canonical alias confirmed without errors.
+- Hosted sweep passed 158 checks, including exact hashes for all 132 built public assets, production payment mode, no private payment state, security headers, anonymous private-route denial and forged-owner/cross-origin denial. New account-specific acceptance passed another 8 checks: management and legacy-delete authorization, forged identity, cross-origin management/login denial, invalid-code denial, no private metadata and private indexing.
+- Read-only Live browser check shows Account management requires sign-in and the link reads Sub Login. Customer account actions were not performed. Reports: `docs/live-account-management-security-oct11.json` and `docs/live-account-management-guards-oct11.json`. The Sandbox head remains `d8fb96449a9b6f489141d45b756d6f3e28463f56`.
+

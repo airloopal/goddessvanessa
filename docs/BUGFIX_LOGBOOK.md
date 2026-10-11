@@ -514,3 +514,7 @@ Validation: build 127 assets and complete Live regression suite passed; added ro
 ### Hosted email routing correction — 11 October 2026
 
 Initial release 5853c5e3696d0422b50e453008a81f2275baf86c deployed 129 assets correctly. The selective release omitted server/worker.js, leaving approved email routes retired (410) despite local runtime tests passing. Corrective release includes the tested router, plus an actual handle/__path gateway authentication test. Customer email was never enabled unrestricted; the job remained disabled and delivery was limited to the controlled fixture. Other features passed initial hosted asset/private/header checks. No fee, credential value, schema or customer record was altered by this correction. Delivery verification still pending.
+
+### Canonical reminder origin — 11 October 2026
+
+The corrected router authenticated successfully. Controlled dispatch was safely disabled because the pre-existing payment site setting uses the legacy Vercel alias, outside the reminder link allowlist. A separate Production NOTIFICATION_SITE_URL=https://houseofvanessa.com is introduced; payment site/mode/credentials/redirects remain untouched. Targeted actual gateway and both Sandbox/Live reminder suites pass with legacy payment origin plus canonical email origin. Scheduler remains disabled, and the controlled test recipient/account restrictions remain active. No customer email or real charge was triggered.

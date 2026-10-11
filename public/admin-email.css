@@ -1,0 +1,7 @@
+body.dashboard .admin-email-panel{padding:12px;margin-bottom:16px;border:1px solid var(--dash-border);border-radius:16px;background:var(--dash-surface);color:var(--dash-ink)}
+body.dashboard .admin-email-panel summary{cursor:pointer;font-weight:600;font-size:14px;line-height:1.5;padding:8px 0}
+body.dashboard .admin-email-panel summary>span{display:block;font-size:12px;font-weight:400;color:var(--dash-muted)}
+body.dashboard .admin-email-panel p{font-size:13px;line-height:1.6;color:var(--dash-ink)}
+body.dashboard .admin-email-panel .muted{color:var(--dash-muted)}
+body.dashboard .admin-email-panel iframe{width:100%;height:510px;border:0;border-radius:12px;background:#f7eff4}
+body.dashboard .admin-email-panel details details{border-top:1px solid var(--dash-border);padding:5px 0}

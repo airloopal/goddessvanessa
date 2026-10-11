@@ -120,7 +120,7 @@ async function squareAPI(request,env,url,{user,owner}){
   const state=await squarePaymentState(env,user);for(const r of [state.entry,state.contract])await squareReconcile(env,r);
   const fresh=await squarePaymentState(env,user);return json({mode,ready,entry:squarePublic(fresh.entry),contract:squarePublic(fresh.contract)});
  }
- if(url.pathname==='/api/education/payments/promo'){const promo=squarePromo(body.promoCode);if(!promo)return json({error:'This promo code is not valid.'},400);const {config}=await educationConfig(env);return json({promoCode:promo,entryPlans:config.agreement.entryPlans.map(p=>squarePriced(p,promo)),contractPlans:config.agreement.contractPlans.map(p=>squarePriced(p,promo))});}
+ if(url.pathname==='/api/education/payments/promo'){if(body.stage!==undefined&&!['entry','contract'].includes(body.stage))return json({error:'Choose Entry or Contract for this code.'},400);const promo=squarePromo(body.promoCode);if(!promo)return json({error:'This promo code is not valid.'},400);const {config}=await educationConfig(env);return json({promoCode:promo,entryPlans:config.agreement.entryPlans.map(p=>squarePriced(p,promo)),contractPlans:config.agreement.contractPlans.map(p=>squarePriced(p,promo))});}
  const embedded=['/api/education/payments/prepare','/api/education/payments/charge'].includes(url.pathname);
  if(embedded&&!env.SQUARE_APPLICATION_ID)return json({error:'Card checkout is being configured. Please return shortly.'},503);
  if(!embedded&&!['/api/education/payments/checkout','/api/education/payments/fallback'].includes(url.pathname))return json({error:'Not found'},404);

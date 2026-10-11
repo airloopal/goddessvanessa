@@ -52,3 +52,10 @@ body.dashboard .broadcast-entry{display:inline-flex!important;align-items:center
 .sub-online-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#35c878;box-shadow:0 0 0 2px var(--dash-panel,#fff8fc);margin-left:7px;vertical-align:middle;flex:none}.sub-online-dot[hidden]{display:none}.sub-peer-status.is-offline{color:var(--dash-muted,#725969)!important}.chat-header-person>strong{display:flex;align-items:center;gap:2px}
 
 body.dashboard .sub-online-dot{background:#188348}body.dashboard[data-admin-theme=night] .sub-online-dot{background:#47d989}body.dashboard .sub-peer-status:not(.is-offline){color:#1b7b42!important}body.dashboard[data-admin-theme=night] .sub-peer-status:not(.is-offline){color:#6ee5a0!important}
+
+/* Readable WhatsApp-style message size on both account views. */
+body.dashboard .message .message-text,body.chat-view .message .message-text{font-size:16px!important;line-height:1.45!important}
+.chat-album{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;max-width:360px}.chat-album .message-attachment{min-width:0}.chat-album .media-preview-button>img,.chat-album .media-preview-button>video{width:100%;height:140px;object-fit:cover}.chat-draft-tray{display:flex;gap:8px;flex-wrap:wrap;flex-basis:100%;padding:6px 0}.chat-draft-item{position:relative;width:76px}.chat-draft-item img,.chat-draft-item video{width:76px;height:76px;object-fit:cover;border-radius:12px}.chat-draft-item button{position:absolute;right:0;top:0;width:28px!important;height:28px!important;padding:3px!important;background:var(--dash-panel,var(--chat-panel,#fff));color:var(--dash-ink,var(--chat-ink,#281923));border:1px solid currentColor;border-radius:50%}.chat-draft-item small{font-size:10px;display:block}
+body.dashboard .sub-peer-status.is-offline{color:var(--dash-muted)!important}
+body.dashboard .admin-chat-heading .chat-header-person small{font-size:11px!important;line-height:1.45!important;min-height:16px;white-space:normal;overflow:visible;max-width:none}
+body.dashboard #admin-reply,body.dashboard #floating-reply,body.chat-view #client-composer textarea{font-size:16px!important}

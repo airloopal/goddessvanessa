@@ -158,6 +158,12 @@ const charged25=await embedded('charge','promo25-user',{stage:'contract',planId:
 assert.equal((await embedded('prepare','promo25-user',{promoCode:'SUB50'})).status,409,'paid entry cannot be repriced');
 const fallback25=await embedded('fallback','promo25-hosted',{promoCode:'SUB25',amount:1});assert.equal(fallback25.status,200);assert.equal((await call('payments',{user:'promo25-hosted'})).data.entry.plan.amount,6375);
 assert.equal((await call('payments/promo',{method:'POST',user:'promo25-user',data:{promoCode:'SUB25,SUB50'}})).status,400,'codes cannot stack');
+// Entry and Contract promo choices are independent; the signed snapshot fixes the charge.
+for(const [actor,entryPromo,contractPromo,entryAmount,contractAmount]of [['split-50-25','SUB50','SUB25',4250,18750],['split-25-50','SUB25','SUB50',6375,12500],['entry-only','SUB50','',4250,25000],['contract-only','','SUB50',8500,12500]]){
+ assert.equal((await embedded('charge',actor,{promoCode:entryPromo,attemptId:crypto.randomUUID(),sourceId:'cnon:valid'})).data.payment.plan.amount,entryAmount);
+ const review=await call('enrolment',{method:'PUT',user:actor,data:{...payload,review:{...payload.review,promoCode:contractPromo}}});assert.equal(review.status,200,JSON.stringify(review.data));assert.equal(review.data.enrolment.snapshot.agreement.entry.amount,entryAmount);assert.equal(review.data.enrolment.snapshot.agreement.contract.amount,contractAmount);
+ const charged=await embedded('charge',actor,{stage:'contract',planId:'month',attemptId:crypto.randomUUID(),sourceId:'cnon:valid',promoCode:entryPromo,amount:1});assert.equal(charged.data.payment.plan.amount,contractAmount,'signed Contract code owns its price, not the Entry/body amount');
+}
 // Opening checkout must not freeze an untouched entry price before applying SUB50.
 const beforePromo=await embedded('prepare','late-promo');assert.equal(beforePromo.data.plan.amount,8500);
 const beforeOrders=orderResults.size;

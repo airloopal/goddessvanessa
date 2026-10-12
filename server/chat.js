@@ -149,7 +149,7 @@ async function chatSubOnline(env,id){const row=await db(env).prepare("SELECT 1 A
  async function chatAttachments(env,messages){
   if(!messages.length)return messages;
   const ids=messages.map(m=>m.attachment_id).filter(Boolean),files=new Map();
-  if(ids.length){const rows=await db(env).prepare('SELECT id,name,mime,size FROM media_files WHERE id IN ('+ids.map(()=>'?').join(',')+')').bind(...ids).all();rows.results.forEach(f=>files.set(f.id,mediaDescriptor(f)));}
+  if(ids.length){const rows=await db(env).prepare('SELECT id,name,mime,size,storage_key FROM media_files WHERE id IN ('+ids.map(()=>'?').join(',')+')').bind(...ids).all();rows.results.forEach(f=>files.set(f.id,mediaDescriptor(f)));}
   const keys=messages.map(m=>'chat-reply:'+m.id),rows=await db(env).prepare('SELECT id,content FROM prototype_settings WHERE id IN ('+keys.map(()=>'?').join(',')+')').bind(...keys).all(),replies=new Map(rows.results.map(r=>[r.id.slice(11),JSON.parse(r.content).reply]));
   return messages.map(m=>({...m,text:m.attachment_id?(files.get(m.attachment_id)?.name||'Attachment'):m.text,attachment:files.get(m.attachment_id)||null,reply:replies.get(m.id)||null}));
  }
@@ -227,7 +227,7 @@ async function chatSupport(request,env,url,{owner,student,body,path,method,now})
  const target=await db(env).prepare('SELECT id,user_id,name,email,status,created_at FROM chat_students WHERE id=?').bind(id).first();if(!target)return json({error:'Sub not found.'},404);
  if(path==='gallery'&&method==='GET'){
   const before=Number(url.searchParams.get('before')||Number.MAX_SAFE_INTEGER);if(!Number.isSafeInteger(before)||before<1)return json({error:'Invalid gallery cursor.'},400);
-  const rows=await db(env).prepare("SELECT m.seq,m.sender,m.created_at,f.id,f.name,f.mime,f.size FROM chat_messages m JOIN media_files f ON f.id=m.attachment_id WHERE m.student_id=? AND m.seq<? AND f.scope='chat' ORDER BY m.seq DESC LIMIT 60").bind(id,before).all();return json({files:rows.results.map(f=>({...mediaDescriptor(f),seq:f.seq,from:f.sender,at:f.created_at})),hasMore:rows.results.length===60});
+  const rows=await db(env).prepare("SELECT m.seq,m.sender,m.created_at,f.id,f.name,f.mime,f.size,f.storage_key FROM chat_messages m JOIN media_files f ON f.id=m.attachment_id WHERE m.student_id=? AND m.seq<? AND f.scope='chat' ORDER BY m.seq DESC LIMIT 60").bind(id,before).all();return json({files:rows.results.map(f=>({...mediaDescriptor(f),seq:f.seq,from:f.sender,at:f.created_at})),hasMore:rows.results.length===60});
  }
  if(path==='profile'){
   const key='sub-profile:'+id;

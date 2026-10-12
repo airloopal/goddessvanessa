@@ -5,6 +5,7 @@ import {statusAPI,recordFailure} from '../server/platform/diagnostics.js';
 import worker from '../dist/server/index.js';
 import {productionDatabase} from '../server/platform/database.js';
 import {storage} from '../server/platform/storage.js';
+import {cloudflareStream} from '../server/platform/cloudflare-stream.js';
 import {authContext,verifiedRequest,authAPI} from '../server/platform/auth.js';
 const THRONE_KEY='-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAPXbUfxh7XL4SYUVcfhmYMIbxvtR9E9LDd8gPJ1PwSD8=\n-----END PUBLIC KEY-----';
 const giftResponse=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json','Cache-Control':'private, no-store'}});
@@ -54,7 +55,7 @@ export async function handle(request,env=process.env,dependencies={}){
  try{
   if(['/api/admin/status','/api/admin/changelog','/api/admin/overview'].includes(url.pathname)){context=dependencies.auth||authContext(request,{...env,...(dependencies.DB?{DB:dependencies.DB}:{})});const verified=await verifiedRequest(request,context.client,env);return context.apply(await statusAPI(verified,env,{database:()=>dependencies.DB||productionDatabase(env),storage:()=>dependencies.BUCKET||storage(env)}));}
   DB=dependencies.DB||productionDatabase(env);
-  const runtime={...env,DB,BUCKET:dependencies.BUCKET||storage(env),DIRECT_UPLOADS:true,VISITOR_LOCATION:visitorLocation(request.headers,env.VERCEL==='1')};
+  const runtime={...env,DB,BUCKET:dependencies.BUCKET||storage(env),DIRECT_UPLOADS:true,VIDEO_STREAM:dependencies.STREAM||cloudflareStream(env),VISITOR_LOCATION:visitorLocation(request.headers,env.VERCEL==='1')};
   if(url.pathname==='/api/health'){
    await DB.prepare('SELECT 1 FROM prototype_settings LIMIT 1').all();
    return new Response(JSON.stringify({ok:true,database:true,storage:!!runtime.BUCKET,email:!!(env.RESEND_API_KEY&&env.EMAIL_FROM)}),{headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});

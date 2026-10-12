@@ -227,13 +227,22 @@ Record confirmed incidents and fixes here, newest first. Dates use Europe/Warsaw
 - Security review for FEATURE-2026-10-06-017: Supabase prototype_settings remains RLS-enabled with no anon/authenticated SELECT grants in both schemas. Existing 22 INFO private-table RLS/no-policy notices unchanged. Existing leaked-password protection WARN unchanged: https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection. No database or auth setting modified.
 
 
+## AUDIT-2026-10-07-018 — Sandbox review before selective Live publication
+
+- Reviewed Sandbox 087f421592d7631064663832188fb681b572b4c2 / READY dpl_fC8ZsqUi9em1ShZ459k754oBqnnB. Live 62ccb16b73c55b0307bb85f2201b78cabb9843b8 unchanged. No runtime edits, credentials, production publication, schema migration, real charges/messages/emails or customer-record changes.
+- Fresh complete regression suite passed (exit 0), audit found 0 dependency vulnerabilities, build emitted 115 assets. Hosted sweep passed 162 checks (145 including 115 exact assets, 10 card checks, 7 applicant checks). Fresh local mobile/desktop smoke tests verified paragraph expansion with Send visible, reply cancellation preserving draft, in-chat media viewer, Square form mounting and readable notification controls; browser logs empty. No new reproducible defect within this coverage.
+- All 22 application tables retain RLS with no anon/authenticated CRUD privileges. Existing Goddess MFA-not-configured state and Supabase leaked-password WARN remain. Physical keyboards, actual bank-app/3DS and provider charging remain operational acceptance limits. Runtime-log connector limitation remains.
+- Production feed-media scope is still missing and must be added only with authorized Live publication. Experimental transactional email/renewal files and hooks must remain Sandbox-only; do not copy the entire branch. Detailed patch scope and verification evidence are in docs/SANDBOX_PRELIVE_REVIEW_2026-10-07.md.
+- Audit report/logbook additions are local documentation only; no new deployment created for this review.
+
+
 ## UI-2026-10-07-020 — Sandbox mobile admin navigation
 
 - **Request:** Home, Feed, Chats, All Subs, More in the mobile bottom bar; move Edit into More.
 - **Patch:** Promote the existing authenticated feed route into the five-item bottom navigation, hide Content from the mobile bar, and expose Edit in the More sheet. Reuse the shared rounded Home/feed and Edit icons, existing theme, routing, viewport and keyboard behaviour. Increment navigation asset cache versions. Desktop navigation remains unchanged.
 - **Validation:** 390×844 browser fixture verified visual left-to-right ordering, equal widths, one icon per item, direct Feed routing, Edit sheet routing/closure, and active More state on Edit. Build passed with 115 assets; production dependency audit found zero known vulnerabilities. Full regression suite and deployed verification recorded below.
 - **Scope/data:** Sandbox only, based on `087f421592d7631064663832188fb681b572b4c2`; Live remains `ca9368d56d8c69df7540a22f973e5c5ac464d3c5`. No backend, schema, session, payment, permissions, email, customer data or credentials changed.
-- **Status:** Full npm test passed (including authentication, CSRF, private media, payment, feed and applicant isolation checks); build passed (115 assets) and production audit found zero vulnerabilities. Desktop Feed and Edit remain visible at 1280×900. Sandbox `9860211b8ae1d30cd9086f88a3d30904c21769f6` deployed READY as `dpl_4YrtqvT14Z6jEd2awNPhHUF4W4ti`. Hosted verification passed 145 checks (115 exact assets), private endpoint denials, forged identity/CSRF rejection, security headers and Sandbox payment mode; Live main unchanged. Physical device acceptance remains open.
+- **Status:** Full npm test passed (including authentication, CSRF, private media, payment, feed and applicant isolation checks); build passed (115 assets) and production audit found zero vulnerabilities. Desktop Feed and Edit remain visible at 1280×900. Sandbox commit `9860211b8ae1d30cd9086f88a3d30904c21769f6`, Vercel `dpl_4YrtqvT14Z6jEd2awNPhHUF4W4ti` READY. Hosted verification passed 145 checks, including 115 exact asset matches, anonymous private endpoint denials, forged-owner/CSRF rejection, security headers and Sandbox payment mode. Live main was verified unchanged. Physical device acceptance remains open.
 
 
 ## FEATURE-2026-10-07-021 — Sandbox private Sub profile bio
@@ -244,7 +253,10 @@ Record confirmed incidents and fixes here, newest first. Dates use Europe/Warsaw
 - **Verification:** Full npm test passed; targeted bio tests cover persistence, other-Sub isolation, owner list/detail visibility, expired/suspended sessions, CSRF, anonymous mutation denial, invalid fields/length, concurrent-tab conflict, rate limit and deletion cleanup. Production dependency audit reports zero vulnerabilities; build has 117 assets. Browser verified synthetic bio save from Chat, persistence on Home, Goddess list/detail display, 390×844 mobile and 1280×900 desktop, and readable day/night styles with no console warnings/errors. Preview data is disposable; no real customer profile was edited.
 - **Scope:** Based on Sandbox `9860211b8ae1d30cd9086f88a3d30904c21769f6`; Live remains `ca9368d56d8c69df7540a22f973e5c5ac464d3c5`. Physical iOS/Android keyboard acceptance remains open. Hosted release identifiers/checks follow in the verification addendum. Existing project MFA/password hardening advisories remain separate.
 
-- **Bio deployed verification addendum:** Sandbox implementation `97d0cb27688de623372a0725040d6375ac6b1292`, Vercel `dpl_CmViaMw2Bgynczg4uQBQ1Ju4bQ7w` READY; 150 hosted checks passed, including 117 exact assets, new bio anonymous GET/PUT denial, forged identity/CSRF rejection, private no-store, CSP/HSTS/nosniff and Sandbox payment mode. Existing leaked-password-protection WARN remains (https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection); intentional private-table RLS INFO notices unchanged.
+- **Security advisor result:** Supabase’s existing 22 INFO notices reflect intentional private tables with RLS and no public-role policies; the existing WARN for disabled leaked-password protection remains. No new grant or policy was added. Remediation: https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection
+
+- **Deployed verification:** Sandbox release `2026.10.07.2`, implementation `97d0cb27688de623372a0725040d6375ac6b1292`, Vercel `dpl_CmViaMw2Bgynczg4uQBQ1Ju4bQ7w` READY with the Sandbox branch alias. Hosted sweep passed 150 checks, including 117 exact assets, self-profile anonymous GET/PUT denial, forged identity and CSRF rejection, private no-store headers, CSP/HSTS/nosniff and Sandbox payment mode. Live main verified unchanged. Feature implemented and verified; physical keyboard acceptance remains open.
+
 
 ## FEATURE-2026-10-07-022 — Sandbox live application funnel
 
@@ -255,6 +267,8 @@ Record confirmed incidents and fixes here, newest first. Dates use Europe/Warsaw
 - **Verification:** Full npm test passed, build 120 assets, production dependency audit zero vulnerabilities. Targeted tests cover privacy, CSRF, strict schema, start deduplication, independent application cookies, current/backward reach, server-only signing/payment/refund conversion, presence, retention, five-stage layout and write limits. Browser synthetic applicants verified Step 1 → 2 dashboard refresh and new notification, 1280×1000 desktop and 390×844 mobile/night readable layout without horizontal overflow, and period control. Real customers/payments untouched.
 - **Scope/limits:** Sandbox only, based on `97d0cb27688de623372a0725040d6375ac6b1292`; Live `ca9368d56d8c69df7540a22f973e5c5ac464d3c5` unchanged. Browser visibility/throttling affect refresh timing. Application continuity remains per browser cookie, not a count of distinct people. Physical phone acceptance remains open. Hosted identifiers/checks follow. Existing project password/MFA hardening advisories remain.
 
+- **Deployed verification:** Sandbox release `2026.10.07.3`, implementation `d78ab1fe6d7b7e0bf1092e541a2d9727bf0e7c37`, Vercel `dpl_2iHLRznsmyKsoKF5aTqvSS3vKyda` READY with the Sandbox branch alias. Hosted sweep passed 156 checks, including 120 exact assets, funnel anonymous GET/POST denial and cross-origin rejection, forged identity/CSRF controls, private no-store, CSP/HSTS/nosniff and Sandbox payment mode. Live main verified unchanged. Supabase advisors unchanged (22 intentional private-table INFO notices, one existing disabled leaked-password-protection WARN). Feature implemented and verified in the tested scope; physical phone acceptance remains open.
+
 
 ## UI-2026-10-07-024 — Admin Feed compose icon
 
@@ -263,7 +277,7 @@ Record confirmed incidents and fixes here, newest first. Dates use Europe/Warsaw
 - **Validation:** Browser confirmed one compose SVG, 23px mobile size, dark text on selected blush tab, correct Feed routing and desktop visibility. No CSS, backend, payment, session, permissions, data or credential changes. Existing Sub navigation/feed modules untouched. Dependency audit zero vulnerabilities; full regression/build and deployment results follow.
 - **Authorization:** User explicitly authorized Sandbox verification followed by this narrowly scoped Live publication. Email and self-service renewal remain Sandbox-only. Existing security advisories/physical-device limits unchanged.
 
-- **Regression:** Full npm test passed independently in Sandbox and assembled Live source; builds passed with 120/118 assets respectively. Both production dependency audits reported zero known vulnerabilities. No backend or payment changes.
+- **Sandbox deployment:** `0e59d59f130b7ef824ec9ff6db867d19e6914b1e`, Vercel `dpl_ARp7A3FtoxHMuBWxk936XDXmvqak` READY. Full regression/build/audit passed and 156 hosted checks (120 exact assets) passed before Live publication.
 
 
 ## UI-2026-10-07-025 — Exact supplied Admin Feed icon
@@ -272,7 +286,9 @@ Record confirmed incidents and fixes here, newest first. Dates use Europe/Warsaw
 - **Patch:** Store the original 512×512 PNG unchanged as `/images/brand/admin-feed-compose.png` (SHA-256 `a81c4bf47229022989f068801bec82dbfac6bbfc6cf1b548e43696cc57a6a6a6`). Render its alpha as the existing theme’s `currentColor` through an SVG mask with unique generated IDs. This retains the attached rounded-square plus shape exactly; no redraw, regeneration, cropping or device emoji. Preserve mobile/desktop button sizing and Sub Home/Chat icons. Include the image in the build asset allowlist and version dashboard icon reference.
 - **Security/validation:** Original-byte equality checked in both sources; mobile/desktop browser confirmed one icon and the exact local image reference, alpha mask and inherited fill. Existing SVG guard now permits only this literal local image reference for compose while continuing to reject scripts, event attributes, foreignObject and other URLs. Original PNG hash is enforced. Dependency audits zero vulnerabilities. Full regression/build/hosted results follow. No backend, data, payments, access, email, renewal or credentials changed.
 
-- **Regression results:** Full npm test passed independently on Sandbox and assembled Live, including restricted image-reference/original-byte checks and Live email/renewal exclusions. Builds passed with 121/119 assets; both dependency audits found zero known vulnerabilities. Sandbox verification and Live promotion identifiers follow.
+- **Sandbox implementation:** `787923f0428e3f79dd8b8835396267ea855fd197`; original attached PNG referenced through the themed alpha mask. Build 121 assets, full regression and audit passed.
+
+- **Sandbox hosted verification:** Vercel `dpl_3aR2nk87P9fbqucBnDAnNwc1NDAu` READY; 157 checks passed including 121 exact assets and original PNG match, private access/CSRF/headers and Sandbox payment mode.
 
 
 ## UI-2026-10-10-005 — Sandbox final Entry / Contract non-refundable notice
@@ -280,6 +296,9 @@ Record confirmed incidents and fixes here, newest first. Dates use Europe/Warsaw
 - Scope: Sandbox square-sandbox base 787923f0428e3f79dd8b8835396267ea855fd197. User requested Sandbox review first and the exact text “This payment is non-refundable.” No Live publication authorized.
 - Added a themed text notice directly above the Entry and Contract final payment actions, plus the contract signing Confirm & Pay action. Buttons reference the notice with aria-describedby. The notice remains present while the existing card preparation, hosted recovery and retry controls change; confirmed-payment panels do not display a new-purchase notice. No new checkbox, application stage, payment request, pricing/promo, card handling, state mutation or server change.
 - Validation: build 121 assets. Synthetic local preview verified at mobile 390×844 and desktop 1280×900: exact text, one notice, notice before Pay, accessible description and no horizontal overflow. No real card data or charges. Dependency audit zero known advisories. Full regression suite exited 0, including Square amount/promo/signature/idempotency/reconciliation, auth, shared-device isolation, private data, application funnel, chat and membership regressions. Hosted deployment checks pending.
+
+- Final Sandbox deployment: b5d77addb6e319cc1ab1453866bfa899a2e3875d, dpl_H1z2tQ72Xmq4doBzgJi7ycfPw9XX READY and aliased to goddessvanessa-git-square-sandbox-system-admin.vercel.app. Hosted sweep passed all 147 checks (121 exact assets, private endpoint/forged identity/CSRF denial, security headers, Sandbox mode and no private payment-state exposure). Live main remains 44da90cb27b2209d93c43922999071489c80e0f3. No real checkout, charge, refund, signature or customer record change. Local fixture stopped and browser tab/viewport cleaned up. Screenshots show synthetic card-form placeholders for notice review.
+
 
 
 ## UI-2026-10-10-006 — Fine-print Entry and Contract payment acknowledgements (Sandbox)
@@ -289,6 +308,9 @@ Record confirmed incidents and fixes here, newest first. Dates use Europe/Warsaw
 - Validation: build (121 assets), full regression suite, targeted mocked native/hosted consent and retry checks, dependency audit (0 known vulnerabilities), mobile 390px and desktop preview. No payment, signature or personal data submitted. Hosted asset/private endpoint/security-header checks run after deployment; final results recorded locally.
 - Limits: this is a client acknowledgement UI, not a new server audit of acceptance or a legal assessment of refund terms. Visual card form was a local fixture; provider charge behaviour was verified using mocks and the existing regression suite.
 
+### UI-2026-10-10-006 — Deployment verification
+- Sandbox commit e792768fb02e4100b175a5a44ee3b6c4b0424063; deployment dpl_FJMXwb6Nnd1UyV1hVqmT1YNpkSjD READY with Sandbox branch alias. Full npm test passed and full dependency audit returned zero known vulnerabilities. Hosted sweep passed 147 checks: all 121 public assets matched, private endpoints denied anonymous/forged access, cross-origin actions denied, security headers present and Sandbox payment mode confirmed with no private payment state exposed. Live remained 44da90cb27b2209d93c43922999071489c80e0f3. Mobile fixture screenshots and hosted report retained locally; no payments made.
+
 
 ## EMAIL-2026-10-10-008 — Sandbox reminder previews and safe activation
 
@@ -297,6 +319,38 @@ Scope: square-sandbox only. Added themed owner-only email previews under Notific
 Security: preserved owner/session authorization and CSRF gateway, escaped short previews with private-code/link redaction, no attachments or access codes, stable provider idempotency with bounded retries, stale payload cleanup, rechecks after read/extension, private scheduler heartbeat and no customer/provider details in previews. No managed schema, grants, production credentials, stages, payment flow or renewal activation changed.
 
 Validation: complete Sandbox build and test suite passed; final targeted reminder checks passed after stale-payload cleanup; provider calls mocked and disposable local database fixtures only. Dependency audit: zero known vulnerabilities. Supabase advisor: zero warnings/errors; 22 existing informational notices. Mobile preview reviewed using sample content, not real messages. Hosted asset/private-route sweep follows deployment. Real delivery and scheduler activation remain unverified because Resend and scheduler setup are not complete.
+
+Deployment verification addendum: Sandbox commit 34cb0ef3dc7e7c38e7fdc702c990de3acee0f1a0, deployment dpl_BBgBdUqULsdvuD8G12pFEzhToPqp READY. 149 hosted security/exact-asset checks and five reminder-route authorization checks passed. Main remains bdcb6d1acc9eca6518639782a04015c81ed8c7f5. Hosted owner preview could not be opened because the verification browser has no Goddess session; local sample UI and owner API fixtures passed. Real delivery/scheduler execution remains pending setup.
+
+## EMAIL-2026-10-10-009 — Supabase scheduler selected; preflight pending
+
+User selected Supabase for Sandbox scheduling and will configure Resend separately.
+Read-only inspection confirmed Vault 0.3.1, no pg_cron/pg_net and no custom database
+login roles. Current Supabase guidance resolves the earlier revoke issue as a managed
+platform constraint; queue headers remain visible to database login roles, while
+normal browser roles cannot connect directly and net is not exposed by default.
+Public API schema verification was inconclusive and browser inspection is blocked by
+the locked Mac. Prepared a disabled-job SQL installer and setup guide locally only.
+No hosted mutation, extension/job installation, secret creation or email sending.
+No Live change; no commit/deployment for this preparation. Scheduler activation and
+end-to-end delivery remain pending API isolation verification and Resend readiness.
+
+## EMAIL-2026-10-10-010 — Sandbox Resend key/configuration verification
+
+User reports replacement key saved. Metadata confirms sensitive RESEND_API_KEY scoped
+to Preview/square-sandbox; no decryption. Added branch-only EMAIL_FROM,
+ADMIN_NOTIFICATION_EMAIL, SANDBOX_EMAIL_TEST_TO and TRANSACTIONAL_EMAIL_ENABLED=false.
+Redeployed the previously tested Sandbox commit 34cb0ef3dc7e7c38e7fdc702c990de3acee0f1a0
+as preview deployment dpl_3oqMXkcLh5irdtLsyVWqroAuotjC, READY, Sandbox alias only.
+An initial target=preview API request was invalid; automatic review rejected an omitted
+target retry. Read-only official API evidence and source inspection established that
+omitted target means preview and the exact source is Sandbox. Subsequent reviewed
+redeployment passed, target=null, square-sandbox; no Live deployment.
+No app source changes; full regression/build/audit coverage from EMAIL-008 retained.
+Hosted exact-asset/private-route sweep repeated for this configuration deployment.
+Domain verification and Data API schema checks remain pending because Chrome renders
+settings pages blank. Supabase shows outstanding-invoices warning; user informed.
+No scheduler installed, no email sent, no customer/application/payment data changed.
 
 
 ## EMAIL-2026-10-10-011 — Resend verification and approved Supabase Sandbox scheduling
@@ -312,7 +366,7 @@ Added optional Sandbox test-account restriction to queue/dispatch, including pen
 
 User clarified that info@houseofvanessa.com is the configured mailbox. Initial controlled fixtures were accepted by Resend at the previously agreed, unconfigured Goddess address; inbox delivery was not verified. Changed the fixed Sandbox test-inbox guard and branch-only ADMIN_NOTIFICATION_EMAIL / SANDBOX_EMAIL_TEST_TO to info. Recreated disposable test account with new event/idempotency IDs; no replay of already accepted sends with changed recipients. Test-account restriction remains in place, job remains disabled until delivery checks pass. Existing production environment/code unchanged.
 
-Sender domain Verified in Resend; all three approved DNS records match Namecheap authoritative DNS, existing website/mail records preserved. Shared extensions/Vault transfer/test activation explicitly approved. Tests cover fixed recipient, scope isolation, read/extension cancellation, duplicate prevention and bounded retries. Full regression/build repeated for the inbox correction; audit has zero vulnerabilities. Security advisor retains zero warnings/errors, 22 existing informational notices. Actual provider delivery and one-minute execution checks follow deployment. Old pasted Onboarding key was revoked by the user and its removal verified in Resend; Supabase invoice notice remains user action. No real charge or customer record changed.
+Sender domain Verified in Resend; all three approved DNS records match Namecheap authoritative DNS, existing website/mail records preserved. Shared extensions/Vault transfer/test activation explicitly approved. Tests cover fixed recipient, scope isolation, read/extension cancellation, duplicate prevention and bounded retries. Full regression/build repeated for the inbox correction; audit has zero vulnerabilities. Security advisor retains zero warnings/errors, 22 existing informational notices. Actual provider delivery and one-minute execution checks follow deployment. Old pasted Onboarding key requires user revocation; Supabase invoice notice remains user action. No real charge or customer record changed.
 
 
 Activation verification addendum (10 October 2026): Sandbox b4f10f73a6d8cf2db44fbdc6f19d43efe38859e0, deployment dpl_B5j6PDH31u1HviyFnt5k86NhT886 READY Preview. Corrected unread Sub/Goddess and expiry samples all reported Delivered by Resend to info@houseofvanessa.com. Authenticated dispatch returned 200/sent=3; repeat/read/extension cancellation returned 200/sent=0 with both obsolete notices skipped and no cached payload retained. First automatic one-minute run succeeded, HTTP 200/enabled=true/sent=0; subsequent runs checked for duplicates. Full tests/build/audit and 154 hosted checks passed. Disposable fixtures removed; test-account restriction retained so ordinary Sandbox/customer delivery remains disabled. Main remains bdcb6d1acc9eca6518639782a04015c81ed8c7f5; Live email configuration remains absent. Old pasted key revocation verified. Inbox/spam placement was not inspected; Delivered is provider receiving-server confirmation. Supabase outstanding invoice notice remains user action. No production data/payment/credential changes beyond the explicitly approved shared extensions; no actual charges.
@@ -334,3 +388,13 @@ Activation verification addendum (10 October 2026): Sandbox b4f10f73a6d8cf2db44f
 - Live: efbdeba80dd188b3427f41c095f3777ae6ca459d, READY deployment dpl_35YKExqCZTtvh2LmNMrhxhMf5NWo, houseofvanessa.com alias verified without errors. All 159 general checks (133 exact assets), 7 upload/read guards and 8 account guards passed: 174 total. Production payment mode/private-state denial preserved.
 - Sandbox: daf470210da5470ab8ac9570253b8dea78328325, READY deployment dpl_HkTdtwQxxeo4r86he3Nq88i4J3My, square-sandbox alias verified without errors. All 149 general checks (123 exact assets) and 7 upload/read guards passed: 156 total. Sandbox payment mode preserved; no Live credentials, data or unrelated features promoted. Combined hosted coverage: 330 checks.
 - Legacy raw-upload route is intentionally retired with 410 (verified in worker/platform regression), not an open upload bypass. Anonymous, forged and cross-origin prepare/complete/read requests denied. No customer upload, charge, account/session/code change or signature performed. Reports retained under docs/*media*oct12.json; local synthetic preview stopped after verification. Browser-only compression restrictions (supported encoders, up to 2-minute clips, potentially clip-duration processing) remain explicit; no physical iPhone/Android-device certification is claimed.
+
+## 2026-10-12 — Cloudflare Stream 25-minute chat integration (verified; deployment pending)
+
+- Operator authorised Live & Sandbox chat videos up to 25 minutes with mandatory Stream encoding, preview and final confirmation, retaining native Play/Pause. Starter Bundle activation verified in the operator account; separate Stream-only Live and Sandbox token creation, exact Vercel scope, synthetic tests and publishing explicitly approved by the operator. Hidden credentials saved in Production and Preview/square-sandbox respectively; no other environment setting changed.
+- Prepared direct resumable TUS upload, creator/actor/role/environment/account-bound private ledger, immutable retries, provider-confirmed private ready/duration/size checks, explicit encoded preview then final sharing, private short-lived HLS playback, native controls with bounded HLS.js buffers, and protected unsent-draft discard. Old video paths are rejected when Stream mode is enabled, including signature-detected video disguised as another MIME.
+- Database stores a compact external-video pointer and private source metadata, not video bytes. No database schema/grants, payment, contract, account/session or email scheduling changes. Live and Sandbox keep separate branches and credentials, using a shared Stream account as the operator requested; vendor token privileges are account-wide Stream access. Default application allowance is 100 stored/reserved minutes per chat, configurable server-side.
+- New hls.js 1.7.3 pinned, self-hosted with MIT licence; connect-src limited to the two Stream upload hosts and the verified customer playback hostname. Upload limit is 1 GB; Cloudflare enforces 1,500-second maximum. Native photo/audio limits remain 50 MB. Existing customer media is not migrated.
+- Local Stream security tests passed in both trees: anonymous/forged role/scope/origin denial, private processing/preview, no public-provider acceptance, 25-minute boundary, duplicate protection, signed playback bounded to session/contract, recipient draft denial and shared-video discard denial. DOM simulations passed all four role/environment preview-confirm paths. Resumable transport simulations recovered a lost accepted-chunk reply without resending bytes or sending cookies/API secrets to upload URLs. No real video, charge, customer message or account/code alteration was used.
+- Both full local suites passed and both production audits found zero known vulnerabilities. Final builds and complete suites passed again after retry/draft-cleanup changes. Actual Cloudflare TUS upload and encoding passed with synthetic colour-bar clips under both credentials; unsigned HLS returned 401, signed manifest returned 200. Real application handlers with isolated local database fixtures verified private prepare, recipient draft denial, encoded preview without posting, exactly one final message on retry, and protected shared discard. Native browser Play/Pause passed with actual signed playback; both roles/branches also covered by draft DOM simulations. No hosted customer fixture or physical-device certification is claimed. Supabase advisor has no WARN/ERROR and only existing private denied-table INFO notices.
+- Current bases: Live 656b41d2679cae870e77b5fac899d0d60071e921; Sandbox 73386ff9e75cd62867d5ccfbcf2643be9b9dbb42. Status: pre-release verification complete; exact hosted deployment/asset/private API acceptance follows below. The 25-minute duration boundary is verified by application/provider metadata checks and synthetic boundary tests; the actual test clips are four seconds long. No automatic global purge of historical media was installed; explicit unsent-draft removal releases provider storage, and interrupted private drafts remain bounded by per-chat reservations.

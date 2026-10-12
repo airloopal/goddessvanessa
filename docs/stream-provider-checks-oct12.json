@@ -1,0 +1,118 @@
+{
+  "checkedAt": "2026-10-12",
+  "provider": [
+    {
+      "environment": "sandbox",
+      "tusUpload": true,
+      "sourceBytes": 13720200,
+      "duration": 4,
+      "encodedSize": 13720200,
+      "signedURLsRequired": true,
+      "unsignedDenied": 401,
+      "signedManifest": 200,
+      "creatorAndOriginVerified": true
+    },
+    {
+      "environment": "live",
+      "tusUpload": true,
+      "sourceBytes": 13720200,
+      "duration": 4,
+      "encodedSize": 13720200,
+      "signedURLsRequired": true,
+      "unsignedDenied": 401,
+      "signedManifest": 200,
+      "creatorAndOriginVerified": true
+    }
+  ],
+  "applicationWithRealProvider": [
+    {
+      "environment": "sandbox",
+      "realProviderAppPrepare": true,
+      "encodedPreviewBeforeShare": true,
+      "recipientDraftDenied": true,
+      "sourceBytes": 13720200,
+      "duration": 4,
+      "privatePreviewManifest": 200,
+      "confirmationOneMessage": true,
+      "recipientAfterShare": true,
+      "sharedDiscardDenied": true
+    },
+    {
+      "environment": "live",
+      "realProviderAppPrepare": true,
+      "encodedPreviewBeforeShare": true,
+      "recipientDraftDenied": true,
+      "sourceBytes": 13720200,
+      "duration": 4,
+      "privatePreviewManifest": 200,
+      "confirmationOneMessage": true,
+      "recipientAfterShare": true,
+      "sharedDiscardDenied": true
+    }
+  ],
+  "previewConfirmation": [
+    {
+      "branch": "live-restored",
+      "role": "admin",
+      "selectReviewNoUpload": true,
+      "privatePrepareNoShare": true,
+      "encodedPreview": true,
+      "finalConfirmationOneShare": true,
+      "discardRelease": true
+    },
+    {
+      "branch": "live-restored",
+      "role": "student",
+      "selectReviewNoUpload": true,
+      "privatePrepareNoShare": true,
+      "encodedPreview": true,
+      "finalConfirmationOneShare": true,
+      "discardRelease": true
+    },
+    {
+      "branch": "goddessvanessa",
+      "role": "admin",
+      "selectReviewNoUpload": true,
+      "privatePrepareNoShare": true,
+      "encodedPreview": true,
+      "finalConfirmationOneShare": true,
+      "discardRelease": true
+    },
+    {
+      "branch": "goddessvanessa",
+      "role": "student",
+      "selectReviewNoUpload": true,
+      "privatePrepareNoShare": true,
+      "encodedPreview": true,
+      "finalConfirmationOneShare": true,
+      "discardRelease": true
+    }
+  ],
+  "resumableTransport": [
+    {
+      "branch": "live-restored",
+      "resumableChunks": true,
+      "lostResponseRecovered": true,
+      "noDoubleBytes": true,
+      "noUploadCredentials": true,
+      "noProcessingShare": true,
+      "unsafeUrlRejected": true
+    },
+    {
+      "branch": "goddessvanessa",
+      "resumableChunks": true,
+      "lostResponseRecovered": true,
+      "noDoubleBytes": true,
+      "noUploadCredentials": true,
+      "noProcessingShare": true,
+      "unsafeUrlRejected": true
+    }
+  ],
+  "nativeBrowserPlayer": {
+    "actualSignedStreamPlayback": true,
+    "playPauseControls": true,
+    "desktopLightAndMobileDark": true,
+    "physicalDeviceCertification": false
+  },
+  "customerDataUsed": false
+}

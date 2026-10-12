@@ -1,0 +1,798 @@
+{
+  "origin": "https://houseofvanessa.com",
+  "checkedAt": "2026-10-12T10:56:56.898Z",
+  "checks": [
+    {
+      "path": "/api/chat/ui-activity",
+      "status": 403,
+      "noStore": true
+    },
+    {
+      "path": "/api/member/plans",
+      "status": 410,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/activity",
+      "status": 401,
+      "noStore": true
+    },
+    {
+      "path": "/api/cron/notifications",
+      "status": 401,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/messages",
+      "status": 401,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/session",
+      "status": 401,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/notifications",
+      "status": 403,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/background",
+      "status": 401,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/code-requests",
+      "status": 403,
+      "noStore": true
+    },
+    {
+      "path": "/api/visual/draft",
+      "status": 403,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/gallery",
+      "status": 403,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/profile",
+      "status": 403,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/students",
+      "status": 403,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/plans",
+      "status": 403,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/presence",
+      "status": 403,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/paid-activity",
+      "status": 403,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/visitor-stats",
+      "status": 403,
+      "noStore": true
+    },
+    {
+      "path": "/api/admin/status",
+      "status": 403,
+      "noStore": true
+    },
+    {
+      "path": "/api/admin/changelog",
+      "status": 403,
+      "noStore": true
+    },
+    {
+      "path": "/api/education/verifications",
+      "status": 401,
+      "noStore": true
+    },
+    {
+      "path": "/api/media/00000000-0000-4000-8000-000000000001",
+      "status": 401,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/students",
+      "forgedIdentity": 403
+    },
+    {
+      "path": "/api/chat/broadcast",
+      "crossOrigin": 403
+    },
+    {
+      "path": "/api/chat/students",
+      "forgedPinMutation": 403
+    },
+    {
+      "path": "/dashboard.html",
+      "status": 200,
+      "securityHeaders": true
+    },
+    {
+      "path": "/account-management.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/admin-appearance.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/admin-chat-notifications.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/access.html",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/account-management.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/account.html",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/admin-icons.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/admin-feed.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/admin-payments.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/admin-payments.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/admin-email.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/admin-email.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/application-funnel.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/application-funnel.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/admin-support.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/admin-support.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/apple-touch-icon.png",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/application-faq.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/chat-loading.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/application.html",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/builder.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/application-tracking.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/builder.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/application-signup.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/chat-notifications-sw.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/chat.html",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/chat-refinements.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/chat-media.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/chat-refinements.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/client-chat.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/dashboard-live.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/contract-invitation.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/course-builder.html",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/dashboard-live.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/contract-invitation.html",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/dashboard.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/dashboard.html",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/education-access.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/education-builder.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/education-config.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/education-dashboard.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/education-app.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/education-home.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/education.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/entry-lightbox.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/favicon.ico",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/education-shared.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/education-review.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/feed.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/fonts/LICENSE.txt",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/feed-donations.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/feed.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/feed.html",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/favicon.svg",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/fonts/libre-baskerville.woff2",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/fonts/poppins-400-latin.woff2",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/fonts/lmroman10-italic.otf",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/fonts/libre-baskerville-license.txt",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/fonts/lmroman10-regular.otf",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/fonts/lmsans10-regular.otf",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/fonts/poppins-500-latin.woff2",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/fonts/poppins-600-latin.woff2",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/goddess-account.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/goddess-account.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/goddess-login.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/fonts/poppins-license.txt",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/brand/chat-emojis.svg",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/icons.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/brand/admin-feed-compose.png",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/goddess-navigation.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/goddess-settings.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/goddess-navigation.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/brand/vanessa-mark.png",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/brand/vanessa-chat-avatar.jpg",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/brand/vanessa-chat-halo.jpg",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/brand/vanessa-wordmark.png",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/editorial-portrait.jpg",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/hero-loop.mp4",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/home/slide-1-desktop.jpg",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/home/slide-1-mobile.jpg",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/hero-poster.jpg",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/home/slide-2-desktop.jpg",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/home/slide-1-mobile.mp4",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/home/slide-1-desktop.mp4",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/home/slide-3-desktop.jpg",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/home/slide-2-mobile.jpg",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/home/slide-3-mobile.jpg",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/home/slide-2-mobile.mp4",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/home/slide-2-desktop.mp4",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/home/slide-3-desktop.mp4",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/home/slide-4-desktop.jpg",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/home/slide-4-mobile.jpg",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/index.html",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/home/slide-4-mobile.mp4",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/home/slide-4-desktop.mp4",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/images/home/slide-3-mobile.mp4",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/preview-access.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/liquid-glass.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/page-loading.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/landing.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/landing.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/privacy.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/robots.txt",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/restored-chat.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/restored-tour.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/restored.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/privacy.html",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/prototype.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/signin.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/signin.html",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/sounds/fee-cash-register.wav",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/sitemap.xml",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/square-payments.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/site-presence.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/square-ui.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/status.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/student-account.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/status.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/status.html",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/square-ui.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/sub-navigation.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/sub-profile.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/sub-profile.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/style.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/sub-session-route.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/studio.html",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/support-payment.html",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/support-payment.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/verification-inbox.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/visual-schema.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/sub-theme.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/typography.css",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/visual.js",
+      "status": 200,
+      "exactAsset": true
+    },
+    {
+      "path": "/api/education/payments",
+      "mode": "production",
+      "privateStateAbsent": true
+    }
+  ]
+}

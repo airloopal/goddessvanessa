@@ -227,7 +227,12 @@ async function chatSupport(request,env,url,{owner,student,body,path,method,now})
  const target=await db(env).prepare('SELECT id,user_id,name,email,status,created_at FROM chat_students WHERE id=?').bind(id).first();if(!target)return json({error:'Sub not found.'},404);
  if(path==='gallery'&&method==='GET'){
   const before=Number(url.searchParams.get('before')||Number.MAX_SAFE_INTEGER);if(!Number.isSafeInteger(before)||before<1)return json({error:'Invalid gallery cursor.'},400);
-  const rows=await db(env).prepare("SELECT m.seq,m.sender,m.created_at,f.id,f.name,f.mime,f.size,f.storage_key FROM chat_messages m JOIN media_files f ON f.id=m.attachment_id WHERE m.student_id=? AND m.seq<? AND f.scope='chat' ORDER BY m.seq DESC LIMIT 60").bind(id,before).all();return json({files:rows.results.map(f=>({...mediaDescriptor(f),seq:f.seq,from:f.sender,at:f.created_at})),hasMore:rows.results.length===60});
+  const rows=await db(env).prepare('SELECT seq,id,sender AS "from",body AS text,created_at AS at,attachment_id FROM chat_messages WHERE student_id=? AND seq<? AND attachment_id IS NOT NULL ORDER BY seq DESC LIMIT 60').bind(id,before).all();
+  const keys=rows.results.map(message=>'chat-album:'+message.id),records=keys.length?await db(env).prepare('SELECT id,content FROM prototype_settings WHERE id IN ('+keys.map(()=>'?').join(',')+')').bind(...keys).all():{results:[]},albums=new Map();
+  for(const record of records.results){try{const album=JSON.parse(record.content);if(album.studentId===id&&Array.isArray(album.attachmentIds)&&album.attachmentIds.length<=10&&album.attachmentIds.every(fileId=>typeof fileId==='string'&&/^[a-f0-9-]{36}$/.test(fileId)))albums.set(record.id.slice(11),album);}catch{}}
+  const attachments=message=>{const album=albums.get(message.id);return album&&album.role===message.from?album.attachmentIds:[message.attachment_id];},ids=[...new Set(rows.results.flatMap(attachments))];
+  const owned=ids.length?await db(env).prepare("SELECT * FROM media_files WHERE student_id=? AND scope='chat' AND id IN ("+ids.map(()=>'?').join(',')+')').bind(id,...ids).all():{results:[]},files=new Map(owned.results.map(file=>[file.id,file]));
+  return json({files:rows.results.flatMap(message=>attachments(message).map(fileId=>files.get(fileId)).filter(file=>file&&file.role===message.from).map(file=>({...mediaDescriptor(file),seq:message.seq,from:message.from,at:message.at}))),nextBefore:rows.results.at(-1)?.seq||null,hasMore:rows.results.length===60});
  }
  if(path==='profile'){
   const key='sub-profile:'+id;

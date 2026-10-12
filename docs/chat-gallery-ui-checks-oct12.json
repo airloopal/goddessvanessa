@@ -1,0 +1,58 @@
+[
+  {
+    "branch": "live-restored",
+    "role": "admin",
+    "keyboardHistory": true,
+    "lazyPagination": true,
+    "mobileSwipe": true,
+    "verticalAndNativeSeekPreserved": true,
+    "playerPausedOnNavigation": true,
+    "closeRestoresFocus": true,
+    "lateResponseIsolation": true,
+    "retryEmptyStates": true,
+    "externalURLDenied": true,
+    "titleEscaped": true
+  },
+  {
+    "branch": "live-restored",
+    "role": "student",
+    "keyboardHistory": true,
+    "lazyPagination": true,
+    "mobileSwipe": true,
+    "verticalAndNativeSeekPreserved": true,
+    "playerPausedOnNavigation": true,
+    "closeRestoresFocus": true,
+    "lateResponseIsolation": true,
+    "retryEmptyStates": true,
+    "externalURLDenied": true,
+    "titleEscaped": true
+  },
+  {
+    "branch": "goddessvanessa",
+    "role": "admin",
+    "keyboardHistory": true,
+    "lazyPagination": true,
+    "mobileSwipe": true,
+    "verticalAndNativeSeekPreserved": true,
+    "playerPausedOnNavigation": true,
+    "closeRestoresFocus": true,
+    "lateResponseIsolation": true,
+    "retryEmptyStates": true,
+    "externalURLDenied": true,
+    "titleEscaped": true
+  },
+  {
+    "branch": "goddessvanessa",
+    "role": "student",
+    "keyboardHistory": true,
+    "lazyPagination": true,
+    "mobileSwipe": true,
+    "verticalAndNativeSeekPreserved": true,
+    "playerPausedOnNavigation": true,
+    "closeRestoresFocus": true,
+    "lateResponseIsolation": true,
+    "retryEmptyStates": true,
+    "externalURLDenied": true,
+    "titleEscaped": true
+  }
+]

@@ -1,0 +1,30 @@
+{
+  "origin": "https://houseofvanessa.com",
+  "checkedAt": "2026-10-12T13:52:59.761Z",
+  "checks": [
+    {
+      "path": "/api/chat/gallery",
+      "privateDenied": 403,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/gallery",
+      "privateDenied": 403,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/gallery",
+      "privateDenied": 403,
+      "noStore": true
+    },
+    {
+      "bothDropdowns": true,
+      "adminDotsOnly": true
+    },
+    {
+      "sharedCarousel": true,
+      "keyboardAndSwipe": true,
+      "responsiveClose": true
+    }
+  ]
+}

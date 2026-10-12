@@ -1,0 +1,51 @@
+{
+  "origin": "https://houseofvanessa.com",
+  "checkedAt": "2026-10-12T13:33:30.521Z",
+  "checks": [
+    {
+      "endpoint": "options",
+      "anonymousDenied": 401,
+      "noStore": true
+    },
+    {
+      "endpoint": "prepare",
+      "anonymousDenied": 401,
+      "noStore": true
+    },
+    {
+      "endpoint": "complete",
+      "anonymousDenied": 401,
+      "noStore": true
+    },
+    {
+      "endpoint": "send",
+      "anonymousDenied": 401,
+      "noStore": true
+    },
+    {
+      "endpoint": "discard",
+      "anonymousDenied": 401,
+      "noStore": true
+    },
+    {
+      "endpoint": "prepare",
+      "crossOriginAndForgedDenied": 401
+    },
+    {
+      "endpoint": "complete",
+      "crossOriginAndForgedDenied": 401
+    },
+    {
+      "endpoint": "send",
+      "crossOriginAndForgedDenied": 401
+    },
+    {
+      "endpoint": "discard",
+      "crossOriginAndForgedDenied": 401
+    },
+    {
+      "page": "/chat.html",
+      "exactStreamHosts": true
+    }
+  ]
+}

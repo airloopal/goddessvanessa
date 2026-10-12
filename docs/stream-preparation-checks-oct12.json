@@ -1,0 +1,62 @@
+{
+  "ui": [
+    {
+      "branch": "live-restored",
+      "role": "admin",
+      "selectReviewNoUpload": true,
+      "privatePrepareNoShare": true,
+      "encodedPreview": true,
+      "finalConfirmationOneShare": true,
+      "discardRelease": true
+    },
+    {
+      "branch": "live-restored",
+      "role": "student",
+      "selectReviewNoUpload": true,
+      "privatePrepareNoShare": true,
+      "encodedPreview": true,
+      "finalConfirmationOneShare": true,
+      "discardRelease": true
+    },
+    {
+      "branch": "goddessvanessa",
+      "role": "admin",
+      "selectReviewNoUpload": true,
+      "privatePrepareNoShare": true,
+      "encodedPreview": true,
+      "finalConfirmationOneShare": true,
+      "discardRelease": true
+    },
+    {
+      "branch": "goddessvanessa",
+      "role": "student",
+      "selectReviewNoUpload": true,
+      "privatePrepareNoShare": true,
+      "encodedPreview": true,
+      "finalConfirmationOneShare": true,
+      "discardRelease": true
+    }
+  ],
+  "resumable": [
+    {
+      "branch": "live-restored",
+      "resumableChunks": true,
+      "lostResponseRecovered": true,
+      "noDoubleBytes": true,
+      "noUploadCredentials": true,
+      "noProcessingShare": true,
+      "unsafeUrlRejected": true
+    },
+    {
+      "branch": "goddessvanessa",
+      "resumableChunks": true,
+      "lostResponseRecovered": true,
+      "noDoubleBytes": true,
+      "noUploadCredentials": true,
+      "noProcessingShare": true,
+      "unsafeUrlRejected": true
+    }
+  ],
+  "status": "prepared, no deployment; actual provider/browser acceptance pending credentials",
+  "providerData": "synthetic only; no real provider upload performed"
+}

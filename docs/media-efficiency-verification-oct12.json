@@ -1,0 +1,290 @@
+{
+  "drafts": [
+    {
+      "branch": "live-restored",
+      "role": "student",
+      "mobileDark": true,
+      "photoBounded": true,
+      "selectionReviewDiscardNoUpload": true,
+      "confirmedVoiceOneMessage": true,
+      "temporaryUploadRemoved": true,
+      "changedChatRejected": true
+    },
+    {
+      "branch": "live-restored",
+      "role": "admin",
+      "mobileDark": true,
+      "photoBounded": true,
+      "selectionReviewDiscardNoUpload": true,
+      "confirmedVoiceOneMessage": true,
+      "temporaryUploadRemoved": true,
+      "changedChatRejected": true
+    },
+    {
+      "branch": "goddessvanessa",
+      "role": "student",
+      "mobileDark": true,
+      "photoBounded": true,
+      "selectionReviewDiscardNoUpload": true,
+      "confirmedVoiceOneMessage": true,
+      "temporaryUploadRemoved": true,
+      "changedChatRejected": true
+    },
+    {
+      "branch": "goddessvanessa",
+      "role": "admin",
+      "mobileDark": true,
+      "photoBounded": true,
+      "selectionReviewDiscardNoUpload": true,
+      "confirmedVoiceOneMessage": true,
+      "temporaryUploadRemoved": true,
+      "changedChatRejected": true
+    }
+  ],
+  "videos": [
+    {
+      "branch": "live-restored",
+      "role": "student",
+      "theme": "light",
+      "duration": 4,
+      "width": 1280,
+      "height": 720,
+      "bytes": 454923,
+      "color": "rgb(46, 32, 41)",
+      "bg": "rgb(255, 250, 253)",
+      "overflow": false,
+      "confirmedOneMessage": true,
+      "stagingRemoved": true,
+      "nativePlayPausePassed": true
+    },
+    {
+      "branch": "live-restored",
+      "role": "student",
+      "theme": "dark",
+      "duration": 4,
+      "width": 1280,
+      "height": 720,
+      "bytes": 480575,
+      "color": "rgb(255, 244, 250)",
+      "bg": "rgb(43, 28, 41)",
+      "overflow": false,
+      "confirmedOneMessage": true,
+      "stagingRemoved": true,
+      "nativePlayPausePassed": true
+    },
+    {
+      "branch": "live-restored",
+      "role": "admin",
+      "theme": "light",
+      "duration": 4,
+      "width": 1280,
+      "height": 720,
+      "bytes": 453491,
+      "color": "rgb(40, 25, 35)",
+      "bg": "rgb(255, 255, 255)",
+      "overflow": false,
+      "confirmedOneMessage": true,
+      "stagingRemoved": true,
+      "nativePlayPausePassed": true
+    },
+    {
+      "branch": "live-restored",
+      "role": "admin",
+      "theme": "dark",
+      "duration": 4,
+      "width": 1280,
+      "height": 720,
+      "bytes": 456745,
+      "color": "rgb(255, 243, 249)",
+      "bg": "rgb(40, 27, 37)",
+      "overflow": false,
+      "confirmedOneMessage": true,
+      "stagingRemoved": true,
+      "nativePlayPausePassed": true
+    },
+    {
+      "branch": "goddessvanessa",
+      "role": "student",
+      "theme": "light",
+      "duration": 4,
+      "width": 1280,
+      "height": 720,
+      "bytes": 451258,
+      "color": "rgb(46, 32, 41)",
+      "bg": "rgb(255, 250, 253)",
+      "overflow": false,
+      "confirmedOneMessage": true,
+      "stagingRemoved": true,
+      "nativePlayPausePassed": true
+    },
+    {
+      "branch": "goddessvanessa",
+      "role": "student",
+      "theme": "dark",
+      "duration": 4,
+      "width": 1280,
+      "height": 720,
+      "bytes": 450800,
+      "color": "rgb(255, 244, 250)",
+      "bg": "rgb(43, 28, 41)",
+      "overflow": false,
+      "confirmedOneMessage": true,
+      "stagingRemoved": true,
+      "nativePlayPausePassed": true
+    },
+    {
+      "branch": "goddessvanessa",
+      "role": "admin",
+      "theme": "light",
+      "duration": 4,
+      "width": 1280,
+      "height": 720,
+      "bytes": 453450,
+      "color": "rgb(40, 25, 35)",
+      "bg": "rgb(255, 255, 255)",
+      "overflow": false,
+      "confirmedOneMessage": true,
+      "stagingRemoved": true,
+      "nativePlayPausePassed": true
+    },
+    {
+      "branch": "goddessvanessa",
+      "role": "admin",
+      "theme": "dark",
+      "duration": 4,
+      "width": 1280,
+      "height": 720,
+      "bytes": 450504,
+      "color": "rgb(255, 243, 249)",
+      "bg": "rgb(40, 27, 37)",
+      "overflow": false,
+      "confirmedOneMessage": true,
+      "stagingRemoved": true,
+      "nativePlayPausePassed": true
+    }
+  ],
+  "recording": [
+    {
+      "branch": "live-restored",
+      "role": "student",
+      "recordedDraftNoUpload": true,
+      "discardNoUpload": true,
+      "duration": 0.96,
+      "size": 2030
+    },
+    {
+      "branch": "live-restored",
+      "role": "admin",
+      "recordedDraftNoUpload": true,
+      "discardNoUpload": true,
+      "duration": 0.66,
+      "size": 1392
+    },
+    {
+      "branch": "goddessvanessa",
+      "role": "student",
+      "recordedDraftNoUpload": true,
+      "discardNoUpload": true,
+      "duration": 0.72,
+      "size": 1563
+    },
+    {
+      "branch": "goddessvanessa",
+      "role": "admin",
+      "recordedDraftNoUpload": true,
+      "discardNoUpload": true,
+      "duration": 0.66,
+      "size": 1317
+    }
+  ],
+  "unsupportedBrowser": [
+    {
+      "branch": "live-restored",
+      "role": "student",
+      "unsupportedVideoBlocked": true,
+      "noOriginalBypass": true,
+      "noUpload": true,
+      "closeAndDiscardWork": true
+    },
+    {
+      "branch": "live-restored",
+      "role": "admin",
+      "unsupportedVideoBlocked": true,
+      "noOriginalBypass": true,
+      "noUpload": true,
+      "closeAndDiscardWork": true
+    },
+    {
+      "branch": "goddessvanessa",
+      "role": "student",
+      "unsupportedVideoBlocked": true,
+      "noOriginalBypass": true,
+      "noUpload": true,
+      "closeAndDiscardWork": true
+    },
+    {
+      "branch": "goddessvanessa",
+      "role": "admin",
+      "unsupportedVideoBlocked": true,
+      "noOriginalBypass": true,
+      "noUpload": true,
+      "closeAndDiscardWork": true
+    }
+  ],
+  "independentVideoDecoding": [
+    {
+      "fixture": "video-optimised-live-restored-admin-dark.mp4",
+      "decoded": true,
+      "audioPresent": true,
+      "audibleRmsDb": -21.09149
+    },
+    {
+      "fixture": "video-optimised-goddessvanessa-student-dark.mp4",
+      "decoded": true,
+      "audioPresent": true,
+      "audibleRmsDb": -21.137313
+    },
+    {
+      "fixture": "video-optimised-goddessvanessa-admin-dark.mp4",
+      "decoded": true,
+      "audioPresent": true,
+      "audibleRmsDb": -21.091838
+    },
+    {
+      "fixture": "video-optimised-live-restored-student-light.mp4",
+      "decoded": true,
+      "audioPresent": true,
+      "audibleRmsDb": -21.137313
+    },
+    {
+      "fixture": "video-optimised-live-restored-student-dark.mp4",
+      "decoded": true,
+      "audioPresent": true,
+      "audibleRmsDb": -21.153771
+    },
+    {
+      "fixture": "video-optimised-goddessvanessa-student-light.mp4",
+      "decoded": true,
+      "audioPresent": true,
+      "audibleRmsDb": -21.09149
+    },
+    {
+      "fixture": "video-optimised-live-restored-admin-light.mp4",
+      "decoded": true,
+      "audioPresent": true,
+      "audibleRmsDb": -21.127664
+    },
+    {
+      "fixture": "video-optimised-goddessvanessa-admin-light.mp4",
+      "decoded": true,
+      "audioPresent": true,
+      "audibleRmsDb": -21.137313
+    }
+  ],
+  "testScope": "Synthetic fixtures only; isolated local databases/private simulated storage; no customer/provider charges",
+  "videoPolicy": "Mandatory browser preparation; no original-video bypass; unsupported or >120-second videos remain unsent",
+  "photoPolicy": "1600px max edge and 80% encoder quality when export is smaller; animated originals preserved",
+  "voicePolicy": "32kbps requested recording bitrate, mono constraint, 5-minute recording cap",
+  "storage": "Private object storage; metadata only in Postgres; staged duplicates removed on completion retries",
+  "limits": "Browser hardware/codec support varies; compression can take clip duration; browser-only policy is UI enforcement, not cryptographic proof of re-encoding by arbitrary API clients."
+}

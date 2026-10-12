@@ -10,7 +10,7 @@ async function directMediaAPI(request,env,url){
   const row=await db(env).prepare('SELECT * FROM media_uploads WHERE id=?').bind(id).first();
   if(!row||row.actor!==actor)return json({error:'Upload not found. Choose the file again.'},404);
   const old=await db(env).prepare('SELECT * FROM media_files WHERE id=?').bind(id).first();
-  if(old)return json({file:mediaDescriptor(old)});
+  if(old){try{await env.BUCKET.deleteStaged(row.storage_key);}catch{console.error('staged_file_cleanup_pending');}return json({file:mediaDescriptor(old)});}
   if(row.expires_at<=Date.now())return json({error:'Upload expired. Choose the file again.'},410);
   const blob=await env.BUCKET.staged(row.storage_key);
   if(blob.size!==row.size)return json({error:'Uploaded size does not match. Choose the file again.'},400);
@@ -39,7 +39,7 @@ async function directMediaAPI(request,env,url){
  const previous=await db(env).prepare('SELECT * FROM media_uploads WHERE id=?').bind(id).first();
  if(previous){
   if(previous.actor!==actor||previous.user_id!==userId||previous.scope!==body.scope||previous.size!==body.size)return json({error:'Upload identifier conflict.'},409);
-  const file=await db(env).prepare('SELECT * FROM media_files WHERE id=?').bind(id).first();if(file)return json({file:mediaDescriptor(file)});
+  const file=await db(env).prepare('SELECT * FROM media_files WHERE id=?').bind(id).first();if(file){try{await env.BUCKET.deleteStaged(previous.storage_key);}catch{console.error('staged_file_cleanup_pending');}return json({file:mediaDescriptor(file)});}
   // Retry completion after a lost response, rather than allowing the upload token to be extended forever.
   if(previous.expires_at<=Date.now())return json({error:'Upload expired. Choose the file again.'},410);
   return json({id,completeOnly:true,uploadUrl:await env.BUCKET.signUpload(previous.storage_key)});

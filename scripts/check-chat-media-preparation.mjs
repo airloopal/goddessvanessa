@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';import {File} from 'node:buffer';
+const source=fs.readFileSync('public/chat-media.js','utf8');let dims,closed=0;
+const canvas={width:0,height:0,getContext:()=>({drawImage(){dims=[canvas.width,canvas.height];}}),toBlob:(fn,type)=>fn(new Blob([new Uint8Array(1000)],{type}))};
+const ctx=vm.createContext({File,Blob,Uint8Array,DOMException,window:{},HTMLCanvasElement:{prototype:{}},document:{createElement:()=>canvas},createImageBitmap:async()=>({width:4000,height:3000,close(){closed++;}}),URL,Image:class{},MediaRecorder:undefined});vm.runInContext(source.slice(source.indexOf('async function chatRecordingDuration'),source.indexOf('async function uploadPrivateFile')),ctx);
+const jpg=new File([new Uint8Array(50000)],'photo.jpg',{type:'image/jpeg'}),result=await ctx.prepareChatMedia(jpg);assert.equal(result.type,'image/jpeg');assert.deepEqual(dims,[1600,1200]);assert.equal(result.size,1000);assert.equal(closed,1);
+const animated=new File(['RIFFxxxxxxxxWEBP ANIM',new Uint8Array(50000)],'animated.webp',{type:'image/webp'});assert.equal(await ctx.prepareChatMedia(animated),animated);
+const small=new File([new Uint8Array(500)],'small.jpg',{type:'image/jpeg'});assert.equal(await ctx.prepareChatMedia(small),small,'Never enlarge the original');
+ctx.createImageBitmap=async()=>{throw Error('Invalid image');};assert.equal(await ctx.prepareChatMedia(jpg),jpg,'Decode failures retain original for server validation');
+const video=new File([new Uint8Array(2200000)],'clip.mp4',{type:'video/mp4'});await assert.rejects(ctx.prepareChatMedia(video),/cannot prepare videos/);
+await assert.rejects(ctx.prepareChatMedia(jpg,{signal:{aborted:true}}),e=>e.name==='AbortError');
+const media=fs.readFileSync('server/media.js','utf8'),bytes=vm.createContext({Uint8Array,MEDIA_MAX:50*1024*1024});vm.runInContext(media.slice(media.indexOf('async function mediaBytes'),media.indexOf('const mediaDisplayName')),bytes);
+function req(parts,length){let n=0,cancelled=false;return {headers:{get:()=>length},body:{getReader:()=>({read:async()=>n<parts.length?{value:new Uint8Array(parts[n++]),done:false}:{done:true},cancel:async()=>{cancelled=true;}})},get cancelled(){return cancelled;}};}
+const exact=req([[1,2],[3]],'3');assert.deepEqual([...await bytes.mediaBytes(exact)],[1,2,3]);const over=req([[1,2,3]],'2');await assert.rejects(bytes.mediaBytes(over),/size does not match/);assert.equal(over.cancelled,true);await assert.rejects(bytes.mediaBytes(req([[1]],'2')),/size does not match/);assert.deepEqual([...await bytes.mediaBytes(req([[1,2],[3]],null))],[1,2,3]);
+console.log('Media preparation passed: bounded dimensions, smaller-only export, animated preservation, codec/invalid-image fallback, aborts, closed bitmaps and exact-length bounded reads.');

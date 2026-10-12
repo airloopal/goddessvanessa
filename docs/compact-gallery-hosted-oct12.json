@@ -1,0 +1,12 @@
+{
+  "origin": "https://goddessvanessa-git-square-sandbox-system-admin.vercel.app",
+  "at": "2026-10-12T14:18:27.369Z",
+  "checks": [
+    "exact compact CSS",
+    "security headers",
+    "private gallery denied 403",
+    "private gallery denied 403",
+    "private gallery denied 403",
+    "separate payment mode, no private state"
+  ]
+}

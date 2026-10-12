@@ -1,0 +1,41 @@
+{
+  "origin": "https://goddessvanessa-git-square-sandbox-system-admin.vercel.app",
+  "checkedAt": "2026-10-12T12:32:33.165Z",
+  "checks": [
+    {
+      "path": "/api/media/prepare",
+      "status": 401,
+      "noStore": true
+    },
+    {
+      "path": "/api/media/prepare",
+      "status": 403,
+      "noStore": true
+    },
+    {
+      "path": "/api/media/prepare",
+      "status": 401,
+      "noStore": true
+    },
+    {
+      "path": "/api/media/complete",
+      "status": 401,
+      "noStore": true
+    },
+    {
+      "path": "/api/media/complete",
+      "status": 403,
+      "noStore": true
+    },
+    {
+      "path": "/api/media/upload?scope=chat&student=00000000-0000-4000-8000-000000000001",
+      "status": 410,
+      "noStore": true
+    },
+    {
+      "path": "/api/media/00000000-0000-4000-8000-000000000001",
+      "status": 401,
+      "noStore": true
+    }
+  ]
+}

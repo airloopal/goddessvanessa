@@ -1,0 +1,11 @@
+{
+  "origin": "https://houseofvanessa.com",
+  "checkedAt": "2026-10-12T12:58:06.120Z",
+  "exactButtonAsset": true,
+  "assetSHA256": "41324ee97f4cb516b296544dcb57f9a4a817e70a15e7131007c10f15bd09cc55",
+  "finalSendVideo": true,
+  "separatePrivatePreparation": true,
+  "securityHeaders": true,
+  "paymentMode": "production",
+  "privatePaymentStateAbsent": true
+}

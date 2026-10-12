@@ -1,0 +1,30 @@
+{
+  "origin": "https://goddessvanessa-git-square-sandbox-system-admin.vercel.app",
+  "checkedAt": "2026-10-12T13:54:30.992Z",
+  "checks": [
+    {
+      "path": "/api/chat/gallery",
+      "privateDenied": 403,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/gallery",
+      "privateDenied": 403,
+      "noStore": true
+    },
+    {
+      "path": "/api/chat/gallery",
+      "privateDenied": 403,
+      "noStore": true
+    },
+    {
+      "bothDropdowns": true,
+      "adminDotsOnly": true
+    },
+    {
+      "sharedCarousel": true,
+      "keyboardAndSwipe": true,
+      "responsiveClose": true
+    }
+  ]
+}

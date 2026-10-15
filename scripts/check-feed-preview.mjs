@@ -9,3 +9,5 @@ ui.photos({querySelectorAll:s=>s==='[data-feed-video]'?[video]:[]});handlers.loa
 console.log('Feed previews passed: private/blob origin restrictions, ordered photo/video carousel, native paused controls, generated bounded video poster and cleanup; no uploads or customer media.');
 
 assert.ok(fs.readFileSync('public/goddess-navigation.js','utf8').includes("el.closest('.feed-visual,.feed-gallery,.feed-editor-preview')"));assert.ok(fs.readFileSync('public/visual.js','utf8').includes('#signature-preview,.feed-visual,.feed-gallery,.feed-editor-preview'));
+
+assert.ok(fs.readFileSync('server/worker.js','utf8').includes("img-src 'self' data: blob: https:;"));

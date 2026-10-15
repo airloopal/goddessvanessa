@@ -32,3 +32,19 @@ adminDoc.activeElement=null;adminViewport.height=844;adminViewport.offsetTop=0;a
 // A floating island also reserves its safe-area/bottom gap.
 adminDoc.getElementById=id=>id==='dashboard-nav'?{getBoundingClientRect:()=>({height:74,top:744})}:adminLog;adminEvents.resize();assert.equal(adminStyles['--mobile-chat-height'],'664px','Composer stops above the island, including its bottom gap');
 console.log('Admin viewport checks passed: keyboard offset, resized layout viewport, history retention and keyboard dismissal.');
+
+// Mobile focus fallback covers native keyboards that resize both viewports.
+context.window.matchMedia=()=>({matches:true});viewport.scale=1;viewport.height=620;context.window.innerHeight=620;context.document.activeElement={id:'client-message'};let subRaised=false;host.classList.toggle=(k,v)=>subRaised=v;listeners.resize();assert.equal(subRaised,true,'Tall resized mobile keyboard hides Sub navigation');context.document.activeElement=null;listeners.resize();assert.equal(subRaised,false);
+adminContext.window.matchMedia=()=>({matches:true});adminContext.innerHeight=620;adminViewport.height=620;adminDoc.activeElement={matches:()=>true};adminEvents.focusin();assert.equal(adminClasses['admin-keyboard-open'],true,'Tall resized mobile keyboard hides Admin navigation');assert.equal(adminStyles['--mobile-chat-height'],'620px');adminDoc.activeElement=null;adminEvents.focusout();assert.equal(adminClasses['admin-keyboard-open'],false);
+adminContext.window.matchMedia=()=>({matches:false});adminContext.innerHeight=900;adminViewport.height=900;adminDoc.activeElement={matches:()=>true};adminEvents.focusin();assert.equal(adminClasses['admin-keyboard-open'],false,'Desktop typing keeps navigation');
+const events={},capture={},inside={},outside={};let adminFocus=0,subFocus=0,expanded='true';
+const menu={open:true,contains:t=>t===inside,querySelector:()=>({focus:()=>adminFocus++})},options={hidden:false},toggle={closest:()=>({contains:t=>t===inside}),setAttribute:(k,v)=>expanded=v,focus:()=>subFocus++};
+const menuDoc={querySelectorAll:()=>menu.open?[menu]:[],getElementById:id=>id==='account-options'?options:toggle,addEventListener:(n,f,c)=>{events[n]=f;capture[n]=c;}};
+const refinement=fs.readFileSync('public/chat-refinements.js','utf8');vm.runInNewContext(refinement.slice(refinement.indexOf('// Dismiss chat action menus')), {document:menuDoc});
+events.pointerdown({target:inside});assert.equal(menu.open,true);assert.equal(options.hidden,false);assert.equal(capture.pointerdown,true);
+events.pointerdown({target:outside});assert.equal(menu.open,false);assert.equal(options.hidden,true);assert.equal(expanded,'false');
+menu.open=true;options.hidden=false;events.click({target:outside});assert.equal(menu.open,false);assert.equal(options.hidden,true);
+menu.open=true;options.hidden=false;events.focusin({target:outside});assert.equal(menu.open,false);assert.equal(options.hidden,true);
+menu.open=true;options.hidden=false;events.keydown({key:'Escape',target:inside});assert.equal(menu.open,false);assert.equal(options.hidden,true);assert.equal(adminFocus,1);assert.equal(subFocus,1);
+const plansHTML=fs.readFileSync('public/plans.html','utf8');assert.match(plansHTML, /id="member-theme"[\s\S]*Sub Login<\/a><\/div><\/header>/);assert.equal((plansHTML.match(/Sub Login/g)||[]).length,1);assert.ok(!fs.readFileSync('public/member-plans.js','utf8').includes('>Sub Login</a>'));
+console.log('15 October chat UI passed: mobile focus/resized keyboard dismissal, desktop navigation retention, both menus outside pointer/click/focus and Escape, and header-only Sub Login. No network or account action.');

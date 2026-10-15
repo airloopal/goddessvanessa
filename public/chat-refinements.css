@@ -75,3 +75,8 @@ body:is(.dashboard,.chat-view) .chat-media-gallery{--gallery-bg:var(--dash-panel
 /* Audio gallery cards fit the waveform player instead of the photo/video canvas. */
 .gallery-stage:has(>.voice-note){height:auto;min-height:0;padding:18px 12px;box-sizing:border-box}
 .gallery-stage>.voice-note{width:100%;max-width:560px}
+
+/* Reclaim the navigation island while composing with a mobile keyboard. */
+body.dashboard.admin-keyboard-open #dashboard-nav,
+body.chat-view #client-chat.keyboard-open>.sub-nav{display:none!important}
+body.chat-view #client-chat.keyboard-open .chat-shell{height:100%!important}

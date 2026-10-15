@@ -1,0 +1,168 @@
+[
+  {
+    "env": "Live",
+    "check": "feed.js",
+    "pass": true
+  },
+  {
+    "env": "Live",
+    "check": "admin-feed.js",
+    "pass": true
+  },
+  {
+    "env": "Live",
+    "check": "feed.css",
+    "pass": true
+  },
+  {
+    "env": "Live",
+    "check": "goddess-navigation.js",
+    "pass": true
+  },
+  {
+    "env": "Live",
+    "check": "visual.js",
+    "pass": true
+  },
+  {
+    "env": "Live",
+    "check": "/feed.html headers",
+    "pass": true
+  },
+  {
+    "env": "Live",
+    "check": "/dashboard.html headers",
+    "pass": true
+  },
+  {
+    "env": "Live",
+    "check": "GET /api/feed/posts",
+    "status": 401,
+    "pass": true
+  },
+  {
+    "env": "Live",
+    "check": "POST /api/feed/posts",
+    "status": 401,
+    "pass": true
+  },
+  {
+    "env": "Live",
+    "check": "GET /api/media/11111111-1111-4111-8111-111111111111",
+    "status": 401,
+    "pass": true
+  },
+  {
+    "env": "Live",
+    "check": "POST /api/media/prepare",
+    "status": 401,
+    "pass": true
+  },
+  {
+    "env": "Live",
+    "check": "POST /api/feed/donate/prepare",
+    "status": 401,
+    "pass": true
+  },
+  {
+    "env": "Live",
+    "check": "GET /api/cron/notifications",
+    "status": 401,
+    "pass": true
+  },
+  {
+    "env": "Live",
+    "check": "GET /api/chat/email-previews",
+    "status": 403,
+    "pass": true
+  },
+  {
+    "env": "Live",
+    "check": "POST /api/chat/email-test",
+    "status": 403,
+    "pass": true
+  },
+  {
+    "env": "Sandbox",
+    "check": "feed.js",
+    "pass": true
+  },
+  {
+    "env": "Sandbox",
+    "check": "admin-feed.js",
+    "pass": true
+  },
+  {
+    "env": "Sandbox",
+    "check": "feed.css",
+    "pass": true
+  },
+  {
+    "env": "Sandbox",
+    "check": "goddess-navigation.js",
+    "pass": true
+  },
+  {
+    "env": "Sandbox",
+    "check": "visual.js",
+    "pass": true
+  },
+  {
+    "env": "Sandbox",
+    "check": "/feed.html headers",
+    "pass": true
+  },
+  {
+    "env": "Sandbox",
+    "check": "/dashboard.html headers",
+    "pass": true
+  },
+  {
+    "env": "Sandbox",
+    "check": "GET /api/feed/posts",
+    "status": 401,
+    "pass": true
+  },
+  {
+    "env": "Sandbox",
+    "check": "POST /api/feed/posts",
+    "status": 401,
+    "pass": true
+  },
+  {
+    "env": "Sandbox",
+    "check": "GET /api/media/11111111-1111-4111-8111-111111111111",
+    "status": 401,
+    "pass": true
+  },
+  {
+    "env": "Sandbox",
+    "check": "POST /api/media/prepare",
+    "status": 401,
+    "pass": true
+  },
+  {
+    "env": "Sandbox",
+    "check": "POST /api/feed/donate/prepare",
+    "status": 401,
+    "pass": true
+  },
+  {
+    "env": "Sandbox",
+    "check": "GET /api/cron/notifications",
+    "status": 401,
+    "pass": true
+  },
+  {
+    "env": "Sandbox",
+    "check": "GET /api/chat/email-previews",
+    "status": 403,
+    "pass": true
+  },
+  {
+    "env": "Sandbox",
+    "check": "POST /api/chat/email-test",
+    "status": 403,
+    "pass": true
+  }
+]

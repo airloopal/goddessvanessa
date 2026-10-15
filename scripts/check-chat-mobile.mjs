@@ -51,3 +51,5 @@ console.log('15 October chat UI passed: mobile focus/resized keyboard dismissal,
 
 // Composer compactness follows local form/panel focus, never the other party's typing.
 const overflowSource=fs.readFileSync('public/chat-refinements.js','utf8'),overflowContext=vm.createContext({document:{activeElement:null}});vm.runInContext(overflowSource.slice(overflowSource.indexOf('function composerOverflowCompact'),overflowSource.indexOf('(()=>{',overflowSource.indexOf('function composerOverflowCompact'))),overflowContext);const inputFocus={},toolFocus={},elsewhere={};const fakeForm={contains:x=>x===inputFocus},fakePanel={contains:x=>x===toolFocus};for(const [target,want]of [[null,false],[inputFocus,true],[toolFocus,true],[elsewhere,false]]){overflowContext.document.activeElement=target;assert.equal(overflowContext.composerOverflowCompact(fakeForm,fakePanel),want);}console.log('Composer focus checks passed: own typing/tools compact; outside focus restores full attachment row.');
+
+await import('./check-platform-motion.mjs');

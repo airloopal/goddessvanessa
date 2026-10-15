@@ -47,6 +47,29 @@ window.UIActivityNotifications=(()=>{
  return {poll,open,active:true};
 })();
 
+
+// Compact attachment tools while composing; existing controls and handlers are moved, never cloned.
+function composerOverflowCompact(form,panel){const active=document.activeElement;return form.contains(active)||panel.contains(active);}
+(()=>{
+ if(typeof MutationObserver==='undefined')return;
+ const states=new Map(),selector='#client-composer,#admin-form,#floating-form';
+ function update(s){const compact=s.open||composerOverflowCompact(s.form,s.panel);s.form.parentElement.classList.toggle('composer-tools-compact',compact);s.toggle.hidden=!compact;s.toggle.setAttribute('aria-expanded',String(s.open));s.icons.classList.toggle('is-open',s.open);}
+ function scan(){
+  for(const [form,s]of states)if(!form.isConnected){states.delete(form);}
+  document.querySelectorAll(selector).forEach(form=>{
+   const panel=form.parentElement.querySelector('.chat-attachment-controls'),send=form.querySelector('button[type="submit"],button:not([type])');if(!panel||!send)return;
+   let s=states.get(form);if(!s){const icons=document.createElement('div'),toggle=document.createElement('button');icons.className='composer-overflow-icons';icons.id='composer-tools-'+form.id;icons.setAttribute('role','group');icons.setAttribute('aria-label','Message attachments and tools');toggle.type='button';toggle.className='quiet composer-overflow-toggle';toggle.hidden=true;toggle.setAttribute('aria-label','Message tools');toggle.setAttribute('aria-controls',icons.id);toggle.setAttribute('aria-expanded','false');toggle.innerHTML='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>';panel.prepend(icons);form.insertBefore(toggle,send);s={form,panel,icons,toggle,open:false};states.set(form,s);toggle.onclick=()=>{s.open=!s.open;update(s);};toggle.addEventListener('pointerdown',e=>e.preventDefault());}
+   for(const child of [...panel.children])if(child!==s.icons&&child.matches('.composer-request-tools,[data-pick],[data-record],[data-emoji-toggle]'))s.icons.append(child);
+   update(s);
+  });
+ }
+ let queued=false;function schedule(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;scan();});}
+ document.addEventListener('focusin',schedule);document.addEventListener('focusout',schedule);
+ document.addEventListener('pointerdown',e=>{for(const s of states.values())if(s.open&&!s.icons.contains(e.target)&&!s.toggle.contains(e.target)){s.open=false;update(s);}},true);
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')for(const s of states.values())if(s.open){s.open=false;update(s);s.toggle.focus();e.preventDefault();e.stopImmediatePropagation();}},true);
+ new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});scan();
+})();
+
 // Dismiss chat action menus on touch/pointer outside, keyboard focus outside and Escape.
 (()=>{
  function dismiss(target,escape=false){

@@ -11,6 +11,7 @@
  if(el.matches('a[target="_blank"],.status-links a'))return 'external';return null;
  }
  function decorate(){document.querySelectorAll('#dashboard-nav a,#dashboard-nav button,.dashboard-links a,.dashboard-links button,#dashboard-main button,#dashboard-main .quiet,#dashboard-main .p-button,#status-main a,#status-main button,dialog button,#floating-chat-toggle,#floating-chat button').forEach(el=>{
+ if(el.closest('.feed-visual,.feed-gallery,.feed-editor-preview'))return;
  if(el.matches('.crucial-notification,.emoji-picker button,[data-student],.floating-conversation-row,.background-preset,[data-chat-media-url],.voice-note-play,.voice-note-download,.media-download-icon')||el.closest('.crucial-notification'))return;
  const k=key(el);if(!k)return;const existing=el.querySelector('svg');if(existing?.dataset.adminIcon===k)return;
  for(const n of el.childNodes)if(n.nodeType===3&&el.textContent.trim().length>1)n.textContent=n.textContent.replace(/[↗←→↑↓]/g,'');

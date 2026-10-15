@@ -213,8 +213,13 @@ async function squareEmbedded(request,env,url,body,key,r){
   if(body.useSavedCard!==undefined&&typeof body.useSavedCard!=='boolean'||body.savedCardId!==undefined&&body.useSavedCard!==true)return json({error:'Choose a valid card option.'},400);
   if(body.saveCard!==undefined&&typeof body.saveCard!=='boolean')return json({error:'Choose whether to save this card.'},400);
   let saved=null;if(body.useSavedCard===true){if(r.stage!=='renewal'||body.saveCard===true)return json({error:'Choose a valid card option.'},400);saved=await squareSavedCard(env,r.user);if(!saved||saved.cardId!==body.savedCardId)return json({error:'This saved card is unavailable. Choose another card.',retryCard:true},402);const {card}=await squareCall(env,'cards/'+encodeURIComponent(saved.cardId));if(!card?.enabled||card.customer_id!==saved.customerId||card.id!==saved.cardId)return json({error:'This saved card is unavailable. Choose another card.',retryCard:true},402);}
-  if(typeof body.sourceId!=='string'||!body.sourceId.startsWith('cnon:')||body.sourceId.length>1024)return json({error:'Enter your card in the secure payment form.'},400);
-  const attempt={id:body.attemptId,request:{source_id:body.sourceId,idempotency_key:crypto.randomUUID(),amount_money:{amount:r.plan.amount,currency:'GBP'},location_id:env.SQUARE_LOCATION_ID,order_id:r.orderId,reference_id:key,autocomplete:true,...(saved?{customer_id:saved.customerId}: {})}};
+  let sourceId=body.sourceId,verificationToken=null;
+  // Square's saved-card SDK returns cardId#verificationToken. Bind both to this account's exact card.
+  if(saved&&typeof sourceId==='string'&&sourceId.startsWith('ccof:')){
+   const parts=sourceId.split('#');if(parts.length!==2||parts[0]!==saved.cardId||!/^verf:[A-Za-z0-9_-]{1,1000}$/.test(parts[1]))return json({error:'Please verify your saved card again or choose another card.',retryCard:true},402);
+   sourceId=parts[0];verificationToken=parts[1];
+  }else if(typeof sourceId!=='string'||!sourceId.startsWith('cnon:')||sourceId.length>1024)return json({error:'Enter your card in the secure payment form.'},400);
+  const attempt={id:body.attemptId,request:{source_id:sourceId,idempotency_key:crypto.randomUUID(),amount_money:{amount:r.plan.amount,currency:'GBP'},location_id:env.SQUARE_LOCATION_ID,order_id:r.orderId,reference_id:key,autocomplete:true,...(saved?{customer_id:saved.customerId,customer_details:{customer_initiated:true,seller_keyed_in:false},...(verificationToken?{verification_token:verificationToken}:{})}: {})}};
   await squareWrite(env,key,{...r,cardAttempt:attempt,cardStorage:body.saveCard===true&&squareSavedCardsEnabled(env)?{consentAt:new Date().toISOString(),state:'pending',copyVersion:'save-card-v1'}:null},r._revision);r=await squareRecord(env,key);
  }
  if(r.method!=='embedded'||!r.cardAttempt||r.cardAttempt.id!==body.attemptId)return json({error:'Another payment is being checked. Refresh its status before trying again.'},409);

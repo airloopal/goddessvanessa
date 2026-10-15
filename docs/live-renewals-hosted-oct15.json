@@ -1,0 +1,128 @@
+{
+  "origin": "https://houseofvanessa.com",
+  "commit": "6ca44301b54b88bb8322b3904b4fc70dfa4cc0bc",
+  "at": "2026-10-15T10:20:12.755Z",
+  "checks": [
+    {
+      "asset": "/member-plans.js",
+      "exact": true
+    },
+    {
+      "asset": "/member-plans.css",
+      "exact": true
+    },
+    {
+      "asset": "/admin-email.js",
+      "exact": true
+    },
+    {
+      "asset": "/student-account.js",
+      "exact": true
+    },
+    {
+      "asset": "/square-payments.js",
+      "exact": true
+    },
+    {
+      "asset": "/square-ui.js",
+      "exact": true
+    },
+    {
+      "asset": "/square-ui.css",
+      "exact": true
+    },
+    {
+      "asset": "/education-access.js",
+      "exact": true
+    },
+    {
+      "asset": "/feed.html",
+      "exact": true
+    },
+    {
+      "plansPage": true,
+      "privateNoStore": true,
+      "bankVerificationCSP": true
+    },
+    {
+      "path": "/api/member/plans",
+      "forged": false,
+      "denied": 401
+    },
+    {
+      "path": "/api/member/plans",
+      "forged": true,
+      "denied": 401
+    },
+    {
+      "path": "/api/member/prepare",
+      "forged": false,
+      "denied": 401
+    },
+    {
+      "path": "/api/member/prepare",
+      "forged": true,
+      "denied": 401
+    },
+    {
+      "path": "/api/member/charge",
+      "forged": false,
+      "denied": 401
+    },
+    {
+      "path": "/api/member/charge",
+      "forged": true,
+      "denied": 401
+    },
+    {
+      "path": "/api/member/cancel",
+      "forged": false,
+      "denied": 401
+    },
+    {
+      "path": "/api/member/cancel",
+      "forged": true,
+      "denied": 401
+    },
+    {
+      "path": "/api/chat/email-test",
+      "forged": false,
+      "denied": 403
+    },
+    {
+      "path": "/api/chat/email-test",
+      "forged": true,
+      "denied": 403
+    },
+    {
+      "path": "/api/member/card/remove",
+      "forged": false,
+      "denied": 401
+    },
+    {
+      "path": "/api/member/card/remove",
+      "forged": true,
+      "denied": 401
+    },
+    {
+      "controlledEmailUIAbsent": true
+    },
+    {
+      "liveMode": "production",
+      "savedCardsEnabled": true,
+      "paymentsReady": true
+    },
+    {
+      "sandboxModeUnchanged": true,
+      "sandboxEmailTestUIIntact": true
+    },
+    {
+      "path": "/support-payment.html",
+      "privateHeaders": true
+    },
+    {
+      "path": "/contract-invitation.html",
+      "privateHeaders": true
+    }
+  ]
+}

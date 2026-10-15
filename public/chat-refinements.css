@@ -80,3 +80,18 @@ body:is(.dashboard,.chat-view) .chat-media-gallery{--gallery-bg:var(--dash-panel
 body.dashboard.admin-keyboard-open #dashboard-nav,
 body.chat-view #client-chat.keyboard-open>.sub-nav{display:none!important}
 body.chat-view #client-chat.keyboard-open .chat-shell{height:100%!important}
+
+/* Attachment row folds into a composer-side button while typing on every screen. */
+.composer-overflow-icons{display:contents}
+.chat-composer .composer-overflow-toggle[hidden]{display:none!important}
+.chat-composer .composer-overflow-toggle{display:grid;place-items:center;flex:0 0 40px;width:40px;height:44px;min-width:40px;min-height:44px;padding:9px!important;margin:0!important;border-radius:50%;background:var(--chat-input,var(--dash-surface));color:var(--chat-ink,var(--dash-ink));border:1px solid var(--chat-border,var(--dash-border));cursor:pointer;animation:composer-tools-in .16s ease-out}
+.composer-overflow-toggle svg{width:22px;height:22px;margin:0!important;fill:currentColor;stroke:none}
+:is(.admin-chat-bottom,.chat-compose-area,#floating-form){position:relative}
+.composer-tools-compact .chat-attachment-controls{min-height:0!important;padding-top:0!important;padding-bottom:0!important}
+.composer-tools-compact .composer-overflow-icons{display:none}
+.composer-tools-compact .composer-overflow-icons.is-open{position:absolute;display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:8px;right:10px;bottom:calc(100% + 8px);z-index:45;max-width:calc(100% - 20px);box-sizing:border-box;padding:12px;border:1px solid var(--chat-border,var(--dash-border));border-radius:20px;background:var(--chat-panel,var(--dash-panel));color:var(--chat-ink,var(--dash-ink));box-shadow:0 8px 24px #10071145;animation:composer-tools-in .16s ease-out}
+.composer-tools-compact .composer-overflow-icons .composer-request-tools{display:contents!important}
+.composer-tools-compact:has(.composer-overflow-icons.is-open){overflow:visible!important}
+.composer-tools-compact .chat-attachment-controls .attachment-status:empty{display:none}
+@keyframes composer-tools-in{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.chat-composer .composer-overflow-toggle,.composer-tools-compact .composer-overflow-icons.is-open{animation:none}}

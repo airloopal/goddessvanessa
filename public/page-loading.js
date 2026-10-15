@@ -1,6 +1,10 @@
 'use strict';
 (()=>{
- if(new URLSearchParams(location.search).has('visual')||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)return;
- const style=document.createElement('style');style.textContent=`body.page-arriving :is(main h1,main h2,main p,.expectation-card,.stat-card,.access-card h1,.inspector .helper){animation:page-piece-in .45s ease-out both}body.page-arriving :is(main h1,main h2,main p){position:relative}body.page-arriving :is(main h1,main h2,main p)::after{content:'';position:absolute;inset:0;border-radius:8px;background:linear-gradient(100deg,#eee7ec,#f7e0eb,#fffafc);background-size:200% 100%;pointer-events:none;animation:page-shimmer-away .45s ease-out forwards}@keyframes page-piece-in{from{opacity:.4;transform:translateY(3px)}to{opacity:1;transform:none}}@keyframes page-shimmer-away{0%,35%{opacity:1;background-position:100% 0}100%{opacity:0;background-position:-100% 0}}@media(prefers-reduced-motion:reduce){body.page-arriving *{animation:none!important}body.page-arriving *::after{display:none!important}}`;
- document.head.append(style);document.body.classList.add('page-arriving');setTimeout(()=>{document.body.classList.remove('page-arriving');style.remove();},500);
+ const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)');
+ if(new URLSearchParams(location.search).has('visual')||reduced?.matches)return;
+ // Reveal content without covering it, blocking controls or waiting for a fake loader.
+ document.body.classList.add('page-arriving');
+ const style=document.createElement('style');style.textContent='body.page-arriving :is(.expectation-card,.stat-card,.access-card){animation:vanessa-content-in .22s ease-out}@media(prefers-reduced-motion:reduce){body.page-arriving *{animation:none!important}}';document.head.append(style);
+ setTimeout(()=>{document.body.classList.remove('page-arriving');style.remove();},240);
+ document.addEventListener('load',event=>{const image=event.target;if(reduced?.matches||!(image instanceof HTMLImageElement)||!image.matches('.feed-visual img,.gallery-stage>img,.sub-profile-avatar img'))return;image.classList.add('motion-image-ready');image.addEventListener('animationend',()=>image.classList.remove('motion-image-ready'),{once:true});},true);
 })();

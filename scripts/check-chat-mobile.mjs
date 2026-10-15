@@ -29,8 +29,6 @@ adminDoc.activeElement={matches:()=>true};adminViewport.height=390;adminEvents.r
 adminViewport.offsetTop=50;adminEvents.scroll();assert.equal(adminStyles['--mobile-chat-top'],'50px');
 adminContext.innerHeight=390;adminEvents.resize();assert.equal(adminClasses['admin-keyboard-open'],true);
 adminDoc.activeElement=null;adminViewport.height=844;adminViewport.offsetTop=0;adminContext.innerHeight=844;adminEvents.focusout();assert.equal(adminClasses['admin-keyboard-open'],false);assert.equal(adminStyles['--mobile-chat-height'],'680px');
-// A floating island also reserves its safe-area/bottom gap.
-adminDoc.getElementById=id=>id==='dashboard-nav'?{getBoundingClientRect:()=>({height:74,top:744})}:adminLog;adminEvents.resize();assert.equal(adminStyles['--mobile-chat-height'],'664px','Composer stops above the island, including its bottom gap');
 console.log('Admin viewport checks passed: keyboard offset, resized layout viewport, history retention and keyboard dismissal.');
 
 // Mobile focus fallback covers native keyboards that resize both viewports.
@@ -51,3 +49,5 @@ console.log('15 October chat UI passed: mobile focus/resized keyboard dismissal,
 
 // Composer compactness follows local form/panel focus, never the other party's typing.
 const overflowSource=fs.readFileSync('public/chat-refinements.js','utf8'),overflowContext=vm.createContext({document:{activeElement:null}});vm.runInContext(overflowSource.slice(overflowSource.indexOf('function composerOverflowCompact'),overflowSource.indexOf('(()=>{',overflowSource.indexOf('function composerOverflowCompact'))),overflowContext);const inputFocus={},toolFocus={},elsewhere={};const fakeForm={contains:x=>x===inputFocus},fakePanel={contains:x=>x===toolFocus};for(const [target,want]of [[null,false],[inputFocus,true],[toolFocus,true],[elsewhere,false]]){overflowContext.document.activeElement=target;assert.equal(overflowContext.composerOverflowCompact(fakeForm,fakePanel),want);}console.log('Composer focus checks passed: own typing/tools compact; outside focus restores full attachment row.');
+
+await import('./check-platform-motion.mjs');

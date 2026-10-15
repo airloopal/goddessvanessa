@@ -1,0 +1,30 @@
+/* Shared motion: opacity and color only; never animate layout, focus or payment state. */
+:root{--motion-fast:160ms;--motion-surface:220ms;--motion-ease:cubic-bezier(.2,.7,.2,1)}
+:where(button,.quiet,.p-button,input,textarea,select){transition:background-color var(--motion-fast) ease,border-color var(--motion-fast) ease,color var(--motion-fast) ease,box-shadow var(--motion-fast) ease}
+body:not(.dashboard):not(.chat-view)>main,.dash-title,.feed-intro{animation:vanessa-content-in var(--motion-surface) var(--motion-ease)}
+dialog:not(#work-cover):not(.shop-panel)[open]{animation:vanessa-surface-in var(--motion-surface) var(--motion-ease)}
+dialog:not(#work-cover):not(.shop-panel)::backdrop{animation:vanessa-surface-in var(--motion-fast) ease}
+:is(#goddess-account-panel,#account-options,#sub-home-menu,#feed-account-options,#application-faq-panel,.emoji-picker,[role=menu]):not([hidden]),details.conversation-actions-menu[open]>div,.composer-overflow-icons.is-open{animation:vanessa-surface-in var(--motion-fast) var(--motion-ease)}
+:is(.chat-skeleton,.step-skeleton) i{background-image:linear-gradient(100deg,var(--sub-soft,var(--dash-icon-bg,#eee7ec)) 25%,var(--sub-panel,var(--dash-panel,#fffafd)) 45%,var(--sub-soft,var(--dash-icon-bg,#eee7ec)) 65%)}
+.motion-image-ready{animation:vanessa-surface-in var(--motion-surface) ease}
+@keyframes vanessa-content-in{from{opacity:.75}to{opacity:1}}
+@keyframes vanessa-surface-in{from{opacity:0}to{opacity:1}}
+/* Keep semantic hidden/closed state immediate; modern browsers may fade the pixels out. */
+@supports(transition-behavior:allow-discrete){
+ dialog:not(#work-cover):not(.shop-panel){opacity:0;transition:opacity var(--motion-fast) ease,display var(--motion-fast) allow-discrete,overlay var(--motion-fast) allow-discrete}
+ dialog:not(#work-cover):not(.shop-panel)[open]{opacity:1;animation:none}
+ dialog:not(#work-cover):not(.shop-panel)::backdrop{opacity:0;transition:opacity var(--motion-fast) ease,display var(--motion-fast) allow-discrete,overlay var(--motion-fast) allow-discrete}
+ dialog:not(#work-cover):not(.shop-panel)[open]::backdrop{opacity:1;animation:none}
+ :is(#goddess-account-panel,#account-options,#sub-home-menu,#feed-account-options,#application-faq-panel,.emoji-picker,[role=menu]){opacity:1;transition:opacity var(--motion-fast) ease,display var(--motion-fast) allow-discrete}
+ :is(#goddess-account-panel,#account-options,#sub-home-menu,#feed-account-options,#application-faq-panel,.emoji-picker,[role=menu])[hidden]{opacity:0}
+ @starting-style{
+  dialog:not(#work-cover):not(.shop-panel)[open],dialog:not(#work-cover):not(.shop-panel)[open]::backdrop,:is(#goddess-account-panel,#account-options,#sub-home-menu,#feed-account-options,#application-faq-panel,.emoji-picker,[role=menu]):not([hidden]){opacity:0}
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ :root{--motion-fast:0s;--motion-surface:0s}
+ body:not(.dashboard):not(.chat-view)>main,.dash-title,.feed-intro,dialog:not(#work-cover):not(.shop-panel),dialog:not(#work-cover):not(.shop-panel)::backdrop,:is(#goddess-account-panel,#account-options,#sub-home-menu,#feed-account-options,#application-faq-panel,.emoji-picker,[role=menu]),details.conversation-actions-menu>div,.composer-overflow-icons.is-open,.motion-image-ready{animation:none!important;transition:none!important}
+}
+
+/* Closed controls cannot receive pointer actions during a visual exit. */
+dialog:not([open]),:is(#goddess-account-panel,#account-options,#sub-home-menu,#feed-account-options,#application-faq-panel,.emoji-picker,[role=menu])[hidden]{pointer-events:none}

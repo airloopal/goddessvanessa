@@ -735,3 +735,5 @@ Status: pre-release verification passed; hosted acceptance recorded in the follo
 
 
 Feed release follow-up: deployed header inspection found that img-src omitted blob:, preventing selected local photo previews and generated JPEG video posters. Added blob: only to img-src in both existing CSP variants; script, network, framing and private media authorization policies are unchanged. Both security suites, preview tests and builds re-passed after this adjustment. Runtime carousel commits: Live ecf3b85d98bd1e5a73afbd08c57ee79c6eeefcc6; Sandbox c66b176e28f26b3266ab0d992bef87b553995047. Final hosted acceptance follows after policy rollout.
+
+Hosting acceptance follow-up: Vercel serves static pages with its own header rules, so worker policy alone was insufficient. Synced only Feed and Dashboard img-src blob permission in vercel.json; all other host configuration, application/plan CSP rules, scripts, payment origins and environment values are byte-equivalent after normalizing those two header changes. Added regression checks for both CDN rules. Preview tests and builds re-passed; final 30-check hosted report is recorded below after rollout.

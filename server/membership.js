@@ -1,0 +1,91 @@
+// Billing-only capability permits renewal after expiry; it never authorizes chat/media.
+const memberCheckoutEnabled=env=>env.MEMBER_CHECKOUT_ENABLED==='true'&&['sandbox','production'].includes(squareMode(env));
+const billingCookie=(token,age)=>'__Host-vanessa_billing='+token+'; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age='+age;
+async function billingAccount(request,env){const active=await chatStudent(request,env);if(active)return active;const token=request.headers.get('cookie')?.match(/(?:^|;\s*)__Host-vanessa_billing=([a-f0-9]{48})(?:;|$)/)?.[1];if(!token)return null;const row=await squareRecord(env,'billing:'+await chatHash(token));if(!row||row.expires<=Date.now())return null;const student=await db(env).prepare("SELECT * FROM chat_students WHERE id=? AND status='active'").bind(row.studentId).first();if(!student||student.code_hash!==row.codeHash)return null;const life=await accountRecord(env,student.id);return life.until>Date.now()||['pending','approved','deleting','deleted'].includes(life.deletion)?null:student;}
+async function billingIssue(env,student){const token=chatToken(),now=Date.now();await db(env).prepare('INSERT INTO prototype_settings(id,content,revision,updated_at) VALUES(?,?,1,?)').bind('billing:'+await chatHash(token),JSON.stringify({studentId:student.id,codeHash:student.code_hash,expires:now+86400000}),new Date(now).toISOString()).run();return billingCookie(token,86400);}
+async function membershipState(env,s){const {config,revision}=await educationConfig(env),{entry,contract}=await squarePaymentState(env,s.user_id);const rows=await db(env).prepare("SELECT id,content FROM prototype_settings WHERE id LIKE ? AND content::jsonb->>'user'=? AND content::jsonb->>'stage'='renewal' ORDER BY updated_at DESC LIMIT 1").bind('sq-'+squareMode(env)+'-r-%',s.user_id).all();const gate=await squareRecord(env,'member-pending:'+s.id);const tracked=gate?.key?await squareRecord(env,gate.key):null;const pending=rows.results[0];const r=tracked?.user===s.user_id&&tracked.stage==='renewal'?tracked:pending?JSON.parse(pending.content):null;const saved=await squareSavedCard(env,s.user_id);return {revision,savedCard:squareCardSummary(saved),checkoutEnabled:memberCheckoutEnabled(env)&&squareReady(env),cardEnabled:memberCheckoutEnabled(env)&&squareReady(env)&&!!env.SQUARE_APPLICATION_ID,plans:config.agreement.contractPlans.map(p=>({...p,startsAt:new Date(Math.max(Date.now(),Date.parse(contract?.expiresAt)||Date.now())).toISOString(),endsAt:squareExpiry(p.id,Math.max(Date.now(),Date.parse(contract?.expiresAt)||Date.now()))})),current:squarePublic(contract),scheduledPlans:(contract?.renewalTerms||[]).filter(t=>Date.parse(t.startsAt)>Date.now()).map(t=>({plan:t.plan,startsAt:t.startsAt,expiresAt:t.expiresAt})),eligible:entryEntitled(entry)&&contract?.status==='paid'&&!!contract.expiresAt,purchase:r?{id:r.clientId,status:r.status,plan:r.plan,method:r.method,canCancel:r.method==='embedded'&&r.status==='pending'&&!r.cardAttempt&&!r.paymentId,applied:!!r.appliedAt,cardSaveStatus:r.cardStorage?.state||null,startsAt:r.startsAt||null,expiresAt:r.expiresAt||null}:null};}
+async function squareApplyRenewal(env,key){
+ for(let attempt=0;attempt<5;attempt++){
+  const r=await squareRecord(env,key);if(!r||r.stage!=='renewal'||r.status!=='paid')return;
+  if(r.appliedAt){const s=await db(env).prepare('SELECT id,email FROM chat_students WHERE user_id=?').bind(r.user).first();const deadline=r.expiresAt?Date.parse(r.expiresAt):Date.now()+100*365*86400000;await db(env).prepare("UPDATE chat_students SET code_expires=GREATEST(code_expires,?) WHERE user_id=? AND status='active'").bind(deadline,r.user).run();await notifyEvent(env,'renewal',key,{user:r.user,studentId:s?.id,email:s?.email,plan:r.plan.name,expiresAt:r.expiresAt});return;}
+  const parentKey=await squareKey(env,r.user,'contract'),parent=await squareRecord(env,parentKey);if(!parent||parent.status!=='paid'||!parent.expiresAt)return;
+  const effective=(await squarePaymentState(env,r.user)).contract;const start=Math.max(Date.now(),Date.parse(effective?.expiresAt||parent.expiresAt)),end=squareExpiry(r.plan.id,start),now=new Date().toISOString();
+  const legacy=parent.entitlement&&!parent.renewalTerms?[{...parent.entitlement,startsAt:parent.entitlement.startsAt||parent.paidAt}]:[];
+  const renewalTerms=[...(parent.renewalTerms||legacy).filter(t=>!t.expiresAt||Date.parse(t.expiresAt)>Date.now()),{plan:r.plan,startsAt:new Date(start).toISOString(),expiresAt:end,receiptUrl:r.receiptUrl||null,paidAt:r.paidAt}];
+  const nextParent={...parent,renewalTerms,expiresAt:end,entitlement:{plan:r.plan,expiresAt:end,lastRenewal:key,receiptUrl:r.receiptUrl||null,paidAt:r.paidAt}},nextChild={...r,expiresAt:end,appliedAt:now,startsAt:new Date(start).toISOString()};delete nextParent._revision;delete nextChild._revision;
+  const result=await db(env).prepare("WITH locked AS MATERIALIZED (SELECT id,revision FROM prototype_settings WHERE id IN (?,?) ORDER BY id FOR UPDATE), eligible AS (SELECT 1 WHERE EXISTS(SELECT 1 FROM locked WHERE id=? AND revision=?) AND EXISTS(SELECT 1 FROM locked WHERE id=? AND revision=?)), extended AS (UPDATE prototype_settings SET content=?,revision=revision+1,updated_at=? WHERE id=? AND revision=? AND EXISTS(SELECT 1 FROM eligible) RETURNING id) UPDATE prototype_settings SET content=?,revision=revision+1,updated_at=? WHERE id=? AND revision=? AND EXISTS(SELECT 1 FROM extended) RETURNING id").bind(parentKey,key,parentKey,parent._revision,key,r._revision,JSON.stringify(nextParent),now,parentKey,parent._revision,JSON.stringify(nextChild),now,key,r._revision).run();
+  if(!result.meta.changes)continue;
+  const deadline=end?Date.parse(end):Date.now()+100*365*86400000;await db(env).prepare("UPDATE chat_students SET code_expires=GREATEST(code_expires,?) WHERE user_id=? AND status='active'").bind(deadline,r.user).run();
+  const student=await db(env).prepare('SELECT id,email FROM chat_students WHERE user_id=?').bind(r.user).first();await notifyEvent(env,'renewal',key,{user:r.user,studentId:student?.id,email:student?.email,plan:r.plan.name,expiresAt:end});return;
+ }
+}
+async function membershipAPI(request,env,url){
+ const method=request.method;let body={};if(method==='POST'){body=await educationBody(request,url,5000);if(body instanceof Response)return body;}
+ if(url.pathname==='/api/member/session'){
+  if(method!=='POST')return json({error:'Method not allowed'},405);
+  if(!await chatLimit(env,'billing-login:'+await chatHash(request.headers.get('cf-connecting-ip')||'unknown'),12,900000))return json({error:'Too many attempts. Please wait.'},429);
+  if(typeof body.code!=='string'||! /^[a-f0-9]{48}$/i.test(body.code.trim()))return json({error:'Enter your current access code.'},401);
+  const student=await db(env).prepare("SELECT * FROM chat_students WHERE code_hash=? AND status='active'").bind(await chatHash(body.code.trim().toLowerCase())).first();if(!student)return json({error:'This code is invalid. Ask Goddess for a replacement.'},401);
+  const life=await accountRecord(env,student.id);if(life.until>Date.now()||['pending','approved','deleting','deleted'].includes(life.deletion))return json({error:'Resolve account management before purchasing a plan.'},403);const state=await membershipState(env,student);if(!state.eligible)return json({error:'This contract needs Goddess review before renewal.'},403);
+  const response=json({ok:true});response.headers.set('Set-Cookie',await billingIssue(env,student));return response;
+ }
+ const s=await billingAccount(request,env);if(!s||request.headers.get('oai-authenticated-user-id'))return json({error:'Open your Sub account or enter your current access code to renew.'},401);
+ if(url.pathname==='/api/member/plans'&&method==='GET')return json(await membershipState(env,s));
+ if(method!=='POST')return json({error:'Method not allowed'},405);
+ if(!await chatLimit(env,'billing:'+s.id,12,60000))return json({error:'Please wait before trying again.'},429);
+ if(url.pathname==='/api/member/access'){
+  const state=await membershipState(env,s);if(!state.purchase?.applied||await squareAccessDeadline(env,s.user_id)<=Date.now())return json({error:'Confirm the contract payment first.'},403);
+  const billing=request.headers.get('cookie')?.match(/(?:^|;\s*)__Host-vanessa_billing=([a-f0-9]{48})(?:;|$)/)?.[1],chat=request.headers.get('cookie')?.match(/(?:^|;\s*)__Host-vanessa_student=([a-f0-9]{48})(?:;|$)/)?.[1],billingRecord=billing?await squareRecord(env,'billing:'+await chatHash(billing)):null,validBilling=billingRecord?.studentId===s.id&&billingRecord.expires>Date.now()&&billingRecord.codeHash===s.code_hash,token=validBilling?billing:chat;if(!token)return json({error:'Open your own account to collect access.'},401);
+  const code=(await chatHash('renewal-access:'+token+':'+state.purchase.id)).slice(0,48),hash=await chatHash(code),deadline=Math.min(253402300799000,await squareAccessDeadline(env,s.user_id));
+  if(s.code_hash&&s.code_hash!==hash)return json({existing:true,message:'Your existing access code remains valid for the extended contract.'});
+  if(!s.code_hash){if(validBilling){const key='billing:'+await chatHash(billing);await db(env).prepare("WITH issued AS (UPDATE chat_students SET code_hash=?,code_expires=? WHERE id=? AND code_hash IS NULL AND status='active' RETURNING id) UPDATE prototype_settings SET content=jsonb_set(content::jsonb,'{codeHash}',to_jsonb(?::text))::text,revision=revision+1 WHERE id=? AND EXISTS(SELECT 1 FROM issued)").bind(hash,deadline,s.id,hash,key).run();}else await db(env).prepare("UPDATE chat_students SET code_hash=?,code_expires=? WHERE id=? AND code_hash IS NULL AND status='active'").bind(hash,deadline,s.id).run();}
+  const current=await db(env).prepare('SELECT code_hash FROM chat_students WHERE id=?').bind(s.id).first();if(current?.code_hash!==hash)return json({error:'Access was replaced. Use the current code from Goddess.'},409);return json({code,expiresAt:deadline});
+ }
+ if(url.pathname==='/api/member/card/remove'){
+  if(Object.keys(body).length)return json({error:'Use your own saved card controls.'},400);
+  const saved=await squareSavedCard(env,s.user_id);if(!saved)return json({ok:true});
+  const gate=await squareRecord(env,'member-pending:'+s.id),pending=gate?.key?await squareRecord(env,gate.key):null;
+  if(pending?.status==='pending'&&pending.cardAttempt&&!pending.cardAttempt.failed)return json({error:'Check your pending payment before removing this card.'},409);
+  await squareCall(env,'cards/'+encodeURIComponent(saved.cardId)+'/disable',{});
+  const removed=await db(env).prepare('DELETE FROM prototype_settings WHERE id=? AND revision=?').bind(await squareCardKey(env,s.user_id),saved._revision).run();
+  return removed.meta.changes?json({ok:true}):json({error:'Your saved card changed. Refresh and retry.'},409);
+ }
+ if(url.pathname==='/api/member/cancel'){
+  if(typeof body.id!=='string'||! /^[a-f0-9-]{36}$/i.test(body.id)||Object.keys(body).some(k=>k!=='id'))return json({error:'Choose your existing payment.'},400);
+  const key='sq-'+squareMode(env)+'-r-'+(await chatHash(s.user_id+':'+body.id)).slice(0,24);let r=await squareRecord(env,key);
+  if(!r||r.user!==s.user_id)return json({error:'Payment not found.'},404);
+  if(r.status==='cancelled')return json({ok:true});
+  await squareReconcile(env,{...r,_key:key});r=await squareRecord(env,key);
+  if(r.method!=='embedded'||r.status!=='pending'||r.cardAttempt||r.paymentId)return json({error:'This payment must be checked before making another. Please check payment status.'},409);
+  const changed=await squareWrite(env,key,{...r,status:'cancelled',cancelledAt:new Date().toISOString()},r._revision);
+  return changed.meta.changes?json({ok:true}):json({error:'Payment changed. Please check its status.'},409);
+ }
+ if(url.pathname==='/api/member/refresh'){
+  const rows=await db(env).prepare("SELECT id,content FROM prototype_settings WHERE id LIKE ? AND content::jsonb->>'user'=? AND content::jsonb->>'stage'='renewal' AND (content::jsonb->>'status'='pending' OR content::jsonb->>'appliedAt' IS NULL) ORDER BY updated_at DESC LIMIT 5").bind('sq-'+squareMode(env)+'-r-%',s.user_id).all();
+  for(const row of rows.results){await squareReconcile(env,{...JSON.parse(row.content),_key:row.id});await squareApplyRenewal(env,row.id);}
+  const response=json(await membershipState(env,s));const raw=request.headers.get('cookie')?.match(/(?:^|;\s*)__Host-vanessa_student=([a-f0-9]{48})(?:;|$)/)?.[1];if(raw){const deadline=await squareAccessDeadline(env,s.user_id),expires=Math.min(Date.now()+30*86400000,deadline);if(expires>Date.now()){await db(env).prepare('UPDATE chat_sessions SET expires_at=? WHERE hash=? AND student_id=?').bind(expires,await chatHash(raw),s.id).run();response.headers.append('Set-Cookie',chatCookie(raw,Math.floor((expires-Date.now())/1000)));}}return response;
+ }
+ const support=await squareRecord(env,await squareKey(env,s.user_id,'support'));if(support?.status==='pending')return json({error:'An individual payment offer is already open. Complete it or ask Goddess to review it before another purchase.'},409);
+ const embedded=['/api/member/prepare','/api/member/charge'].includes(url.pathname);
+ if(!embedded&&url.pathname!=='/api/member/checkout')return json({error:'Not found'},404);
+ if(embedded&&!env.SQUARE_APPLICATION_ID)return json({error:'The secure card form is being configured. Please retry shortly.'},503);
+ if(!memberCheckoutEnabled(env))return json({error:'Plan checkout is being configured. Your current contract is unchanged.'},503);
+ if(!squareReady(env))return json({error:'Payments are not configured.'},503);
+ const state=await membershipState(env,s),{config}=await educationConfig(env);if(!state.eligible)return json({error:'Unlimited or unconfirmed contracts need Goddess review.'},409);
+ if(body.accepted!==true||body.revision!==state.revision||typeof body.id!=='string'||! /^[a-f0-9-]{36}$/i.test(body.id)||Object.keys(body).some(k=>!['accepted','revision','id','planId',...(url.pathname==='/api/member/charge'?['attemptId','sourceId','useSavedCard','saveCard','savedCardId']:[])].includes(k)))return json({error:'Review the current plan price and confirm the added time.'},400);
+ const configuredPlan=config.agreement.contractPlans.find(p=>p.id===body.planId);
+ const key='sq-'+squareMode(env)+'-r-'+(await chatHash(s.user_id+':'+body.id)).slice(0,24);let r=await squareRecord(env,key);const plan=r?.plan||configuredPlan;if(!plan||plan.amount<=0||plan.id!==body.planId)return json({error:'Choose a valid plan.'},400);
+ // One pending purchase per account serializes competing tabs and avoids extra charges.
+ const gate='member-pending:'+s.id;await db(env).prepare('INSERT INTO prototype_settings(id,content,revision,updated_at) VALUES(?,?,1,?) ON CONFLICT(id) DO NOTHING').bind(gate,JSON.stringify({key,createdAt:Date.now()}),new Date().toISOString()).run();const current=await squareRecord(env,gate);if(current.key!==key){const prior=await squareRecord(env,current.key);if(prior&&prior.status!=='cancelled'&&(prior.status!=='paid'||!prior.appliedAt)||!prior&&(!current.createdAt||Date.now()-current.createdAt<120000))return json({error:'A checkout is already open. Check its status before starting another.'},409);const changed=await db(env).prepare('UPDATE prototype_settings SET content=?,revision=revision+1 WHERE id=? AND revision=?').bind(JSON.stringify({key,createdAt:Date.now()}),gate,current._revision).run();if(!changed.meta.changes)return json({error:'Checkout changed. Refresh and retry.'},409);}
+ if(!r){const now=new Date().toISOString(),redirect=new URL('/plans.html?payment=renewal',url.origin),initial={user:s.user_id,stage:'renewal',clientId:body.id,studentId:s.id,plan,mode:squareMode(env),method:embedded?'embedded':'hosted',status:'pending',createdAt:now,consent:{acceptedAt:now,revision:state.revision,timing:'full_price_after_current_expiry'},idempotencyKey:crypto.randomUUID()};initial.request={idempotency_key:initial.idempotencyKey,order:{location_id:env.SQUARE_LOCATION_ID,reference_id:key,line_items:[{name:'Contract extension — '+plan.name,quantity:'1',base_price_money:{amount:plan.amount,currency:'GBP'}}]},checkout_options:{redirect_url:redirect.href,allow_tipping:false,ask_for_shipping_address:false}};await db(env).prepare('INSERT INTO prototype_settings(id,content,revision,updated_at) VALUES(?,?,1,?) ON CONFLICT(id) DO NOTHING').bind(key,JSON.stringify(initial),now).run();r=await squareRecord(env,key);}
+ if(r.plan.id!==plan.id)return json({error:'This checkout already has a selected plan.'},409);
+ await squareReconcile(env,{...r,_key:key});r=await squareRecord(env,key);if(r.status==='paid'){await squareApplyRenewal(env,key);return json({paid:true});}
+ if(r.status!=='pending')return json({error:'This payment is closed or needs Goddess review. Choose a new purchase or check its status.'},409);
+ if(embedded){
+  if(r.method==='hosted'){const response=json({hosted:true,url:r.checkoutUrl||null,mode:squareMode(env),plan:r.plan,id:r.clientId});response.headers.append('Set-Cookie',await billingIssue(env,s));return response;}
+  const response=await squareEmbedded(request,env,url,body,key,r);if(url.pathname.endsWith('/prepare')&&response.ok){const data=await response.clone().json();if(!data.paid){const saved=await squareSavedCard(env,s.user_id);const enriched=json({...data,savedCard:saved?{...squareCardSummary(saved),id:saved.cardId}:null});enriched.headers.append('Set-Cookie',await billingIssue(env,s));return enriched;}}response.headers.append('Set-Cookie',await billingIssue(env,s));return response;
+ }
+ if(r.method==='embedded')return json({error:'This payment uses the on-site card form. Check its status or reopen that form.'},409);
+ if(!r.checkoutUrl){const result=await squareCall(env,'online-checkout/payment-links',r.request),link=result.payment_link;if(!link?.url||!link.order_id)throw Error('Checkout unavailable');const u=new URL(link.url);if(u.protocol!=='https:'||u.hostname!==(squareMode(env)==='sandbox'?'sandbox.square.link':'square.link'))throw Error('Unexpected checkout');await squareWrite(env,key,{...r,checkoutUrl:link.url,orderId:link.order_id,linkId:link.id},r._revision);r=await squareRecord(env,key);}
+ const response=json({url:r.checkoutUrl,mode:squareMode(env)});response.headers.append('Set-Cookie',await billingIssue(env,s));return response;
+}

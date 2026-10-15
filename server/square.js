@@ -7,6 +7,28 @@ async function squareCall(env,path,body){
  const r=await (env.SQUARE_FETCH||fetch)(base+'/v2/'+path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+env.SQUARE_ACCESS_TOKEN,'Content-Type':'application/json','Square-Version':'2025-01-23'},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(15000)});
  if(!r.ok){const data=await r.json().catch(()=>({}));const e=Error('Square request failed ('+r.status+').');e.squareCodes=(data.errors||[]).map(x=>x.code);e.squareStatus=r.status;e.squareOperation=path==='online-checkout/payment-links'?'checkout-link':path==='orders'?'order-create':path.startsWith('orders/')?'order-read':path==='payments'?'payment-create':path.startsWith('payments/')?'payment-read':'other';throw e;}return r.json();
 }
+// Reusable cards: reusable cards require an explicit per-payment opt-in.
+const squareSavedCardsEnabled=env=>squareMode(env)==='sandbox'||squareMode(env)==='production'&&env.MEMBER_CHECKOUT_ENABLED==='true'&&env.SQUARE_SAVED_CARDS_ENABLED==='true'&&squareReady(env);
+const squareCardKey=async(env,user)=>'sq-'+squareMode(env)+'-card-'+(await chatHash(user)).slice(0,24);
+async function squareSavedCard(env,user){if(!squareSavedCardsEnabled(env))return null;const r=await squareRecord(env,await squareCardKey(env,user));return r?.user===user&&r.cardId&&r.customerId&&r.consentAt?r:null;}
+function squareCardSummary(r){return r?{brand:r.brand,last4:r.last4,expMonth:r.expMonth,expYear:r.expYear}:null;}
+async function squareStorePaidCard(env,key,r){
+ if(!squareSavedCardsEnabled(env)||r.status!=='paid'||!r.paymentId||!r.cardStorage?.consentAt||r.cardStorage.state==='saved'||r.cardStorage.state==='failed')return;
+ try{
+  // The source payment and opt-in are server-owned; never accept a browser payment/customer ID.
+  const customerKey='save-customer-'+(await chatHash(squareMode(env)+':'+r.user)).slice(0,28),prior=await squareSavedCard(env,r.user);
+  const customerId=prior?.customerId||(await squareCall(env,'customers',{idempotency_key:customerKey,reference_id:customerKey,given_name:'Member'})).customer?.id;
+  if(!customerId)throw Error('Card storage unavailable');
+  const {card}=await squareCall(env,'cards',{idempotency_key:'save-card-'+(await chatHash(r.paymentId)).slice(0,30),source_id:r.paymentId,card:{customer_id:customerId}});
+  if(!card?.id||card.customer_id!==customerId||!card.enabled||!/^\d{4}$/.test(card.last_4))throw Error('Card storage unavailable');
+  const saved={user:r.user,customerId,cardId:card.id,brand:String(card.card_brand||'Card'),last4:card.last_4,expMonth:card.exp_month,expYear:card.exp_year,consentAt:r.cardStorage.consentAt,savedAt:new Date().toISOString(),sourcePayment:r.paymentId};
+  await db(env).prepare('INSERT INTO prototype_settings(id,content,revision,updated_at) VALUES(?,?,1,?) ON CONFLICT(id) DO UPDATE SET content=excluded.content,revision=prototype_settings.revision+1,updated_at=excluded.updated_at').bind(await squareCardKey(env,r.user),JSON.stringify(saved),saved.savedAt).run();
+  const fresh=await squareRecord(env,key);if(fresh?.cardStorage?.consentAt===r.cardStorage.consentAt)await squareWrite(env,key,{...fresh,cardStorage:{...fresh.cardStorage,state:'saved'}},fresh._revision);
+ }catch(error){
+  // Saving is optional: a storage failure must never turn a completed payment into a retry charge.
+  const fresh=await squareRecord(env,key);if(fresh?.cardStorage)await squareWrite(env,key,{...fresh,cardStorage:{...fresh.cardStorage,state:'failed',failureCodes:(error.squareCodes||['SAVE_CARD_UNAVAILABLE']).filter(c=>/^[A-Z_]{1,64}$/.test(c)).slice(0,4)}},fresh._revision);
+ }
+}
 async function squareRecord(env,key){const r=await db(env).prepare('SELECT content,revision FROM prototype_settings WHERE id=?').bind(key).first();return r?{...JSON.parse(r.content),_revision:r.revision}:null;}
 // A definitive email-prefill rejection creates no checkout. Recover once without
 // that optional field; retain contact data, order/price and one shared retry key.
@@ -28,9 +50,9 @@ const squareKey=async(env,user,stage)=>'sq-'+squareMode(env)+'-'+stage[0]+'-'+(a
 function squarePromo(code){const normalized=typeof code==='string'?code.trim().toUpperCase():'';return ['SUB50','SUB25'].includes(normalized)?normalized:null;}
 function squaredAmountMismatch(plan,signed,promo){return signed.amount!==squarePriced(plan,promo).amount||(promo&&!squarePromo(promo));}
 function squarePriced(plan,promo){return promo?{...plan,originalAmount:plan.amount,amount:Math.round(plan.amount*(promo==='SUB25'?75:50)/100),promoCode:promo}:plan;}
-function squarePublic(r){return r?{stage:r.stage,plan:r.plan,status:r.status,receiptUrl:r.receiptUrl||null,paidAt:r.paidAt||null,expiresAt:r.expiresAt||null,granted:r.status==='granted',canChangePromo:r.stage==='entry'&&r.status!=='granted'&&r.method==='embedded'&&r.status==='pending'&&!r.cardAttempt&&!r.paymentId}:null;}
+function squarePublic(r){if(!r)return null;const entitlement=r.renewalTerms?r.renewalTerms.filter(t=>Date.parse(t.startsAt)<=Date.now()&&(!t.expiresAt||Date.parse(t.expiresAt)>Date.now())).at(-1):r.entitlement;return {stage:r.stage,plan:entitlement?.plan||r.plan,status:r.status,receiptUrl:r.entitlement?.receiptUrl||r.receiptUrl||null,paidAt:r.entitlement?.paidAt||r.paidAt||null,expiresAt:r.expiresAt||null,granted:r.status==='granted',cardSaveStatus:r.cardStorage?.state||null,canChangePromo:r.stage==='entry'&&r.method==='embedded'&&r.status==='pending'&&!r.cardAttempt&&!r.paymentId};}
 function squareExpiry(plan,start){const d=new Date(start);if(plan==='infinite')return null;if(plan==='day')return new Date(d.getTime()+86400000).toISOString();const day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+(plan==='quarter'?3:1));const last=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();d.setUTCDate(Math.min(day,last));return d.toISOString();}
-function squareContractExpiry(r,paidAt){const normal=squareExpiry(r.plan.id,paidAt);if(normal===null)return null;const grant=Date.parse(r.grantedExpiresAt);return Number.isFinite(grant)?new Date(Math.max(Date.parse(normal),grant)).toISOString():normal;}
+function squareContractExpiry(r,paidAt){if(r.entitlement&&r.entitlement.expiresAt===null)return null;const normal=squareExpiry(r.plan.id,paidAt);if(normal===null)return null;const grant=Date.parse(r.grantedExpiresAt);return Number.isFinite(grant)?new Date(Math.max(Date.parse(normal),grant,Date.parse(r.entitlement?.expiresAt)||0)).toISOString():new Date(Math.max(Date.parse(normal),Date.parse(r.entitlement?.expiresAt)||0)).toISOString();}
 async function squarePaymentState(env,user){const [entry,contract,support]=await Promise.all(['entry','contract','support'].map(async stage=>squareRecord(env,await squareKey(env,user,stage))));if(contract?.status==='paid'&&contract.expiresAt&&support?.status==='paid'&&Date.parse(support.expiresAt)>Date.parse(contract.expiresAt))contract.expiresAt=support.expiresAt;const grant=await contractEntryGrant(env,user);const effectiveEntry=grant&&entry?.status==='pending'&&entry.plan.id===grant.entryId?{...entry,status:'granted',plan:{...entry.plan,amount:0},grant}:entry;return {entry:effectiveEntry,contract};}
 async function squareAccessDeadline(env,user){
  if(squareMode(env)==='off')return Infinity;
@@ -63,10 +85,10 @@ async function squareApplyPayment(env,paymentId){
   if(p.status==='COMPLETED')status=p.refunded_money?.amount>0||r.status==='refund_review'?'refund_review':'paid';
   else if(['FAILED','CANCELED'].includes(p.status)&&r.status!=='paid')status='pending';
   const paidAt=r.paidAt||(status==='paid'?(p.card_details?.card_payment_timeline?.captured_at||p.updated_at):null);
-  const next={...r,orderId:p.order_id,paymentId:p.id,status,paidAt,providerStatus:p.status,providerUpdatedAt:p.updated_at,receiptUrl:p.receipt_url||null,expiresAt:r.stage==='contract'&&paidAt?squareContractExpiry(r,paidAt):null};
+  const next={...r,orderId:p.order_id,paymentId:p.id,status,paidAt,providerStatus:p.status,providerUpdatedAt:p.updated_at,receiptUrl:p.receipt_url||null,expiresAt:r.stage==='contract'&&paidAt?squareContractExpiry(r,paidAt):r.stage==='renewal'?r.expiresAt||null:null};
   if(r.stage==='support'&&status==='paid'){const contract=await squareRecord(env,await squareKey(env,r.user,'contract'));if(!contract||contract.status!=='paid')return;next.expiresAt=r.expiresAt||squareExpiry(r.retention?r.plan.id:'month',new Date(Math.max(Date.parse(paidAt),contract.expiresAt?Date.parse(contract.expiresAt):Date.parse(paidAt))).toISOString());}
-  if(r.stage==='donation'&&r.cardAttempt&&['paid','refund_review'].includes(status))next.cardAttempt={id:r.cardAttempt.id,complete:true};
-  const result=await squareWrite(env,key,next,r._revision);if(result.meta.changes){if(r.stage==='support'&&status==='paid')await db(env).prepare("UPDATE chat_students SET code_expires=GREATEST(code_expires,?) WHERE user_id=? AND status='active' AND code_hash IS NOT NULL").bind(Date.parse(next.expiresAt),r.user).run();return;}
+  if(['donation','renewal'].includes(r.stage)&&r.cardAttempt&&['paid','refund_review'].includes(status))next.cardAttempt={id:r.cardAttempt.id,complete:true};
+  const result=await squareWrite(env,key,next,r._revision);if(result.meta.changes){if(status==='paid')await squareStorePaidCard(env,key,next);if(r.stage==='renewal'){if(status==='paid')await squareApplyRenewal(env,key);else if(status==='refund_review'&&r.appliedAt){const parentKey=await squareKey(env,r.user,'contract');await db(env).prepare("UPDATE prototype_settings SET content=jsonb_set(content::jsonb,'{status}','\"refund_review\"'::jsonb)::text,revision=revision+1,updated_at=? WHERE id=?").bind(new Date().toISOString(),parentKey).run();}}if(r.stage==='support'&&status==='paid')await db(env).prepare("UPDATE chat_students SET code_expires=GREATEST(code_expires,?) WHERE user_id=? AND status='active' AND code_hash IS NOT NULL").bind(Date.parse(next.expiresAt),r.user).run();return;}
  }
  throw Error('Concurrent payment update; retry required.');
 }
@@ -74,6 +96,7 @@ async function squareReconcile(env,r){
  if(!r)return;const recordKey=r._key||await squareKey(env,r.user,r.stage);
  if(r.paymentId){await squareApplyPayment(env,r.paymentId);r=await squareRecord(env,recordKey);if(!r||r.status!=='pending')return;}
  if(!r.orderId)return;
+ if(r.status==='paid')await squareStorePaidCard(env,recordKey,r);
  const {order}=await squareCall(env,'orders/'+encodeURIComponent(r.orderId));
  if(order?.id!==r.orderId||order.location_id!==env.SQUARE_LOCATION_ID)return;
  for(const t of order.tenders||[]){const paymentId=t.payment_id||t.id;if(typeof paymentId==='string'&&paymentId&&paymentId!==r.paymentId)await squareApplyPayment(env,paymentId);}
@@ -98,7 +121,7 @@ async function squareAPI(request,env,url,{user,owner}){
  if(url.pathname==='/api/education/payments'&&request.method==='GET'){
   const state=user?await squarePaymentState(env,user):{};const contact=user?await db(env).prepare('SELECT content FROM prototype_settings WHERE id=?').bind('sub-contact:'+user).first():null;
   const draft=user?await squareRecord(env,'application-progress:'+user):null;
-  const grant=user?await contractEntryGrant(env,user):null;return json({applicationKey:user?(await chatHash(user)).slice(0,24):null,draft:draft?{...draft,revision:draft._revision}:null,invitation:request.headers.get('x-education-invite')==='contract'&&grant?{contractId:grant.contractId,promoCode:grant.promoCode,pathId:grant.pathId}:null,contact:contact?JSON.parse(contact.content):null,mode,ready,embeddedReady:ready&&!!env.SQUARE_APPLICATION_ID,applicationId:env.SQUARE_APPLICATION_ID||null,locationId:env.SQUARE_LOCATION_ID||null,entry:squarePublic(state.entry),contract:squarePublic(state.contract)});
+  const grant=user?await contractEntryGrant(env,user):null;return json({savedCardsEnabled:squareSavedCardsEnabled(env),applicationKey:user?(await chatHash(user)).slice(0,24):null,draft:draft?{...draft,revision:draft._revision}:null,invitation:request.headers.get('x-education-invite')==='contract'&&grant?{contractId:grant.contractId,promoCode:grant.promoCode,pathId:grant.pathId}:null,contact:contact?JSON.parse(contact.content):null,mode,ready,embeddedReady:ready&&!!env.SQUARE_APPLICATION_ID,applicationId:env.SQUARE_APPLICATION_ID||null,locationId:env.SQUARE_LOCATION_ID||null,entry:squarePublic(state.entry),contract:squarePublic(state.contract)});
  }
  if(url.pathname==='/api/education/payments/support')return squareSupportPayment(request,env,url);
  if(!user)return json({error:'Start your application in this browser first.'},401);
@@ -210,9 +233,17 @@ async function squareEmbedded(request,env,url,body,key,r){
  if(typeof body.attemptId!=='string'||! /^[a-f0-9-]{36}$/.test(body.attemptId))return json({error:'Invalid payment attempt.'},400);
  if(!r.cardAttempt||r.cardAttempt.failed){
   if(r.cardAttempt?.id===body.attemptId)return json({error:'This card attempt was declined. Please try again.',retryCard:true},402);
-  if(typeof body.sourceId!=='string'||!body.sourceId.startsWith('cnon:')||body.sourceId.length>1024)return json({error:'Enter your card in the secure payment form.'},400);
-  const attempt={id:body.attemptId,request:{source_id:body.sourceId,idempotency_key:crypto.randomUUID(),amount_money:{amount:r.plan.amount,currency:'GBP'},location_id:env.SQUARE_LOCATION_ID,order_id:r.orderId,reference_id:key,autocomplete:true}};
-  await squareWrite(env,key,{...r,cardAttempt:attempt},r._revision);r=await squareRecord(env,key);
+  if(body.useSavedCard!==undefined&&typeof body.useSavedCard!=='boolean'||body.savedCardId!==undefined&&body.useSavedCard!==true)return json({error:'Choose a valid card option.'},400);
+  if(body.saveCard!==undefined&&typeof body.saveCard!=='boolean')return json({error:'Choose whether to save this card.'},400);
+  let saved=null;if(body.useSavedCard===true){if(r.stage!=='renewal'||body.saveCard===true)return json({error:'Choose a valid card option.'},400);saved=await squareSavedCard(env,r.user);if(!saved||saved.cardId!==body.savedCardId)return json({error:'This saved card is unavailable. Choose another card.',retryCard:true},402);const {card}=await squareCall(env,'cards/'+encodeURIComponent(saved.cardId));if(!card?.enabled||card.customer_id!==saved.customerId||card.id!==saved.cardId)return json({error:'This saved card is unavailable. Choose another card.',retryCard:true},402);}
+  let sourceId=body.sourceId,verificationToken=null;
+  // Square's saved-card SDK returns cardId#verificationToken. Bind both to this account's exact card.
+  if(saved&&typeof sourceId==='string'&&sourceId.startsWith('ccof:')){
+   const parts=sourceId.split('#');if(parts.length!==2||parts[0]!==saved.cardId||!/^verf:[A-Za-z0-9_-]{1,1000}$/.test(parts[1]))return json({error:'Please verify your saved card again or choose another card.',retryCard:true},402);
+   sourceId=parts[0];verificationToken=parts[1];
+  }else if(typeof sourceId!=='string'||!sourceId.startsWith('cnon:')||sourceId.length>1024)return json({error:'Enter your card in the secure payment form.'},400);
+  const attempt={id:body.attemptId,request:{source_id:sourceId,idempotency_key:crypto.randomUUID(),amount_money:{amount:r.plan.amount,currency:'GBP'},location_id:env.SQUARE_LOCATION_ID,order_id:r.orderId,reference_id:key,autocomplete:true,...(saved?{customer_id:saved.customerId,customer_details:{customer_initiated:true,seller_keyed_in:false},...(verificationToken?{verification_token:verificationToken}:{})}: {})}};
+  await squareWrite(env,key,{...r,cardAttempt:attempt,cardStorage:body.saveCard===true&&squareSavedCardsEnabled(env)?{consentAt:new Date().toISOString(),state:'pending',copyVersion:'save-card-v1'}:null},r._revision);r=await squareRecord(env,key);
  }
  if(r.method!=='embedded'||!r.cardAttempt||r.cardAttempt.id!==body.attemptId)return json({error:'Another payment is being checked. Refresh its status before trying again.'},409);
  let result;
@@ -234,7 +265,7 @@ async function squareEmbedded(request,env,url,body,key,r){
  if(current.status==='paid'||current.status==='refund_review'){
   // Discard the one-use token after a confirmed charge; preserve its attempt identity.
   await squareWrite(env,key,{...current,cardAttempt:{id:body.attemptId,complete:true}},current._revision);
-  return json({paid:current.status==='paid',payment:squarePublic(current)});
+  return json({paid:current.status==='paid',payment:squarePublic(current),cardSaved:(await squareRecord(env,key))?.cardStorage?.state==='saved',cardSaveFailed:(await squareRecord(env,key))?.cardStorage?.state==='failed'});
  }
  return json({error:'Your payment is still being confirmed. Check payment status before trying another card.',retrySame:true},202);
 }

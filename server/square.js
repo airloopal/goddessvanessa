@@ -17,16 +17,16 @@ async function squareStorePaidCard(env,key,r){
  try{
   // The source payment and opt-in are server-owned; never accept a browser payment/customer ID.
   const customerKey='save-customer-'+(await chatHash(squareMode(env)+':'+r.user)).slice(0,28),prior=await squareSavedCard(env,r.user);
-  const customerId=prior?.customerId||(await squareCall(env,'customers',{idempotency_key:customerKey,reference_id:customerKey})).customer?.id;
+  const customerId=prior?.customerId||(await squareCall(env,'customers',{idempotency_key:customerKey,reference_id:customerKey,given_name:'Member'})).customer?.id;
   if(!customerId)throw Error('Card storage unavailable');
   const {card}=await squareCall(env,'cards',{idempotency_key:'save-card-'+(await chatHash(r.paymentId)).slice(0,30),source_id:r.paymentId,card:{customer_id:customerId}});
   if(!card?.id||card.customer_id!==customerId||!card.enabled||!/^\d{4}$/.test(card.last_4))throw Error('Card storage unavailable');
   const saved={user:r.user,customerId,cardId:card.id,brand:String(card.card_brand||'Card'),last4:card.last_4,expMonth:card.exp_month,expYear:card.exp_year,consentAt:r.cardStorage.consentAt,savedAt:new Date().toISOString(),sourcePayment:r.paymentId};
   await db(env).prepare('INSERT INTO prototype_settings(id,content,revision,updated_at) VALUES(?,?,1,?) ON CONFLICT(id) DO UPDATE SET content=excluded.content,revision=prototype_settings.revision+1,updated_at=excluded.updated_at').bind(await squareCardKey(env,r.user),JSON.stringify(saved),saved.savedAt).run();
   const fresh=await squareRecord(env,key);if(fresh?.cardStorage?.consentAt===r.cardStorage.consentAt)await squareWrite(env,key,{...fresh,cardStorage:{...fresh.cardStorage,state:'saved'}},fresh._revision);
- }catch{
+ }catch(error){
   // Saving is optional: a storage failure must never turn a completed payment into a retry charge.
-  const fresh=await squareRecord(env,key);if(fresh?.cardStorage)await squareWrite(env,key,{...fresh,cardStorage:{...fresh.cardStorage,state:'failed'}},fresh._revision);
+  const fresh=await squareRecord(env,key);if(fresh?.cardStorage)await squareWrite(env,key,{...fresh,cardStorage:{...fresh.cardStorage,state:'failed',failureCodes:(error.squareCodes||['SAVE_CARD_UNAVAILABLE']).filter(c=>/^[A-Z_]{1,64}$/.test(c)).slice(0,4)}},fresh._revision);
  }
 }
 async function squareRecord(env,key){const r=await db(env).prepare('SELECT content,revision FROM prototype_settings WHERE id=?').bind(key).first();return r?{...JSON.parse(r.content),_revision:r.revision}:null;}

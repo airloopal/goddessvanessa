@@ -1,0 +1,125 @@
+{
+  "at": "2026-10-15T11:04:21.735Z",
+  "checks": [
+    {
+      "name": "Live",
+      "asset": "/plans.html",
+      "exact": true
+    },
+    {
+      "name": "Live",
+      "asset": "/member-plans.css",
+      "exact": true
+    },
+    {
+      "name": "Live",
+      "asset": "/member-plans.js",
+      "exact": true
+    },
+    {
+      "name": "Live",
+      "asset": "/client-chat.js",
+      "exact": true
+    },
+    {
+      "name": "Live",
+      "asset": "/goddess-navigation.js",
+      "exact": true
+    },
+    {
+      "name": "Live",
+      "asset": "/chat-refinements.js",
+      "exact": true
+    },
+    {
+      "name": "Live",
+      "asset": "/chat-refinements.css",
+      "exact": true
+    },
+    {
+      "name": "Live",
+      "privatePlansHeaders": true
+    },
+    {
+      "name": "Live",
+      "paymentModePreserved": "production",
+      "savedCardsEnabled": true
+    },
+    {
+      "name": "Live",
+      "path": "/api/chat/gallery",
+      "privateDenied": 403
+    },
+    {
+      "name": "Live",
+      "path": "/api/member/plans",
+      "privateDenied": 401
+    },
+    {
+      "name": "Live",
+      "emailScopePreserved": true
+    },
+    {
+      "name": "Live",
+      "controlledEmailTestForbidden": true
+    },
+    {
+      "name": "Sandbox",
+      "asset": "/plans.html",
+      "exact": true
+    },
+    {
+      "name": "Sandbox",
+      "asset": "/member-plans.css",
+      "exact": true
+    },
+    {
+      "name": "Sandbox",
+      "asset": "/member-plans.js",
+      "exact": true
+    },
+    {
+      "name": "Sandbox",
+      "asset": "/client-chat.js",
+      "exact": true
+    },
+    {
+      "name": "Sandbox",
+      "asset": "/goddess-navigation.js",
+      "exact": true
+    },
+    {
+      "name": "Sandbox",
+      "asset": "/chat-refinements.js",
+      "exact": true
+    },
+    {
+      "name": "Sandbox",
+      "asset": "/chat-refinements.css",
+      "exact": true
+    },
+    {
+      "name": "Sandbox",
+      "privatePlansHeaders": true
+    },
+    {
+      "name": "Sandbox",
+      "paymentModePreserved": "sandbox",
+      "savedCardsEnabled": true
+    },
+    {
+      "name": "Sandbox",
+      "path": "/api/chat/gallery",
+      "privateDenied": 403
+    },
+    {
+      "name": "Sandbox",
+      "path": "/api/member/plans",
+      "privateDenied": 401
+    },
+    {
+      "name": "Sandbox",
+      "emailScopePreserved": true
+    }
+  ]
+}

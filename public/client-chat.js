@@ -58,7 +58,8 @@ function installChatViewport(host,log){
   const follow=log.scrollHeight-log.scrollTop-log.clientHeight<100||document.activeElement?.id==='client-message';
   const height=viewport?.height||window.innerHeight,top=viewport?.offsetTop||0;
   host.style.setProperty('--chat-viewport-height',height+'px');host.style.setProperty('--chat-viewport-top',top+'px');
-  host.classList.toggle('keyboard-open',window.innerHeight-height>100||(document.activeElement?.id==='client-message'&&height<500));
+  const editing=document.activeElement?.id==='client-message',mobile=window.matchMedia?.('(max-width:700px), (pointer:coarse)')?.matches;
+  host.classList.toggle('keyboard-open',!!editing&&(!!mobile||window.innerHeight-height>100||height<500));
   if(follow)log.scrollTop=log.scrollHeight;
  }
  const schedule=()=>{if(!scheduled){scheduled=true;requestAnimationFrame(update);}};

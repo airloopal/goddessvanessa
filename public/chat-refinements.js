@@ -46,3 +46,19 @@ window.UIActivityNotifications=(()=>{
  async function open(){await loadCodeRequests().catch(()=>{});await poll();render();const d=document.getElementById('notification-centre');if(!d.open)d.showModal();ack();}
  return {poll,open,active:true};
 })();
+
+// Dismiss chat action menus on touch/pointer outside, keyboard focus outside and Escape.
+(()=>{
+ function dismiss(target,escape=false){
+  document.querySelectorAll('.conversation-actions-menu[open]').forEach(menu=>{
+   if(!escape&&menu.contains(target))return;
+   menu.open=false;if(escape)menu.querySelector('summary')?.focus();
+  });
+  const options=document.getElementById('account-options'),toggle=document.getElementById('account-toggle'),menu=toggle?.closest('.account-dropdown');
+  if(options&&!options.hidden&&(escape||!menu?.contains(target))){options.hidden=true;toggle?.setAttribute('aria-expanded','false');if(escape)toggle?.focus();}
+ }
+ document.addEventListener('pointerdown',e=>dismiss(e.target),true);
+ document.addEventListener('click',e=>dismiss(e.target),true);
+ document.addEventListener('focusin',e=>dismiss(e.target));
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')dismiss(e.target,true);});
+})();

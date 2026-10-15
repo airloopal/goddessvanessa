@@ -1,0 +1,16 @@
+{
+  "origin": "https://goddessvanessa-git-square-sandbox-system-admin.vercel.app",
+  "at": "2026-10-15T09:46:36.292Z",
+  "realMoneyCharged": false,
+  "checks": [
+    "actual Square Sandbox payment and consented CreateCustomer/CreateCard completed",
+    "masked saved-card display without provider identifier in plan list",
+    "completed charge replay preserves expiry",
+    "saved card offered for next purchase",
+    "native Web Payments SDK saved-card confirmation completed in browser",
+    "actual saved-card disable/removal completed",
+    "database confirms zero retained payment or verification tokens"
+  ],
+  "deployment": "dpl_2GyqGTBXjGBVrbLUZvsFq9GDqxVW",
+  "commit": "e3bdcef5dabd97d88d58337e94399f289a4a8b21"
+}

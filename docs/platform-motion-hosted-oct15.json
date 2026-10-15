@@ -1,0 +1,225 @@
+{
+  "at": "2026-10-15T11:17:56.597Z",
+  "checks": [
+    {
+      "name": "Live",
+      "asset": "platform-motion.css",
+      "exact": true
+    },
+    {
+      "name": "Live",
+      "asset": "page-loading.js",
+      "exact": true
+    },
+    {
+      "name": "Live",
+      "page": "access.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Live",
+      "page": "account.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Live",
+      "page": "application.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Live",
+      "page": "chat.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Live",
+      "page": "contract-invitation.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Live",
+      "page": "course-builder.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Live",
+      "page": "dashboard.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Live",
+      "page": "feed.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Live",
+      "page": "index.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Live",
+      "page": "plans.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Live",
+      "page": "privacy.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Live",
+      "page": "signin.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Live",
+      "page": "status.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Live",
+      "page": "studio.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Live",
+      "page": "support-payment.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Live",
+      "mode": "production",
+      "savedCardsPreserved": true
+    },
+    {
+      "name": "Live",
+      "path": "/api/chat/gallery",
+      "privateDenied": 403
+    },
+    {
+      "name": "Live",
+      "path": "/api/member/plans",
+      "privateDenied": 401
+    },
+    {
+      "name": "Live",
+      "emailScopePreserved": true
+    },
+    {
+      "name": "Sandbox",
+      "asset": "platform-motion.css",
+      "exact": true
+    },
+    {
+      "name": "Sandbox",
+      "asset": "page-loading.js",
+      "exact": true
+    },
+    {
+      "name": "Sandbox",
+      "page": "access.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Sandbox",
+      "page": "application.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Sandbox",
+      "page": "chat.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Sandbox",
+      "page": "course-builder.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Sandbox",
+      "page": "dashboard.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Sandbox",
+      "page": "feed.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Sandbox",
+      "page": "index.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Sandbox",
+      "page": "plans.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Sandbox",
+      "page": "privacy.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Sandbox",
+      "page": "signin.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Sandbox",
+      "page": "status.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Sandbox",
+      "page": "studio.html",
+      "motionLoadedOnce": true,
+      "securityHeaders": true
+    },
+    {
+      "name": "Sandbox",
+      "mode": "sandbox",
+      "savedCardsPreserved": true
+    },
+    {
+      "name": "Sandbox",
+      "path": "/api/chat/gallery",
+      "privateDenied": 403
+    },
+    {
+      "name": "Sandbox",
+      "path": "/api/member/plans",
+      "privateDenied": 401
+    },
+    {
+      "name": "Sandbox",
+      "emailScopePreserved": true
+    }
+  ]
+}

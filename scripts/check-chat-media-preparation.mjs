@@ -12,3 +12,5 @@ const media=fs.readFileSync('server/media.js','utf8'),bytes=vm.createContext({Ui
 function req(parts,length){let n=0,cancelled=false;return {headers:{get:()=>length},body:{getReader:()=>({read:async()=>n<parts.length?{value:new Uint8Array(parts[n++]),done:false}:{done:true},cancel:async()=>{cancelled=true;}})},get cancelled(){return cancelled;}};}
 const exact=req([[1,2],[3]],'3');assert.deepEqual([...await bytes.mediaBytes(exact)],[1,2,3]);const over=req([[1,2,3]],'2');await assert.rejects(bytes.mediaBytes(over),/size does not match/);assert.equal(over.cancelled,true);await assert.rejects(bytes.mediaBytes(req([[1]],'2')),/size does not match/);assert.deepEqual([...await bytes.mediaBytes(req([[1,2],[3]],null))],[1,2,3]);
 console.log('Media preparation passed: bounded dimensions, smaller-only export, animated preservation, codec/invalid-image fallback, aborts, closed bitmaps and exact-length bounded reads.');
+
+await import('./check-voice-notes.mjs');

@@ -61,7 +61,7 @@ window.UIActivityNotifications=(()=>{
 
 
 // Compact attachment tools while composing; existing controls and handlers are moved, never cloned.
-function composerOverflowCompact(form,panel){const active=document.activeElement;return form.contains(active)||panel.contains(active);}
+function composerOverflowCompact(form,panel){const active=document.activeElement;return !!active?.matches?.('textarea,input:not([type=file]):not([type=checkbox]):not([type=radio]),[contenteditable="true"]')&&(form.contains(active)||panel.contains(active));}
 (()=>{
  if(typeof MutationObserver==='undefined')return;
  const states=new Map(),selector='#client-composer,#admin-form,#floating-form';

@@ -72,7 +72,7 @@ async function membershipAPI(request,env,url){
  if(!memberCheckoutEnabled(env))return json({error:'Plan checkout is being configured. Your current contract is unchanged.'},503);
  if(!squareReady(env))return json({error:'Payments are not configured.'},503);
  const state=await membershipState(env,s),{config}=await educationConfig(env);if(!state.eligible)return json({error:'Unlimited or unconfirmed contracts need Goddess review.'},409);
- if(body.accepted!==true||body.revision!==state.revision||typeof body.id!=='string'||! /^[a-f0-9-]{36}$/i.test(body.id)||Object.keys(body).some(k=>!['accepted','revision','id','planId',...(url.pathname==='/api/member/charge'?['attemptId','sourceId','useSavedCard','saveCard','savedCardId']:[])].includes(k)))return json({error:'Review the current plan price and confirm the added time.'},400);
+ if(body.accepted!==true||body.revision!==state.revision||typeof body.id!=='string'||! /^[a-f0-9-]{36}$/i.test(body.id)||Object.keys(body).some(k=>!['accepted','revision','id','planId',...(url.pathname==='/api/member/charge'?['attemptId','sourceId','useSavedCard','saveCard','savedCardId','verificationToken']:[])].includes(k)))return json({error:'Review the current plan price and confirm the added time.'},400);
  const configuredPlan=config.agreement.contractPlans.find(p=>p.id===body.planId);
  const key='sq-'+squareMode(env)+'-r-'+(await chatHash(s.user_id+':'+body.id)).slice(0,24);let r=await squareRecord(env,key);const plan=r?.plan||configuredPlan;if(!plan||plan.amount<=0||plan.id!==body.planId)return json({error:'Choose a valid plan.'},400);
  // One pending purchase per account serializes competing tabs and avoids extra charges.

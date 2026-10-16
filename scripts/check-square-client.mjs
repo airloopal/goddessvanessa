@@ -53,3 +53,5 @@ await assert.rejects(nativeInit({missingEntry:true}),/Do not pay Entry again/);
 console.log('Resume client passed: later server step survives bank return, blocked storage supported, foreign draft ignored and lost-session payment return blocks a fresh Entry payment.');
 
 await import('./check-payment-recovery-wallets.mjs');
+
+await import('./check-member-wallets.mjs');

@@ -56,7 +56,15 @@ async function squareApplyPayment(env,paymentId){
   const r=await squareRecord(env,key);if(!r)return;
   if(r.orderId&&r.orderId!==p.order_id)return;
   if(p.location_id!==env.SQUARE_LOCATION_ID||order.location_id!==env.SQUARE_LOCATION_ID||p.amount_money?.amount!==r.plan.amount||p.amount_money?.currency!=='GBP'||p.total_money?.amount!==r.plan.amount||p.total_money?.currency!=='GBP')return;
-  if(r.method==='embedded'&&['FAILED','CANCELED'].includes(p.status))return;
+  if(r.method==='embedded'&&['FAILED','CANCELED'].includes(p.status)){
+   // Only this attempt's authoritative failure may unlock another payment.
+   // Old failed tenders cannot retire a newer in-flight card/wallet attempt.
+   const expected=r.cardAttempt?.request?.reference_id;
+   if(r.status!=='pending'||r.paymentId||!expected||p.reference_id!==expected)return;
+   const codes=(p.card_details?.errors||[]).map(e=>e.code).filter(c=>typeof c==='string'&&/^[A-Z_]{1,60}$/.test(c)).slice(0,5);
+   const failed={id:r.cardAttempt.id,failed:true,failureCodes:codes,failedPaymentId:p.id};
+   const result=await squareWrite(env,key,{...r,cardAttempt:failed},r._revision);if(result.meta.changes)return;continue;
+  }
   const replacing=r.paymentId&&r.paymentId!==p.id;
   if(replacing){
    if(r.status!=='pending'||r.paidAt||r.method!=='hosted')return;
@@ -206,30 +214,32 @@ async function squareEmbedded(request,env,url,body,key,r){
   await squareWrite(env,key,{...r,orderId:order.id},r._revision);r=await squareRecord(env,key);
   if(!r.orderId)return json({error:'Checkout changed. Please try again.'},409);
  }
- if(url.pathname.endsWith('/prepare'))return json({plan:r.plan,mode:squareMode(env),applicationId:env.SQUARE_APPLICATION_ID,locationId:env.SQUARE_LOCATION_ID,resumeAttempt:r.cardAttempt&&!r.cardAttempt.failed&&!r.cardAttempt.complete?r.cardAttempt.id:null});
+ if(url.pathname.endsWith('/prepare'))return json({plan:r.plan,mode:squareMode(env),applicationId:env.SQUARE_APPLICATION_ID,locationId:env.SQUARE_LOCATION_ID,resumeAttempt:r.cardAttempt&&!r.cardAttempt.failed&&!r.cardAttempt.complete?r.cardAttempt.id:null,retryMessage:r.cardAttempt?.failed?(r.cardAttempt.failureCodes?.includes('EXPIRATION_FAILURE')?'Your card was declined. Check its expiry date or use another payment method.':'The previous payment failed. Check your card details or use another payment method.'):null});
  if(typeof body.attemptId!=='string'||! /^[a-f0-9-]{36}$/.test(body.attemptId))return json({error:'Invalid payment attempt.'},400);
  if(!r.cardAttempt||r.cardAttempt.failed){
   if(r.cardAttempt?.id===body.attemptId)return json({error:'This card attempt was declined. Please try again.',retryCard:true},402);
   if(body.useSavedCard!==undefined&&typeof body.useSavedCard!=='boolean'||body.savedCardId!==undefined&&body.useSavedCard!==true)return json({error:'Choose a valid card option.'},400);
   if(body.saveCard!==undefined&&typeof body.saveCard!=='boolean')return json({error:'Choose whether to save this card.'},400);
   let saved=null;if(body.useSavedCard===true){if(r.stage!=='renewal'||body.saveCard===true)return json({error:'Choose a valid card option.'},400);saved=await squareSavedCard(env,r.user);if(!saved||saved.cardId!==body.savedCardId)return json({error:'This saved card is unavailable. Choose another card.',retryCard:true},402);const {card}=await squareCall(env,'cards/'+encodeURIComponent(saved.cardId));if(!card?.enabled||card.customer_id!==saved.customerId||card.id!==saved.cardId)return json({error:'This saved card is unavailable. Choose another card.',retryCard:true},402);}
-  let sourceId=body.sourceId,verificationToken=null;
+  if(body.verificationToken!==undefined&&(typeof body.verificationToken!=='string'||!/^verf:[A-Za-z0-9_-]{1,1000}$/.test(body.verificationToken)))return json({error:'Verify your payment method again.'},400);
+  let sourceId=body.sourceId,verificationToken=body.verificationToken||null;
   // Square's saved-card SDK returns cardId#verificationToken. Bind both to this account's exact card.
   if(saved&&typeof sourceId==='string'&&sourceId.startsWith('ccof:')){
    const parts=sourceId.split('#');if(parts.length!==2||parts[0]!==saved.cardId||!/^verf:[A-Za-z0-9_-]{1,1000}$/.test(parts[1]))return json({error:'Please verify your saved card again or choose another card.',retryCard:true},402);
    sourceId=parts[0];verificationToken=parts[1];
   }else if(typeof sourceId!=='string'||!sourceId.startsWith('cnon:')||sourceId.length>1024)return json({error:'Enter your card in the secure payment form.'},400);
-  const attempt={id:body.attemptId,request:{source_id:sourceId,idempotency_key:crypto.randomUUID(),amount_money:{amount:r.plan.amount,currency:'GBP'},location_id:env.SQUARE_LOCATION_ID,order_id:r.orderId,reference_id:key,autocomplete:true,...(saved?{customer_id:saved.customerId,customer_details:{customer_initiated:true,seller_keyed_in:false},...(verificationToken?{verification_token:verificationToken}:{})}: {})}};
+  const attempt={id:body.attemptId,request:{source_id:sourceId,idempotency_key:crypto.randomUUID(),amount_money:{amount:r.plan.amount,currency:'GBP'},location_id:env.SQUARE_LOCATION_ID,order_id:r.orderId,reference_id:body.attemptId,autocomplete:true,...(verificationToken?{verification_token:verificationToken}:{}),...(saved?{customer_id:saved.customerId,customer_details:{customer_initiated:true,seller_keyed_in:false},...(verificationToken?{verification_token:verificationToken}:{})}: {})}};
   await squareWrite(env,key,{...r,cardAttempt:attempt,cardStorage:body.saveCard===true&&squareSavedCardsEnabled(env)?{consentAt:new Date().toISOString(),state:'pending',copyVersion:'save-card-v1'}:null},r._revision);r=await squareRecord(env,key);
  }
  if(r.method!=='embedded'||!r.cardAttempt||r.cardAttempt.id!==body.attemptId)return json({error:'Another payment is being checked. Refresh its status before trying again.'},409);
  let result;
  try{result=await squareCall(env,'payments',r.cardAttempt.request);}catch(e){
-  const declines=['CARD_DECLINED','CVV_FAILURE','ADDRESS_VERIFICATION_FAILURE','CARD_EXPIRED','GENERIC_DECLINE','INSUFFICIENT_FUNDS','CARD_TOKEN_EXPIRED','CARD_TOKEN_USED','CARD_DECLINED_VERIFICATION_REQUIRED'];
+  if(typeof recordEducationFailure==='function')await recordEducationFailure(env,url.pathname,e);
+  const declines=['EXPIRATION_FAILURE','INVALID_CARD_DATA','INVALID_ACCOUNT','CARD_NOT_SUPPORTED','INVALID_POSTAL_CODE','PAN_FAILURE','TRANSACTION_LIMIT','CARDHOLDER_INSUFFICIENT_PERMISSIONS','VOICE_FAILURE','CARD_DECLINED','CVV_FAILURE','ADDRESS_VERIFICATION_FAILURE','CARD_EXPIRED','GENERIC_DECLINE','INSUFFICIENT_FUNDS','CARD_TOKEN_EXPIRED','CARD_TOKEN_USED','CARD_DECLINED_VERIFICATION_REQUIRED'];
   if(e.squareCodes?.some(c=>declines.includes(c))){
    const current=await squareRecord(env,key);
    if(current.status==='paid')return json({paid:true,payment:squarePublic(current)});
-   if(current.cardAttempt?.id===body.attemptId)await squareWrite(env,key,{...current,cardAttempt:{id:body.attemptId,failed:true}},current._revision);
+   if(current.cardAttempt?.id===body.attemptId)await squareWrite(env,key,{...current,cardAttempt:{id:body.attemptId,failed:true,failureCodes:(e.squareCodes||[]).filter(c=>typeof c==='string'&&/^[A-Z_]{1,60}$/.test(c)).slice(0,5)}},current._revision);
    return json({error:'The card was not accepted. Check your details or try another card.',retryCard:true},402);
   }
   return json({error:'Payment confirmation is delayed. Retry confirmation to check this same payment.',retrySame:true},503);

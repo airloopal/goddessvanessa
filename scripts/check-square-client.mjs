@@ -46,3 +46,5 @@ const feedCSP=config.headers.filter(r=>r.source==='/feed.html').flatMap(r=>r.hea
 console.log('Feed bank modal passed: delayed close events preserved on success/cancel, manual close disposed, scoped CSP and shared feedback/tokenization.');
 
 await import('./check-payment-recovery-wallets.mjs');
+
+await import('./check-member-wallets.mjs');

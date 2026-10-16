@@ -3,3 +3,5 @@
 .member-page #member-theme{width:46px;height:46px;min-width:46px;padding:11px;border-radius:50%}.member-page #member-theme svg{width:23px;height:23px}.member-page #member-saved-card{font-size:16px;line-height:1.6;margin:12px 0;color:var(--sub-ink)}
 
 .member-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-shrink:0}.member-page .member-login{white-space:nowrap;font-size:14px;min-height:46px;padding:10px 14px}@media(max-width:360px){.member-page .p-header{gap:8px;padding-inline:12px}.member-page .p-header img{width:98px}.member-header-actions{gap:7px}.member-page .member-login{padding-inline:10px}}
+
+.member-page .square-payment-divider{color:var(--sub-muted)}.member-page .square-payment-divider:before,.member-page .square-payment-divider:after{background:var(--sub-line)}.member-page .square-wallet-consent{color:var(--sub-muted);font-size:12px;font-weight:400}.member-page #member-card-panel h2{font-size:18px}.member-page .member-footer:has(#member-pay){display:grid;grid-template-columns:1fr 1fr}.member-page #member-pay{grid-column:1 / -1;width:100%}.member-page #member-save-row{font-size:12px;line-height:1.5}

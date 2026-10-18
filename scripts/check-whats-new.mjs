@@ -32,4 +32,18 @@ await env.DB.prepare('INSERT INTO prototype_settings(id,content,revision,updated
 const lifecycle=fs.existsSync('server/account-management.js');const deletion=await worker.fetch(new Request('https://academy.test/api/chat/'+(lifecycle?'account-management':'account'),{method:lifecycle?'POST':'DELETE',headers:{origin:'https://academy.test','x-chat-role':'student',cookie:'__Host-vanessa_student='+tokens[0],'content-type':'application/json'},body:JSON.stringify(lifecycle?{action:'delete',revision:1}:{confirm:true})}),env);assert.equal(deletion.status,200);assert.equal(await env.DB.prepare("SELECT id FROM prototype_settings WHERE id=?").bind('whats-new:production:'+ids[0]+':'+subId).first(),null);
 for(const file of ['dashboard.html','chat.html','feed.html']){const html=fs.readFileSync('dist/public/'+file,'utf8');assert.ok(html.includes('whats-new.js'));assert.ok(html.includes('whats-new.css'));}
 const source=fs.readFileSync('public/whats-new.js','utf8');assert.ok(!source.includes('localStorage'));assert.ok(!source.includes('innerHTML=data'));assert.match(source,/esc\(h.text\)/);assert.match(source,/credentials:'same-origin',cache:'no-store'/);assert.match(source,/event.persisted/);
+// One notification centre: platform updates are inline list entries, not another header/feed.
+assert.ok(!source.includes('whats-new-toggle'));assert.ok(!source.includes('whats-new-panel'));assert.ok(!source.includes('whats-new-stream'));
+assert.match(source,/<details class="whats-new-release"/);assert.match(source,/id='notification-items'|getElementById\('notification-items'\)/);
+assert.match(source,/button.id='notifications-toggle'/);assert.match(source,/ownedDialog.id='notification-centre'/);
+const activity=fs.readFileSync('public/chat-refinements.js','utf8');assert.ok(activity.includes('window.WhatsNew?.attach?.(host)'));assert.ok(activity.includes('window.WhatsNew?.unread?.()'));assert.ok(!sub.data.items[0].highlights.some(h=>h.text.includes('gift icon')));
+
+// Chat observes its header subtree. Re-observing an already mounted bell must be inert.
+const {runInNewContext}=await import('node:vm');let observerCallback,notificationButton,domWrites=0;
+const ticker={set textContent(value){domWrites++;},hidden:true};
+const chatHost={insertBefore(button){notificationButton=button;domWrites++;},querySelector:()=>null};
+const fakeDocument={hidden:false,body:{classList:{contains:name=>name==='chat-view'}},getElementById:id=>id==='client-chat'?chatHost:id==='notifications-toggle'?notificationButton:null,querySelector:selector=>selector==='.chat-header-actions'?chatHost:null,createElement:()=>({setAttribute(){},querySelector:()=>ticker}),addEventListener(){},querySelectorAll:()=>[]};
+const fakeWindow={addEventListener(){}};runInNewContext(source,{window:fakeWindow,document:fakeDocument,MutationObserver:class{constructor(callback){observerCallback=callback;}observe(){}},fetch:async()=>({ok:true,json:async()=>({audience:'sub',items:[{id:'fixture',read:false}]})}),setInterval(){},Date,Set,Error});
+await new Promise(resolve=>setImmediate(resolve));assert.ok(notificationButton,'Sub Chat gets a Notifications bell');const writesAfterMount=domWrites;for(let i=0;i<10;i++)observerCallback();assert.equal(domWrites,writesAfterMount,'Existing bell causes no child mutations or observer refresh loop');assert.equal(fakeWindow.WhatsNew.unread(),1);
+
 await sql.close();console.log('What’s New passed: server-selected audiences, separate accounts/environments, unread persistence, idempotency, forged headers/selectors, CSRF, suspended/expired sessions, account deletion, escaped rendering and built assets.');

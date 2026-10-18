@@ -308,7 +308,7 @@ async function chatWhatsNew(request,env,url,{owner,student,method,body,now}){
   id:'sub-welcome-20261018',title:'Welcome to your private space',publishedAt:'2026-10-18T00:00:00Z',
   summary:'Discover what’s new in your House of Vanessa account.',
   highlights:[
-   {icon:'sparkles',title:'Your updates, in one place',text:'Look for the gift icon on Home or Chat. New platform updates for Subs appear here.'},
+   {icon:'sparkles',title:'Your updates, in one place',text:'Open Notifications on Home or Chat. Your platform updates appear in the same notification stream.'},
    {icon:'chat',title:'Review before you send',text:'Preview your photos, videos and voice notes before sharing them in Chat.'},
    {icon:'photos',title:'Revisit shared moments',text:'Open Media Library from your chat’s ••• menu to browse your shared media.'}
   ]

@@ -22,7 +22,7 @@ const adminSource=fs.readFileSync('public/goddess-navigation.js','utf8'),adminSt
 const adminViewport={height:844,offsetTop:0,scale:1,addEventListener:(n,f)=>adminEvents[n]=f};
 const adminLog={scrollTop:10,scrollHeight:2000};
 const adminDoc={activeElement:null,body:{classList:{toggle:(k,v)=>adminClasses[k]=v},style:{setProperty:(k,v)=>adminStyles[k]=v}},querySelector:()=>({getBoundingClientRect:()=>({height:80})}),getElementById:id=>id==='dashboard-nav'?{getBoundingClientRect:()=>({height:84})}:adminLog,addEventListener:(n,f)=>adminEvents[n]=f};
-const adminContext=vm.createContext({window:{visualViewport:adminViewport},innerHeight:844,document:adminDoc,addEventListener(){},requestAnimationFrame:f=>f()});
+let chatPageObserver;const adminContext=vm.createContext({MutationObserver:class{constructor(f){chatPageObserver=f;}observe(){}},window:{visualViewport:adminViewport},innerHeight:844,document:adminDoc,addEventListener(){},requestAnimationFrame:f=>f()});
 vm.runInContext(adminSource.slice(adminSource.indexOf(' const viewport=window.visualViewport;'),adminSource.lastIndexOf('})();')),adminContext);
 assert.equal(adminStyles['--mobile-chat-height'],'680px');assert.equal(adminLog.scrollTop,10);
 adminDoc.activeElement={matches:()=>true};adminViewport.height=390;adminEvents.resize();assert.equal(adminClasses['admin-keyboard-open'],true);assert.equal(adminStyles['--mobile-chat-height'],'390px');assert.equal(adminStyles['--mobile-chat-top'],'0px');assert.equal(adminLog.scrollTop,2000);
@@ -51,5 +51,7 @@ console.log('15 October chat UI passed: mobile focus/resized keyboard dismissal,
 
 // Composer compactness follows local form/panel focus, never the other party's typing.
 const overflowSource=fs.readFileSync('public/chat-refinements.js','utf8'),overflowContext=vm.createContext({document:{activeElement:null}});vm.runInContext(overflowSource.slice(overflowSource.indexOf('function composerOverflowCompact'),overflowSource.indexOf('(()=>{',overflowSource.indexOf('function composerOverflowCompact'))),overflowContext);const inputFocus={matches:()=>true},toolFocus={matches:()=>false},elsewhere={matches:()=>true};const fakeForm={contains:x=>x===inputFocus},fakePanel={contains:x=>x===toolFocus};for(const [target,want]of [[null,false],[inputFocus,true],[toolFocus,false],[elsewhere,false]]){overflowContext.document.activeElement=target;assert.equal(overflowContext.composerOverflowCompact(fakeForm,fakePanel),want);}console.log('Composer focus checks passed: typing compacts tools, microphone/attachment buttons stay tappable, outside focus restores the attachment row.');
+
+adminDoc.getElementById=id=>id==='dashboard-nav'?{getBoundingClientRect:()=>({height:84,top:816})}:adminLog;adminDoc.body.dataset={chatPage:'true'};adminDoc.activeElement=null;adminContext.innerHeight=900;adminViewport.height=900;chatPageObserver();assert.equal(adminStyles['--mobile-chat-top'],'0px');assert.equal(adminStyles['--mobile-chat-height'],'816px','Hidden site header reserves no height while navigation remains');adminDoc.body.dataset.chatPage='false';chatPageObserver();assert.equal(adminStyles['--mobile-chat-top'],'80px');console.log('Chat masthead passed: observer updates viewport immediately on entering/leaving Chat.');
 
 await import('./check-platform-motion.mjs');

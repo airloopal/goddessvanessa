@@ -38,6 +38,7 @@ async function chatAPI(request,env,url){
  }
  if(path==='session'&&method==='DELETE'){const sessionStudent=await chatStudent(request,env);const token=request.headers.get('cookie')?.match(/(?:^|;\s*)__Host-vanessa_student=([a-f0-9]{48})(?:;|$)/)?.[1];if(token)await db(env).prepare('DELETE FROM chat_sessions WHERE hash=?').bind(await chatHash(token)).run();if(sessionStudent)await db(env).prepare("DELETE FROM prototype_settings WHERE content::jsonb->>'studentId'=? AND id LIKE 'site-visit:%'").bind(sessionStudent.id).run();const response=json({ok:true});response.headers.set('Set-Cookie',chatCookie('',0));return response;}
  const student=await chatStudent(request,env);
+ if(path==='whats-new')return chatWhatsNew(request,env,url,{owner,student,method,body,now});
  if(path==='request-code'||path==='code-requests')return chatCodeRequests(request,env,url,{owner,student,body,method,now,path});
  if(path==='plans'&&method==='GET'){if(!student||owner)return json({error:'Open your Sub account to view contract options.'},403);const {config}=await educationConfig(env),payments=await squarePaymentState(env,student.user_id);return json({plans:config.agreement.contractPlans,current:squarePublic(payments.contract)});}
  if(path==='session'&&method==='GET')return student?json({student:{id:student.id,name:student.name,email:student.email}}):json({error:'Enter your access code to open your conversation.'},401);
@@ -287,4 +288,37 @@ async function deleteChatAccount(env,id){
  const billingStudent=await db(env).prepare('SELECT user_id FROM chat_students WHERE id=?').bind(id).first();
  if(billingStudent){const cardKey=await squareCardKey(env,billingStudent.user_id),card=await squareRecord(env,cardKey);if(card?.cardId&&squareReady(env)){try{await squareCall(env,'cards/'+encodeURIComponent(card.cardId)+'/disable',{});}catch{/* Revoking the local association still prevents future application charges. */}}await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind(cardKey).run();}
  await db(env).prepare("DELETE FROM prototype_settings WHERE id=? OR (id LIKE 'billing:%' AND content::jsonb->>'studentId'=?)").bind('member-pending:'+id,id).run();
-await db(env).prepare("DELETE FROM prototype_settings WHERE id LIKE 'feed-like:%' AND right(id,length(?))=?").bind(':'+id,':'+id).run();await mediaDeleteStudent(env,id);await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind('chat-background:'+id).run();await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind('code-request:'+id).run();await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind('sub-profile:'+id).run();await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind('sub-bio:'+id).run();await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind('chat-last-seen:'+id).run();await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind('chat-pin:'+id).run();await db(env).prepare("DELETE FROM prototype_settings WHERE (id LIKE 'chat-album:%' OR id LIKE 'chat-reply:%' OR id LIKE 'chat-upload-draft:%') AND content::jsonb->>'studentId'=?").bind(id).run();await db(env).prepare("DELETE FROM prototype_settings WHERE id LIKE 'site-visit:%' AND content::jsonb->>'studentId'=?").bind(id).run();await db(env).batch(['chat_messages','chat_state','chat_sessions'].map(table=>db(env).prepare('DELETE FROM '+table+' WHERE student_id=?').bind(id)).concat([db(env).prepare('DELETE FROM chat_students WHERE id=?').bind(id)]));await db(env).prepare("DELETE FROM prototype_settings WHERE id=? OR (id LIKE 'account-session:%' AND content::jsonb->>'studentId'=? ) OR (id LIKE 'notice:%' AND content::jsonb->>'studentId'=? )").bind('account-life:'+id,id,id).run();}
+await db(env).prepare("DELETE FROM prototype_settings WHERE id LIKE 'feed-like:%' AND right(id,length(?))=?").bind(':'+id,':'+id).run();await mediaDeleteStudent(env,id);await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind('chat-background:'+id).run();await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind('code-request:'+id).run();await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind('sub-profile:'+id).run();await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind('sub-bio:'+id).run();await db(env).prepare("DELETE FROM prototype_settings WHERE id LIKE 'whats-new:%' AND content::jsonb->>'studentId'=?").bind(id).run();await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind('chat-last-seen:'+id).run();await db(env).prepare('DELETE FROM prototype_settings WHERE id=?').bind('chat-pin:'+id).run();await db(env).prepare("DELETE FROM prototype_settings WHERE (id LIKE 'chat-album:%' OR id LIKE 'chat-reply:%' OR id LIKE 'chat-upload-draft:%') AND content::jsonb->>'studentId'=?").bind(id).run();await db(env).prepare("DELETE FROM prototype_settings WHERE id LIKE 'site-visit:%' AND content::jsonb->>'studentId'=?").bind(id).run();await db(env).batch(['chat_messages','chat_state','chat_sessions'].map(table=>db(env).prepare('DELETE FROM '+table+' WHERE student_id=?').bind(id)).concat([db(env).prepare('DELETE FROM chat_students WHERE id=?').bind(id)]));await db(env).prepare("DELETE FROM prototype_settings WHERE id=? OR (id LIKE 'account-session:%' AND content::jsonb->>'studentId'=? ) OR (id LIKE 'notice:%' AND content::jsonb->>'studentId'=? )").bind('account-life:'+id,id,id).run();}
+
+// Release notices are selected by the verified session, never by a requested audience.
+async function chatWhatsNew(request,env,url,{owner,student,method,body,now}){
+ const role=request.headers.get('x-chat-role');
+ if(role==='student'?!student:!owner)return json({error:'Sign in to view your updates.'},403);
+ if([...url.searchParams.keys()].some(k=>!['path','_'].includes(k)))return json({error:'Updates are selected by your session.'},400);
+ if(!['GET','PATCH'].includes(method))return json({error:'Method not allowed.'},405);
+ const audience=owner?'goddess':'sub',catalog=audience==='goddess'?[{
+  id:'goddess-welcome-20261018',title:'Your dashboard, at a glance',publishedAt:'2026-10-18T00:00:00Z',
+  summary:'A new home for the updates that matter to Goddess Vanessa.',
+  highlights:[
+   {icon:'sparkles',title:'What’s New for Goddess',text:'Find platform updates here, alongside your existing notification stream.'},
+   {icon:'photos',title:'Preview before you publish',text:'Review up to six photos and videos in your Feed composer before posting.'},
+   {icon:'chat',title:'Your conversation media',text:'Open Media Library from a chat’s ••• menu to browse shared photos, videos and voice notes.'}
+  ]
+ }]:[{
+  id:'sub-welcome-20261018',title:'Welcome to your private space',publishedAt:'2026-10-18T00:00:00Z',
+  summary:'Discover what’s new in your House of Vanessa account.',
+  highlights:[
+   {icon:'sparkles',title:'Your updates, in one place',text:'Look for the gift icon on Home or Chat. New platform updates for Subs appear here.'},
+   {icon:'chat',title:'Review before you send',text:'Preview your photos, videos and voice notes before sharing them in Chat.'},
+   {icon:'photos',title:'Revisit shared moments',text:'Open Media Library from your chat’s ••• menu to browse your shared media.'}
+  ]
+ }];
+ const identity=owner?'goddess':student.id,prefix='whats-new:'+squareMode(env)+':'+identity+':';
+ if(method==='PATCH'){
+  if(Object.keys(body).some(k=>k!=='id')||typeof body.id!=='string'||!catalog.some(n=>n.id===body.id))return json({error:'Choose an update from your notification stream.'},400);
+  // Acknowledgement is idempotent: no incrementing write or cross-account selector.
+  await db(env).prepare('INSERT INTO prototype_settings(id,content,revision,updated_at) VALUES(?,?,1,?) ON CONFLICT(id) DO NOTHING').bind(prefix+body.id,JSON.stringify({readAt:now,...(!owner?{studentId:student.id}:{})}),new Date(now).toISOString()).run();
+ }
+ const rows=await db(env).prepare('SELECT id FROM prototype_settings WHERE id IN ('+catalog.map(()=>'?').join(',')+')').bind(...catalog.map(n=>prefix+n.id)).all(),read=new Set(rows.results.map(r=>r.id));
+ return json({audience,items:catalog.map(n=>({...n,read:read.has(prefix+n.id)}))});
+}

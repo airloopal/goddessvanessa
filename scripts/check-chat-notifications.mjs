@@ -14,3 +14,5 @@ const handlers={};let focused=0,opened=null;
 const dashboard={url:'https://academy.test/dashboard.html',focus:async()=>focused++,postMessage:data=>opened=data};const sw={self:{location:{origin:'https://academy.test'},addEventListener:(name,fn)=>handlers[name]=fn,clients:{claim:async()=>{},matchAll:async()=>[dashboard],openWindow:async()=>{throw Error('Existing dashboard should be reused');}},skipWaiting(){}},URL};
 vm.createContext(sw);vm.runInContext(fs.readFileSync('public/chat-notifications-sw.js','utf8'),sw);let pending;handlers.notificationclick({notification:{data:{studentId:'a'},close(){}},waitUntil:p=>pending=p});await pending;assert.equal(focused,1);assert.equal(opened.studentId,'a');assert.equal(handlers.fetch,undefined,'private requests are never cached');
 console.log('Browser alert checks passed: opt-in previews, private default, initial backlog suppression, media/gift events, cursor deduplication, click-to-chat and no private caching.');
+
+await import('./check-whats-new.mjs');

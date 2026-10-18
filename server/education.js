@@ -33,8 +33,8 @@ async function educationAPI(request,env,url){
  if(path==='/api/education/enrolments'){
   if(!owner)return json({error:'Only Goddess can view learner records.'},403);
   if(request.method!=='GET')return json({error:'Method not allowed'},405);
-  const rows=await db(env).prepare("SELECT e.user_id,e.reference,e.name,e.path_id,e.snapshot,e.completed,e.created_at,e.updated_at,b.content::jsonb->>'bio' AS bio FROM education_enrolments e LEFT JOIN chat_students s ON s.user_id=e.user_id LEFT JOIN prototype_settings b ON b.id='sub-bio:'||s.id ORDER BY e.updated_at DESC LIMIT 200").all();
-  return json({enrolments:await Promise.all((rows.results||[]).map(async r=>{const {user_id,...record}=r;const payments=squareMode(env)==='off'?null:await squarePaymentState(env,user_id);return {...record,snapshot:JSON.parse(r.snapshot),completed:JSON.parse(r.completed),payments:payments?{entry:squarePublic(payments.entry),contract:squarePublic(payments.contract)}:null};}))});
+  const rows=await db(env).prepare("SELECT s.id AS studentId,e.user_id,e.reference,e.name,e.path_id,e.snapshot,e.completed,e.created_at,e.updated_at,b.content::jsonb->>'bio' AS bio,a.content::jsonb->>'version' AS photo_version FROM education_enrolments e LEFT JOIN chat_students s ON s.user_id=e.user_id LEFT JOIN prototype_settings b ON b.id='sub-bio:'||s.id LEFT JOIN prototype_settings a ON a.id=?||s.id ORDER BY e.updated_at DESC LIMIT 200").bind('sub-avatar:'+squareMode(env)+':').all();
+  return json({enrolments:await Promise.all((rows.results||[]).map(async r=>{const {user_id,photo_version,...record}=r;const payments=squareMode(env)==='off'?null:await squarePaymentState(env,user_id);return {...record,photoUrl:profilePhotoURL(r.studentId||r.studentid,photo_version),snapshot:JSON.parse(r.snapshot),completed:JSON.parse(r.completed),payments:payments?{entry:squarePublic(payments.entry),contract:squarePublic(payments.contract)}:null};}))});
  }
  if(path!=='/api/education/enrolment'&&path!=='/api/education/progress')return json({error:'Not found'},404);
  if(!user)return json({error:'Start your application in this browser before saving.'},401);

@@ -30,3 +30,5 @@ const adminSource=fs.readFileSync('public/admin-support.js','utf8'),cards=fs.rea
 await env.DB.prepare('UPDATE chat_limits SET count=30 WHERE key=?').bind('profile-save:'+ids[0]).run();assert.equal((await call('self-profile',{method:'PUT',data:{bio:'Too many saves',revision:3}})).status,429);
 assert.equal((await call('account',{method:'DELETE',data:{confirm:true}})).status,200);assert.equal(await env.DB.prepare('SELECT id FROM prototype_settings WHERE id=?').bind('sub-bio:'+ids[0]).first(),null,'deleting Sub removes bio');
 await sql.close();console.log('Sub profile passed: private persistence, isolation, session expiry, CSRF, strict fields/length, concurrency conflicts, separate Goddess notes, escaped rendering and deletion cleanup.');
+
+await import('./check-profile-photo.mjs');

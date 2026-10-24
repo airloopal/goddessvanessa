@@ -6,3 +6,7 @@ body.dashboard[data-chat-page=true]>.p-header{display:none!important}body.dashbo
 .profile-photo-editor .profile-photo-actions button{margin-top:0;width:auto;flex:1}.profile-photo-editor .profile-photo-actions{margin:12px 0}
 
 body.dashboard .admin-chat-heading .chat-portrait.sub-photo-frame{display:grid!important;place-items:center;flex:none}
+
+body.dashboard button.sub-photo-preview{display:inline-grid!important;place-items:center;flex:0 0 44px;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;margin:0;border:0;border-radius:50%;background:transparent;color:inherit;cursor:zoom-in}body.dashboard button.sub-photo-preview:focus-visible{outline:2px solid var(--dash-accent);outline-offset:3px}.sub-photo-preview .chat-portrait{margin:0}.floating-chat-heading .sub-photo-preview{flex-shrink:0}
+
+body.dashboard dialog.chat-media-lightbox.sub-profile-photo-lightbox{box-sizing:border-box;inset:0;margin:auto;width:min(560px,calc(100vw - 24px));height:fit-content!important;min-height:0!important;max-height:85dvh;padding:44px 10px 10px}body.dashboard .sub-profile-photo-lightbox .chat-media-view{min-height:0}body.dashboard .sub-profile-photo-lightbox .chat-media-view img{display:block;max-height:calc(85dvh - 60px);height:auto;width:auto;max-width:100%}

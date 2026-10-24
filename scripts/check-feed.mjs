@@ -55,10 +55,10 @@ console.log('Private feed passed: owner-only publish, draft/media isolation, CSR
 env.SQUARE_APPLICATION_ID='sandbox-fixture-app';
 const embeddedPost=await call('posts','POST',{...data,id:crypto.randomUUID(),text:'Card donation',status:'published'},true);assert.equal(embeddedPost.status,200);
 const embeddedId=embeddedPost.data.post.id,revision=embeddedPost.data.post.revision;
-const orderKeys=new Map(),chargeKeys=new Map();let orderCreates=0,chargeCreates=0,failConfirmation=false;
+const orderKeys=new Map(),chargeKeys=new Map();let orderCreates=0,chargeCreates=0,failConfirmation=false,lastChargeRequest=null;
 env.SQUARE_FETCH=async(url,options)=>{const path=new URL(url).pathname,b=options.body?JSON.parse(options.body):null;
  if(path.endsWith('/orders')){if(!orderKeys.has(b.idempotency_key)){const id='embedded-order-'+(++orderCreates);const order={...b.order,id,tenders:[]};orders.set(id,order);orderKeys.set(b.idempotency_key,order);}return Response.json({order:orderKeys.get(b.idempotency_key)});}
- if(path.endsWith('/payments')){assert.equal(b.amount_money.amount,1250);assert.equal(b.amount_money.currency,'GBP');assert.equal(b.location_id,'fixture-location');assert.ok(b.order_id);
+ if(path.endsWith('/payments')){lastChargeRequest=b;assert.equal(b.amount_money.amount,1250);assert.equal(b.amount_money.currency,'GBP');assert.equal(b.location_id,'fixture-location');assert.ok(b.order_id);
   if(b.source_id==='cnon:decline')return Response.json({errors:[{code:'CARD_DECLINED'}]},{status:400});
   if(!chargeKeys.has(b.idempotency_key)){const id='embedded-payment-'+(++chargeCreates);const amount=b.source_id==='cnon:mismatch'?1251:1250,payment={id,order_id:b.order_id,location_id:'fixture-location',status:'COMPLETED',updated_at:new Date().toISOString(),amount_money:{amount,currency:'GBP'},total_money:{amount,currency:'GBP'}};chargeKeys.set(b.idempotency_key,payment);payments.set(id,payment);orders.get(b.order_id).tenders=[{payment_id:id}];}
   if(failConfirmation){failConfirmation=false;return Response.json({errors:[{code:'INTERNAL_SERVER_ERROR'}]},{status:500});}return Response.json({payment:chargeKeys.get(b.idempotency_key)});}
@@ -83,6 +83,13 @@ const record=JSON.parse((await env.DB.prepare("SELECT content FROM prototype_set
 assert.equal((await embeddedCall('donate/prepare',form)).data.paid,true);assert.equal((await request('/api/chat/session',{cookie})).status,200);
 const contractSnapshot=await env.DB.prepare("SELECT content FROM prototype_settings WHERE id LIKE 'sq-sandbox-c-%'").all();assert.equal(contractSnapshot.results.length,0,'donations do not create contract access');
 console.log('Embedded feed cards passed: Sub/CSRF authorization, fixed price, preflight, pending-tab reuse, card declines, safe same-payment recovery, confirmed token disposal and unchanged contract access.');
+// Wallet authentication is forwarded only on the same server-priced donation attempt.
+const walletForm={...form,id:crypto.randomUUID()};assert.equal((await embeddedCall('donate/prepare',walletForm)).status,200);
+const beforeWallet=chargeCreates;assert.equal((await embeddedCall('donate/charge',{...walletForm,attemptId:crypto.randomUUID(),sourceId:'cnon:wallet',verificationToken:'invalid'})).status,400);assert.equal(chargeCreates,beforeWallet);
+assert.equal((await embeddedCall('donate/charge',{...walletForm,attemptId:crypto.randomUUID(),sourceId:'cnon:wallet',verificationToken:'verf:wallet',amount:1})).status,400);
+const walletAttempt=crypto.randomUUID();failConfirmation=true;const walletLost=await embeddedCall('donate/charge',{...walletForm,attemptId:walletAttempt,sourceId:'cnon:wallet',verificationToken:'verf:wallet'});assert.equal(walletLost.data.retrySame,true);assert.equal(lastChargeRequest.verification_token,'verf:wallet');assert.equal(lastChargeRequest.amount_money.amount,1250);const walletCount=chargeCreates;
+assert.equal((await embeddedCall('donate/charge',{...walletForm,attemptId:walletAttempt})).data.paid,true);assert.equal(chargeCreates,walletCount,'Wallet lost reply is reconciled without another payment');
+console.log('Donation wallets passed: authentication-token validation/forwarding, server price and same-attempt recovery; no real charges.');
 const mismatchForm={...form,id:crypto.randomUUID()};assert.equal((await embeddedCall('donate/prepare',mismatchForm)).status,200);
 const mismatchAttempt=crypto.randomUUID(),mismatchResult=await embeddedCall('donate/charge',{...mismatchForm,attemptId:mismatchAttempt,sourceId:'cnon:mismatch'});assert.equal(mismatchResult.status,202);assert.equal(mismatchResult.data.paid,undefined);assert.equal(mismatchResult.data.retrySame,true,'wrong amount can never show Success');
 const resumed=await embeddedCall('donate/prepare',mismatchForm);assert.equal(resumed.data.resumeAttempt,mismatchAttempt);assert.equal(resumed.data.sourceId,undefined);assert.equal(resumed.data.request,undefined);
@@ -91,6 +98,8 @@ const otherStudent=crypto.randomUUID(),otherToken='ab'.repeat(24);await env.DB.p
 assert.equal((await request('/api/feed/donation-status',{method:'POST',cookie:otherCookie,data:{id:mismatchForm.id,postId:embeddedId}})).status,404);assert.equal((await request('/api/feed/donate/charge',{method:'POST',cookie:otherCookie,data:{...mismatchForm,attemptId:mismatchAttempt}})).status,409);
 console.log('Donation amount mismatch, pending-attempt lock, safe resume payload and cross-Sub payment privacy passed.');
 
-const feedPage=await request('/feed.html');assert.match(feedPage.headers.get('content-security-policy'),/form-action 'self' https:/);assert.match(feedPage.headers.get('content-security-policy'),/frame-src 'self' https:/);assert.ok(!(await request('/chat.html')).headers.get('content-security-policy').includes("form-action 'self' https:"));
+const feedPage=await request('/feed.html');assert.match(feedPage.headers.get('content-security-policy'),/form-action 'self' https:/);assert.match(feedPage.headers.get('content-security-policy'),/frame-src 'self' https:/);assert.ok(feedPage.headers.get('content-security-policy').includes('https://pay.google.com'));assert.equal(feedPage.headers.get('cross-origin-opener-policy'),'same-origin-allow-popups');assert.ok(!(await request('/chat.html')).headers.get('content-security-policy').includes("form-action 'self' https:"));
 
 await import('./check-feed-preview.mjs');
+
+await import('./check-donation-client.mjs');

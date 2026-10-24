@@ -1,4 +1,5 @@
 import {verify} from 'node:crypto';
+import {staffAPI} from '../server/platform/staff.js';
 import {visitorLocation} from '../server/platform/visitor-geo.js';
 import {boundedText} from '../server/platform/request-body.js';
 import {statusAPI,recordFailure} from '../server/platform/diagnostics.js';
@@ -62,6 +63,7 @@ export async function handle(request,env=process.env,dependencies={}){
   }
   if(url.pathname==='/api/throne/webhook')return await finish(await throneWebhook(request,DB));
   context=dependencies.auth||authContext(request,runtime);
+  if(url.pathname.startsWith('/api/staff/'))return await finish(await staffAPI(request,runtime,context));
   if(url.pathname==='/api/chat/gift-reference')return await finish(await giftReference(request,runtime,context));
   const response=url.pathname.startsWith('/api/auth/')?await authAPI(request,context,runtime):await worker.fetch(await verifiedRequest(request,context.client,env),runtime);
   return await finish(response);

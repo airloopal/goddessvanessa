@@ -57,3 +57,8 @@ Authenticated Settings → Usage reports Free transactional email: 228/3,000 mon
 Both complete npm test suites passed and production dependency audits report zero vulnerabilities. Targeted tests cover donation wallet SCA, exact server-owned amounts, cancelled wallet/no charge, card fallback, same-attempt recovery after a lost reply, cross-account/origin denial, private photo reads, photo URL validation, shared lightbox reuse and focus/close behavior. Final targeted runs follow the final lightbox sizing adjustment. Builds and hosted-release results are recorded in BUGFIX_LOGBOOK.md.
 
 UI uses synthetic local data and a mocked Square SDK to verify compact wallet/card layout and profile expansion on mobile/desktop in light/dark themes. Actual Apple Pay/Google Pay sheets require supported HTTPS devices and enrolled wallets. No real transaction or customer photo was used, and physical-device wallet/Safari certification is not claimed. No blanket claim of immunity to malware, penetration or DDoS is made.
+
+
+## Publication receipt
+
+Both environments published successfully: Sandbox runtime `1a885b084697434a25416e012c3bc61abf858f12`; Live runtime `47d0e16616db9e3145a5317138323ade75d3e3e0`. Each passed 28 hosted checks (56 combined), including exact deployed assets, Apple domain association, Feed wallet headers, protected private APIs and separate payment modes. The actual Live domain was used for Live acceptance. No paid plan changes were made; the Vercel follow-up remains open.

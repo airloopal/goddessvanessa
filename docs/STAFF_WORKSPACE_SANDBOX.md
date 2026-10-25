@@ -47,3 +47,12 @@ Videos must pass the existing private Cloudflare Stream processing flow before S
 Every upload, completion, private preview and final send checks the individual staff session, account revision and current assignment revision. Reassignment, disabled accounts, suspended/paused chats or missing active contract access prevent sending. A newly assigned chatter cannot inherit the prior chatter’s private drafts. Recipient media records are created only in the final Send transaction. One message carries the ordered album; staff authorship remains private. Original authors may discard their own unsent uploads after reassignment but cannot read or send them. Existing signed links can remain usable for up to five minutes; downloads cannot be recalled.
 
 The new media suite passes 98 targeted assertions using synthetic local PostgreSQL, private-storage and Stream transports. Browser checks use an isolated fixture and synthetic audio (no microphone capture or customer content). Physical iPhone Safari and an actual authenticated hosted staff/provider transfer still require device acceptance testing; server processing, privacy, duration limits and access changes are covered with controlled mocks. Staff MFA enrolment remains outside this release.
+
+
+## Responsive workspace layout — 25 October 2026
+
+Desktop uses a compact left workspace navigation, with conversation list and chat side by side. Studio separates the editor from its post preview. Account actions (password and logout) are in the top-right person menu, next to the theme control; the menu dismisses on outside click or Escape.
+
+Mobile uses short Chats/Studio and Support tabs. Opening a conversation hides the large brand header; Back returns to the conversation list and account menu. The draft grows as text is entered, and media tools collapse into … beside Send. Private handover notes remain under the conversation. Native keyboard detection still hides navigation while typing.
+
+Studio captions switch between Instagram and TikTok without clearing either value. Scheduling and the asset library are expandable. Preview post opens the post preview (collapsed initially on mobile). Save draft is secondary; Submit for approval is primary, with the actions sticky at the bottom of the mobile editor. Approval and manual publication remain separate. Existing role, assignment, draft revision, media and payment protections are unchanged.

@@ -1,4 +1,5 @@
 import {randomBytes,randomUUID,createHash,scrypt as scryptCallback,timingSafeEqual} from 'node:crypto';
+import {staffChatMedia} from './staff-chat-media.js';
 import {promisify} from 'node:util';
 import {boundedText} from './request-body.js';
 import {mediaType,streamPrivateStatus,streamPlaybackHost} from '../../dist/server/index.js';
@@ -21,7 +22,7 @@ async function matches(password,record){const good=/^[a-f0-9]{128}$/.test(record
 function cookie(value,age){return cookieName+'='+value+'; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age='+age;}
 function token(request){return (request.headers.get('cookie')||'').match(/(?:^|;\s*)__Host-vanessa_staff=([a-f0-9]{64})(?:;|$)/)?.[1];}
 async function limit(DB,name,max,period=900000){const now=Date.now();const row=await DB.prepare('INSERT INTO chat_limits(key,count,expires) VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN chat_limits.expires<=? THEN 1 ELSE chat_limits.count+1 END,expires=CASE WHEN chat_limits.expires<=? THEN excluded.expires ELSE chat_limits.expires END RETURNING count').bind('staff:'+name,now+period,now,now).first();if(row.count>max)throw fail('Too many requests. Please wait before trying again.',429);}
-async function actor(request,DB,context){const {data:{user}}=await context.client.auth.getUser();if(user?.email_confirmed_at&&user.email?.toLowerCase()==='danielvernontp@gmail.com')return {id:'goddess',name:'Goddess Vanessa',role:'goddess',owner:true};const raw=token(request);if(!raw)return null;const session=await read(DB,key('session',hash(raw)));if(!session||session.expires<=Date.now())return null;const account=await read(DB,key('account',session.staffId));if(!account||!uuid(account.id)||!['chatter','social'].includes(account.role)||account.status!=='active'||account.revision!==session.accountRevision)return null;return {id:account.id,name:account.name,role:account.role,owner:false,revision:account.revision,forceChange:account.forceChange===true,expires:session.expires};}
+async function actor(request,DB,context){const {data:{user}}=await context.client.auth.getUser();if(user?.email_confirmed_at&&user.email?.toLowerCase()==='danielvernontp@gmail.com')return {id:'goddess',name:'Goddess Vanessa',role:'goddess',owner:true};const raw=token(request);if(!raw)return null;const session=await read(DB,key('session',hash(raw)));if(!session||session.expires<=Date.now())return null;const account=await read(DB,key('account',session.staffId));if(!account||!uuid(account.id)||!['chatter','social'].includes(account.role)||account.status!=='active'||account.revision!==session.accountRevision)return null;return {id:account.id,name:account.name,role:account.role,owner:false,revision:account.revision,forceChange:account.forceChange===true,expires:session.expires,sessionKey:key('session',hash(raw))};}
 function requireRole(a,...roles){if(!roles.includes(a.role))throw fail('This action is not available to your role.',403);}
 async function assigned(DB,a,id){if(!uuid(id))throw fail('Choose a conversation.');const row=await DB.prepare('SELECT id,name,status FROM chat_students WHERE id=?').bind(id).first();if(!row)throw fail('Conversation unavailable.',404);const assignment=await read(DB,key('assignment',id));if(!a.owner&&assignment?.staffId!==a.id)throw fail('Conversation unavailable.',404);return {student:row,assignment};}
 function cleanRecord(value){const result={...value};delete result.revision;delete result.updatedAt;return result;}
@@ -61,6 +62,7 @@ export async function staffAPI(request,env,context){
   }
   if(a.forceChange)throw fail('Change your temporary password before continuing.',403);
   if(!['GET','HEAD'].includes(method))await limit(DB,'write:'+a.id,90,60000);
+  if(path.startsWith('chat-media/'))return await staffChatMedia(request,env,a,body,{assigned,permitted,limit});
   if(path==='team'){
    requireRole(a,'goddess');
    if(method==='GET'){const rows=await DB.prepare("SELECT content,revision FROM prototype_settings WHERE id LIKE 'staff-account:%' ORDER BY updated_at DESC LIMIT 100").all();return json({team:rows.results.map(safeAccount)});}
@@ -91,7 +93,7 @@ export async function staffAPI(request,env,context){
     const albumKeys=rows.results.map(r=>'chat-album:'+r.id),albumRows=albumKeys.length?await DB.prepare('SELECT id,content FROM prototype_settings WHERE id IN ('+albumKeys.map(()=>'?').join(',')+')').bind(...albumKeys).all():{results:[]};const albums=new Map(albumRows.results.map(r=>[r.id.slice(11),JSON.parse(r.content)]));
     const attachmentIds=row=>{const album=albums.get(row.id);return album?.role===row.sender&&Array.isArray(album.attachmentIds)?album.attachmentIds.slice(0,6).filter(uuid):row.attachment_id?[row.attachment_id]:[];};const allIds=[...new Set(rows.results.flatMap(attachmentIds))];
     const files=allIds.length?await DB.prepare("SELECT id,mime,role,storage_key FROM media_files WHERE student_id=? AND scope='chat' AND id IN ("+allIds.map(()=>'?').join(',')+")").bind(id,...allIds).all():{results:[]};const fileMap=new Map(files.results.map(f=>[f.id,f]));
-    for(const row of rows.results){const attachments=attachmentIds(row).map(fid=>fileMap.get(fid)).filter(f=>f&&f.role===row.sender).map(f=>({id:f.id,mime:f.mime,stream:f.storage_key.startsWith('cloudflare-stream/'),url:'/api/staff/media/'+f.id}));messages.push({seq:row.seq,id:row.id,from:row.sender,text:row.attachment_id?'':row.body,at:row.created_at,staffName:row.author?JSON.parse(row.author).name:null,files:attachments});}
+    for(const row of rows.results){const attachments=attachmentIds(row).map(fid=>fileMap.get(fid)).filter(f=>f&&f.role===row.sender).map(f=>({id:f.id,mime:f.mime,stream:f.storage_key.startsWith('cloudflare-stream/'),url:'/api/staff/media/'+f.id}));messages.push({seq:row.seq,id:row.id,from:row.sender,text:row.attachment_id?(albums.has(row.id)?row.body:''):row.body,at:row.created_at,staffName:row.author?JSON.parse(row.author).name:null,files:attachments});}
     return json({student,assignmentRevision:assignment?.revision||0,messages:messages.reverse(),hasMore:rows.results.length===100});
    }
    if(path==='message'&&method==='POST'){

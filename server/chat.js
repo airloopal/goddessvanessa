@@ -149,10 +149,10 @@ async function chatAPI(request,env,url){
 async function chatSubOnline(env,id){const row=await db(env).prepare("SELECT 1 AS present FROM prototype_settings WHERE id LIKE 'site-visit:%' AND content::jsonb->>'studentId'=? AND updated_at>? LIMIT 1").bind(id,new Date(Date.now()-90000).toISOString()).first();return !!row;}
  async function chatAttachments(env,messages){
   if(!messages.length)return messages;
-  const ids=messages.map(m=>m.attachment_id).filter(Boolean),files=new Map();
-  if(ids.length){const rows=await db(env).prepare('SELECT id,name,mime,size,storage_key FROM media_files WHERE id IN ('+ids.map(()=>'?').join(',')+')').bind(...ids).all();rows.results.forEach(f=>files.set(f.id,mediaDescriptor(f)));}
-  const keys=messages.map(m=>'chat-reply:'+m.id),rows=await db(env).prepare('SELECT id,content FROM prototype_settings WHERE id IN ('+keys.map(()=>'?').join(',')+')').bind(...keys).all(),replies=new Map(rows.results.map(r=>[r.id.slice(11),JSON.parse(r.content).reply]));
-  return messages.map(m=>({...m,text:m.attachment_id?(files.get(m.attachment_id)?.name||'Attachment'):m.text,attachment:files.get(m.attachment_id)||null,reply:replies.get(m.id)||null}));
+  const keys=messages.flatMap(m=>['chat-reply:'+m.id,'chat-album:'+m.id]),records=await db(env).prepare('SELECT id,content FROM prototype_settings WHERE id IN ('+keys.map(()=>'?').join(',')+')').bind(...keys).all();const replies=new Map(),albums=new Map();for(const r of records.results){if(r.id.startsWith('chat-reply:'))replies.set(r.id.slice(11),JSON.parse(r.content).reply);else albums.set(r.id.slice(11),JSON.parse(r.content));}
+  const rows=await db(env).prepare("SELECT m.id AS message_id,f.id,f.name,f.mime,f.size,f.storage_key FROM chat_messages m JOIN media_files f ON f.student_id=m.student_id AND f.role=m.sender AND f.scope='chat' LEFT JOIN prototype_settings a ON a.id='chat-album:'||m.id WHERE m.id IN ("+messages.map(()=>'?').join(',')+") AND (f.id=m.attachment_id OR (a.content::jsonb->>'role'=m.sender AND a.content::jsonb->>'studentId'=m.student_id AND a.content::jsonb->'attachmentIds' @> to_jsonb(f.id)))").bind(...messages.map(m=>m.id)).all();
+  const files=new Map(rows.results.map(f=>[f.message_id+':'+f.id,mediaDescriptor(f)]));
+  return messages.map(m=>{const album=albums.get(m.id),ordered=album&&album.role===m.from&&Array.isArray(album.attachmentIds)?album.attachmentIds.slice(0,6):null,attachment=files.get(m.id+':'+m.attachment_id)||null;return {...m,text:m.attachment_id?(attachment?.name||'Attachment'):m.text,attachment,...(ordered?{attachments:ordered.map(id=>files.get(m.id+':'+id)).filter(Boolean),caption:m.text||''}:{}),reply:replies.get(m.id)||null};});
  }
  
 // Approval records contain no plaintext codes. Collection is bound to the existing

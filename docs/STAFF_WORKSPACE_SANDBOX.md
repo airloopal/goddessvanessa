@@ -12,7 +12,7 @@ Open `/staff.html` on the square-sandbox deployment. Goddess can also use Accoun
 
 ## Included
 
-- Chatter: assigned conversation history, text replies with safe retry, earlier-message pagination, shared photo/video/voice-note/document playback, private team notes and handover, and Contact Goddess / Report a bug threads.
+- Chatter: assigned conversation history, text replies with safe retry, photo/video/audio uploads and voice recording with private previews, earlier-message pagination, shared photo/video/voice-note/document playback, private team notes and handover, and Contact Goddess / Report a bug threads.
 - Goddess: staff management, assignments, all workspace conversations, support replies/status, draft approval/feedback and a private activity log. Staff authorship is recorded against each reply; existing Sub-facing sender branding is preserved.
 - Social manager: own drafts, separate Instagram/TikTok captions, target publication time, private public-content media uploads, up to six ordered assets, carousel previews, native video controls and submission for approval.
 - Approved drafts are locked to staff. Goddess can request changes; edits require another review. Approval checks the exact saved revision, so a stale approval cannot approve unseen edits.
@@ -25,7 +25,7 @@ This is a Sandbox-only first release. The API refuses non-Preview environments. 
 
 Staff never receive Goddess identity headers and cannot use the owner APIs. Chatters cannot issue access codes, change contracts, confirm payments, broadcast, change account status or inspect unrelated conversations. Social staff cannot access private Sub chats, profiles, chat attachments or financial records. The studio has its own media metadata and object prefix; private chat assets cannot be attached to social drafts.
 
-This initial staff composer sends text replies and plays existing shared media. Sending new chat media and voice recording from staff accounts are not part of this release. Staff accounts use individual passwords and eight-hour sessions; staff authenticator/MFA enrolment is not included. Goddess's existing MFA remains unchanged. Signed media links already issued expire within five minutes; downloaded material cannot be recalled.
+Staff accounts use individual passwords and eight-hour sessions; staff authenticator/MFA enrolment is not included. Goddess's existing MFA remains unchanged. Signed media links already issued expire within five minutes; downloaded material cannot be recalled.
 
 Social publishing and automatic scheduling are not connected. The target date is a planning field, and approval does not publish a post. Instagram/TikTok connections require separate work; TikTok internal-tool restrictions remain relevant. Controlled email testing remains Sandbox-only and was not changed or exercised here.
 
@@ -36,3 +36,14 @@ Studio upload formats: JPG, PNG, WebP, MP4 and WebM, up to 50 MB each. This firs
 `scripts/check-staff.mjs` uses synthetic local PostgreSQL records and tests authentication, roles, forged identities, forced initial password changes, hashing/cookies, brute-force limits, account disable/reset/expiry, reassignment, stale writes, idempotent replies, read receipts, paused conversations, private shared media, support ownership, draft/approval revision conflicts, approved-content locks, media separation, size/MIME limits and upload-retry recovery. The complete existing regression suite also passes. Production dependency audit reports zero vulnerabilities; build includes 137 assets.
 
 Browser verification uses an isolated local synthetic database and test media, with mobile 390×844 and desktop layouts. This does not certify physical iPhone keyboard/audio behavior or third-party publishing. Hosted anonymous/forged-request and deployed-asset checks are recorded in the logbook after release. No customer messages, real payments, emails or social posts were sent; no actual staff accounts were provisioned during verification.
+
+
+## Chatter media update — 25 October 2026
+
+Open an assigned conversation, then choose Photo, Video, Voice note or Audio file. Up to six selected files can be reviewed as one message with a caption. While typing, the tools collapse into the … button beside Send. Nothing is shared merely by selecting or recording. Voice notes show a live recording indicator, timer and level meter; Stop & Review opens the waveform and Play/Pause preview. Discard cancels the draft. A photo/audio draft stays local until Send.
+
+Videos must pass the existing private Cloudflare Stream processing flow before Send Video becomes available. Prepare video preview uploads/processes the private draft; review it, then explicitly send. Limits remain 25 minutes and 1 GB per video, within the existing conversation allowance. There is no unprocessed-video fallback. Photos use the existing image preparation, voice notes the shared browser recorder. Other native audio/photo files are limited to 50 MB. Unsent remote drafts expire after two hours; opening a composer cleans up up to five expired drafts for that staff member. Goddess can also trigger cleanup by opening the workspace. Provider outages can delay cleanup; this is not a background deletion scheduler.
+
+Every upload, completion, private preview and final send checks the individual staff session, account revision and current assignment revision. Reassignment, disabled accounts, suspended/paused chats or missing active contract access prevent sending. A newly assigned chatter cannot inherit the prior chatter’s private drafts. Recipient media records are created only in the final Send transaction. One message carries the ordered album; staff authorship remains private. Original authors may discard their own unsent uploads after reassignment but cannot read or send them. Existing signed links can remain usable for up to five minutes; downloads cannot be recalled.
+
+The new media suite passes 98 targeted assertions using synthetic local PostgreSQL, private-storage and Stream transports. Browser checks use an isolated fixture and synthetic audio (no microphone capture or customer content). Physical iPhone Safari and an actual authenticated hosted staff/provider transfer still require device acceptance testing; server processing, privacy, duration limits and access changes are covered with controlled mocks. Staff MFA enrolment remains outside this release.

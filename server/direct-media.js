@@ -10,7 +10,7 @@ async function directMediaAPI(request,env,url){
   const row=await db(env).prepare('SELECT * FROM media_uploads WHERE id=?').bind(id).first();
   if(!row||row.actor!==actor)return json({error:'Upload not found. Choose the file again.'},404);
   const old=await db(env).prepare('SELECT * FROM media_files WHERE id=?').bind(id).first();
-  if(old){if(old.user_id!==row.user_id||old.student_id!==row.student_id||old.role!==row.role||old.scope!==(row.scope==='chat-draft'?'chat':row.scope))return json({error:'Upload identifier conflict.'},409);try{await env.BUCKET.deleteStaged(row.storage_key);}catch{console.error('staged_file_cleanup_pending');}return json({file:mediaDescriptor(old)});}
+  if(old){if(old.user_id!==row.user_id||old.student_id!==row.student_id||old.role!==row.role||old.scope!==(row.scope==='broadcast'?'feed':row.scope==='chat-draft'?'chat':row.scope))return json({error:'Upload identifier conflict.'},409);try{await env.BUCKET.deleteStaged(row.storage_key);}catch{console.error('staged_file_cleanup_pending');}return json({file:mediaDescriptor(old)});}
   if(row.expires_at<=Date.now())return json({error:'Upload expired. Choose the file again.'},410);
   const blob=await env.BUCKET.staged(row.storage_key);
   if(blob.size!==row.size)return json({error:'Uploaded size does not match. Choose the file again.'},400);
@@ -25,10 +25,12 @@ async function directMediaAPI(request,env,url){
  if(!Number.isSafeInteger(body.size)||body.size<1||body.size>MEDIA_MAX||typeof body.name!=='string'||body.name.length>200||typeof body.type!=='string'||body.type.length>100)return json({error:'Choose a file of up to 50 MB.'},400);
  if(env.CLOUDFLARE_STREAM_ENABLED==='true'&&['chat','chat-draft'].includes(body.scope)&&body.type.startsWith('video/'))return json({error:'Use the private video processing flow.'},415);
  let target=null,userId;
+ if(body.scope==='broadcast'&&owner){if(!body.type.startsWith('image/'))return json({error:'Choose a photo. Videos require private processing.'},415);}
  if(body.scope==='background'&&(body.size>8*1024*1024||!['image/jpeg','image/png','image/webp'].includes(body.type)))return json({error:'Choose a JPG, PNG or WebP image up to 8 MB.'},400);
  if(['chat','chat-draft'].includes(body.scope)||body.scope==='background'&&owner){
   const sid=owner?body.student:student?.id;if(!sid||(!owner&&body.student!==sid))return json({error:'Conversation unavailable.'},403);
   target=await db(env).prepare("SELECT id,user_id FROM chat_students WHERE id=? AND status='active'").bind(sid).first();if(!target)return json({error:'Conversation unavailable.'},403);userId=target.user_id;
+ }else if(body.scope==='broadcast'&&owner){userId='goddess-broadcast';
  }else if(body.scope==='feed'&&owner){
   if(! /^(image|video)\//.test(body.type))return json({error:'Choose a photo or video.'},415);userId='goddess-feed';
  }else if(body.scope==='verification'&&owner){
@@ -37,7 +39,7 @@ async function directMediaAPI(request,env,url){
   userId=body.request.slice('education-verification:'.length);
  }else return json({error:'Upload unavailable.'},403);
  if(['chat','chat-draft'].includes(body.scope)&&!await chatConversationEnabled(env,target.id))return json({error:'This conversation is paused.'},403);
- const existingFile=await db(env).prepare('SELECT * FROM media_files WHERE id=?').bind(id).first();if(existingFile&&(existingFile.scope!==(body.scope==='chat-draft'?'chat':body.scope)||existingFile.user_id!==userId||existingFile.student_id!==(target?.id||null)||existingFile.role!==(owner?'admin':'client')||existingFile.storage_key.startsWith('cloudflare-stream/')))return json({error:'Upload identifier conflict.'},409);
+ const existingFile=await db(env).prepare('SELECT * FROM media_files WHERE id=?').bind(id).first();if(existingFile&&(existingFile.scope!==(body.scope==='broadcast'?'feed':body.scope==='chat-draft'?'chat':body.scope)||existingFile.user_id!==userId||existingFile.student_id!==(target?.id||null)||existingFile.role!==(owner?'admin':'client')||existingFile.storage_key.startsWith('cloudflare-stream/')))return json({error:'Upload identifier conflict.'},409);
  const previous=await db(env).prepare('SELECT * FROM media_uploads WHERE id=?').bind(id).first();
  if(previous){
   if(previous.actor!==actor||previous.user_id!==userId||previous.scope!==body.scope||previous.size!==body.size)return json({error:'Upload identifier conflict.'},409);

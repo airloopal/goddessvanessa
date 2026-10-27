@@ -10,7 +10,7 @@ async function chatConversationEnabled(env,id){const r=await db(env).prepare('SE
 async function chatLimit(env,key,max,period){const now=Date.now();const row=await db(env).prepare('INSERT INTO chat_limits (key,count,expires) VALUES (?,1,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN chat_limits.expires<=? THEN 1 ELSE chat_limits.count+1 END,expires=CASE WHEN chat_limits.expires<=? THEN excluded.expires ELSE chat_limits.expires END RETURNING count').bind(key,now+period,now,now).first();return row.count<=max;}
 async function chatAPI(request,env,url){
  const path=url.pathname.slice('/api/chat/'.length),method=request.method,owner=!!request.headers.get('oai-authenticated-user-id')&&request.headers.get('oai-authenticated-user-email')?.toLowerCase()===EDUCATION_OWNER&&request.headers.get('x-chat-role')!=='student',now=Date.now();
- let body={};if(!['GET','HEAD'].includes(method)){body=await educationBody(request,url,8000);if(body instanceof Response)return body;}
+ let body={};if(!['GET','HEAD'].includes(method)){body=await educationBody(request,url,path==='broadcast'?48000:8000);if(body instanceof Response)return body;}
  if(path==='capabilities'&&method==='GET'){const response=json({email:false,codeDelivery:'platform',uploads:!!env.BUCKET,maxUploadBytes:MEDIA_MAX});response.headers.set('Set-Cookie','__Host-vanessa_probe=1; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=120');return response;}
 
  if(path==='session'&&method==='POST'){
@@ -80,17 +80,7 @@ async function chatAPI(request,env,url){
   }
   const saved=await db(env).prepare("SELECT content FROM prototype_settings WHERE id='chat-presence'").first();return json({online:saved?JSON.parse(saved.content).online===true:false});
  }
- if(path==='broadcast'){
-  if(!owner)return json({error:'Goddess access required.'},403);
-  if(method!=='POST')return json({error:'Method not allowed'},405);
-  if(typeof body.text!=='string'||!body.text.trim()||body.text.length>1000||typeof body.id!=='string'||! /^[a-f0-9-]{36}$/.test(body.id)||chatLinkCandidates(body.text).some(x=>!chatSafeLink(x)))return json({error:'Write up to 1,000 characters using approved links only.'},400);
-  if(!await chatLimit(env,'broadcast:admin',10,3600000))return json({error:'Broadcast limit reached. Try later.'},429);
-  const targets=await db(env).prepare("SELECT id,user_id FROM chat_students WHERE status='active' ORDER BY id LIMIT 1000").all(),eligible=[];
-  for(const t of targets.results)if(await squareAccessAllowed(env,t.user_id)&&await chatConversationEnabled(env,t.id))eligible.push(t);
-  const deliveryIds=await Promise.all(eligible.map(async t=>{const h=await chatHash('broadcast:'+body.id+':'+t.id);return h.slice(0,8)+'-'+h.slice(8,12)+'-'+h.slice(12,16)+'-'+h.slice(16,20)+'-'+h.slice(20,32);}));
-  await db(env).batch(eligible.map((t,i)=>db(env).prepare("INSERT INTO chat_messages(id,student_id,sender,body,created_at) VALUES(?,?,'admin',?,?) ON CONFLICT(id) DO NOTHING").bind(deliveryIds[i],t.id,body.text.trim(),now)));
-  return json({ok:true,recipients:eligible.length});
- }
+ if(['broadcast','broadcast-discard'].includes(path))return chatBroadcast(request,env,url,{owner,method,body,now,path});
  if(!owner&&!student)return json({error:'Your session has ended. Please enter a new access code.'},401);
  const role=owner?'admin':'client',id=owner?(url.searchParams.get('student')||body.studentId):student.id;
  if(!id)return json({error:'Choose a conversation.'},400);
@@ -150,7 +140,7 @@ async function chatSubOnline(env,id){const row=await db(env).prepare("SELECT 1 A
  async function chatAttachments(env,messages){
   if(!messages.length)return messages;
   const keys=messages.flatMap(m=>['chat-reply:'+m.id,'chat-album:'+m.id]),records=await db(env).prepare('SELECT id,content FROM prototype_settings WHERE id IN ('+keys.map(()=>'?').join(',')+')').bind(...keys).all();const replies=new Map(),albums=new Map();for(const r of records.results){if(r.id.startsWith('chat-reply:'))replies.set(r.id.slice(11),JSON.parse(r.content).reply);else albums.set(r.id.slice(11),JSON.parse(r.content));}
-  const rows=await db(env).prepare("SELECT m.id AS message_id,f.id,f.name,f.mime,f.size,f.storage_key FROM chat_messages m JOIN media_files f ON f.student_id=m.student_id AND f.role=m.sender AND f.scope='chat' LEFT JOIN prototype_settings a ON a.id='chat-album:'||m.id WHERE m.id IN ("+messages.map(()=>'?').join(',')+") AND (f.id=m.attachment_id OR (a.content::jsonb->>'role'=m.sender AND a.content::jsonb->>'studentId'=m.student_id AND a.content::jsonb->'attachmentIds' @> to_jsonb(f.id)))").bind(...messages.map(m=>m.id)).all();
+  const rows=await db(env).prepare("SELECT m.id AS message_id,f.id,f.name,f.mime,f.size,f.storage_key FROM chat_messages m JOIN media_files f ON (f.student_id=m.student_id AND f.scope='chat' OR f.user_id='goddess-broadcast' AND f.scope='feed') AND f.role=m.sender LEFT JOIN prototype_settings a ON a.id='chat-album:'||m.id WHERE m.id IN ("+messages.map(()=>'?').join(',')+") AND (f.id=m.attachment_id OR (a.content::jsonb->>'role'=m.sender AND a.content::jsonb->>'studentId'=m.student_id AND a.content::jsonb->'attachmentIds' @> to_jsonb(f.id)))").bind(...messages.map(m=>m.id)).all();
   const files=new Map(rows.results.map(f=>[f.message_id+':'+f.id,mediaDescriptor(f)]));
   return messages.map(m=>{const album=albums.get(m.id),ordered=album&&album.role===m.from&&Array.isArray(album.attachmentIds)?album.attachmentIds.slice(0,6):null,attachment=files.get(m.id+':'+m.attachment_id)||null;return {...m,text:m.attachment_id?(attachment?.name||'Attachment'):m.text,attachment,...(ordered?{attachments:ordered.map(id=>files.get(m.id+':'+id)).filter(Boolean),caption:m.text||''}:{}),reply:replies.get(m.id)||null};});
  }
@@ -232,7 +222,7 @@ async function chatSupport(request,env,url,{owner,student,body,path,method,now})
   const keys=rows.results.map(message=>'chat-album:'+message.id),records=keys.length?await db(env).prepare('SELECT id,content FROM prototype_settings WHERE id IN ('+keys.map(()=>'?').join(',')+')').bind(...keys).all():{results:[]},albums=new Map();
   for(const record of records.results){try{const album=JSON.parse(record.content);if(album.studentId===id&&Array.isArray(album.attachmentIds)&&album.attachmentIds.length<=10&&album.attachmentIds.every(fileId=>typeof fileId==='string'&&/^[a-f0-9-]{36}$/.test(fileId)))albums.set(record.id.slice(11),album);}catch{}}
   const attachments=message=>{const album=albums.get(message.id);return album&&album.role===message.from?album.attachmentIds:[message.attachment_id];},ids=[...new Set(rows.results.flatMap(attachments))];
-  const owned=ids.length?await db(env).prepare("SELECT * FROM media_files WHERE student_id=? AND scope='chat' AND id IN ("+ids.map(()=>'?').join(',')+')').bind(id,...ids).all():{results:[]},files=new Map(owned.results.map(file=>[file.id,file]));
+  const owned=ids.length?await db(env).prepare("SELECT * FROM media_files WHERE (student_id=? AND scope='chat' OR user_id='goddess-broadcast' AND scope='feed') AND id IN ("+ids.map(()=>'?').join(',')+')').bind(id,...ids).all():{results:[]},files=new Map(owned.results.map(file=>[file.id,file]));
   return json({files:rows.results.flatMap(message=>attachments(message).map(fileId=>files.get(fileId)).filter(file=>file&&file.role===message.from).map(file=>({...mediaDescriptor(file),seq:message.seq,from:message.from,at:message.at}))),nextBefore:rows.results.at(-1)?.seq||null,hasMore:rows.results.length===60});
  }
  if(path==='profile'){

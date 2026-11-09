@@ -1,7 +1,7 @@
 {
   "server/square.js": "9feab6646f413b434bce199035672f313c7d6160",
   "server/membership.js": "556f92ff0c582b103e444e6fe81f236e5d36d77e",
-  "server/notifications.js": "a83c05a0d6ee9a47a4564eef656366156c6cbd67",
+  "server/notifications.js": "21628615fdaceb3c4a7a6fb66517c220021aa55c",
   "server/mail.js": "98a7382da53045f70afe7077ee3e186805a1ff3e",
   "server/account-management.js": "074b4c7d731e6885f35d5043d0617f7568669565",
   "server/platform/goddess-auth.js": "df25daa38c68c6a4e02e529cc955f279de60eed6",

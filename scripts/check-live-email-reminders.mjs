@@ -9,4 +9,23 @@ assert.equal(api.noticeEnabled({...env,NOTIFICATION_TEST_STUDENT_ID:'invalid'}),
 const notices=(await DB.prepare("SELECT content FROM prototype_settings WHERE id LIKE 'notice:%'").all()).results.map(x=>JSON.parse(x.content));assert(notices.filter(x=>x.kind==='unread').every(x=>x.recipient==='client'));
 const preview=await api.notificationAPI(new Request('https://houseofvanessa.com/api/chat/email-previews',{headers:{'oai-authenticated-user-id':'owner','oai-authenticated-user-email':'danielvernontp@gmail.com'}}),env,new URL('https://houseofvanessa.com/api/chat/email-previews'));const data=await preview.json();assert.equal(data.samples.length,2);assert(!JSON.stringify(data).includes('sample@example.test'));
 const auth={client:{auth:{getUser:async()=>({data:{user:null},error:null})}},apply:r=>r};const gateway=await handle(new Request('https://houseofvanessa.com/api/index?__path=cron/notifications'),env,{DB,auth});assert.equal(gateway.status,401,'Actual gateway preserves the scheduler authentication boundary');
-await sql.close();console.log('Live email passed: Sub-only five-minute reminders, no historical backlog/Admin delivery, expiry uses existing chat, controlled recipient restriction, deduplication and private sample metadata. All delivery mocked.');
+// Explicit owner opt-in starts a fresh five-minute window, without historical backlog.
+const goddessEnv={...env,GODDESS_MESSAGE_EMAIL_ENABLED:'true',GODDESS_MESSAGE_EMAIL_START_AT:String(now-300000),GODDESS_MESSAGE_EMAIL_TO:'info@houseofvanessa.com'};
+assert.equal((await api.noticeDispatch(goddessEnv)).sent,0,'Older client messages are not backfilled');
+const clientMessage=crypto.randomUUID();await DB.prepare("INSERT INTO chat_messages(id,student_id,sender,body,created_at) VALUES(?,?,'client',?,?)").bind(clientMessage,sid,'New client reminder <b>escaped</b> https://example.test/private',Date.now()-300010).run();
+// The activation timestamp must precede this eligible fixture message.
+goddessEnv.GODDESS_MESSAGE_EMAIL_START_AT=String(now-301000);
+assert.equal((await api.noticeDispatch(goddessEnv)).sent,1);
+assert(sends.at(-1).text.includes('from Sample Sub'));
+assert(sends.at(-1).text.includes('/dashboard.html'));
+assert(sends.at(-1).html.includes('&lt;b&gt;escaped&lt;/b&gt;'));
+assert(!sends.at(-1).text.includes('https://example.test/private'));
+assert.equal((await api.noticeDispatch(goddessEnv)).sent,0,'Admin reminders deduplicate per unread episode');
+const latest=await DB.prepare('SELECT MAX(seq) AS seq FROM chat_messages WHERE student_id=?').bind(sid).first();
+const pending={kind:'unread',studentId:sid,recipient:'admin',seq:latest.seq,readSeq:0};
+assert.equal(await api.noticePayload({...goddessEnv,GODDESS_MESSAGE_EMAIL_ENABLED:'false'},pending),null);
+assert.equal(await api.noticePayload({...goddessEnv,GODDESS_MESSAGE_EMAIL_TO:'invalid'},pending),null);
+assert.equal(await api.noticePayload({...goddessEnv,GODDESS_MESSAGE_EMAIL_START_AT:String(Date.now())},pending),null,'Queued pre-activation messages stay blocked');
+await DB.prepare("INSERT INTO chat_state(student_id,role,read_seq) VALUES(?,'admin',?) ON CONFLICT(student_id,role) DO UPDATE SET read_seq=excluded.read_seq").bind(sid,latest.seq).run();
+assert.equal(await api.noticePayload(goddessEnv,pending),null,'Reading cancels queued Admin reminder');
+await sql.close();console.log('Live email passed: Sub reminders unchanged; Goddess opt-in, five-minute delay, activation cutoff, recipient validation, read cancellation, deduplication, escaped previews and private scheduler authorization. All delivery mocked.');

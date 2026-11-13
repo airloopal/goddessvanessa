@@ -18,19 +18,114 @@ window.UIChat=(()=>{
  }
  const country=code=>{try{return new Intl.DisplayNames(['en'],{type:'region'}).of(code);}catch{return code;}};return {time,tier,country,closeMedia,mountEmoji};
 })();
+function adminBanknoteBurst(host){
+ if(!host||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||
+    typeof Element==='undefined'||!Element.prototype.animate)return;
+ const layer=document.createElement('div');
+ layer.className='admin-banknote-burst';
+ layer.setAttribute('aria-hidden','true');
+ host.append(layer);
+ const spread=Math.min(layer.clientWidth*.43,265);
+ const animations=Array.from({length:18},(_,index)=>{
+  const note=document.createElement('span');
+  note.className='admin-banknote';
+  layer.append(note);
+  const direction=index%2===0?-1:1;
+  const x=direction*spread*(.32+Math.random()*.68);
+  const lift=48+Math.random()*64;
+  const drift=72+Math.random()*92;
+  const spin=direction*(90+Math.random()*110);
+  return note.animate([
+   {transform:'translate(-50%, -50%) scale(.35)',opacity:0},
+   {transform:`translate(calc(-50% + ${x*.72}px), ${-lift}px) rotate(${spin*.4}deg) scale(1)`,opacity:1,offset:.33},
+   {transform:`translate(calc(-50% + ${x}px), ${drift}px) rotate(${spin}deg) scale(.8)`,opacity:0}
+  ],{duration:1150+Math.random()*400,delay:index*12,easing:'cubic-bezier(.18,.58,.3,1)',fill:'both'});
+ });
+ void Promise.allSettled(animations.map(animation=>animation.finished)).then(()=>layer.remove());
+}
+window.AdminCelebrations=(()=>{
+ if(!document.body.classList.contains('dashboard')&&!document.body.hasAttribute?.('data-admin-celebrations'))return;
+ const celebrations=[];
+ let celebrated=new Set();
+ let activeSince=Date.now();
+ try{
+  celebrated=new Set(JSON.parse(sessionStorage.getItem('vanessa-admin-celebrations')||'[]'));
+  const previous=Number(sessionStorage.getItem('vanessa-admin-celebration-check'));
+  if(previous>activeSince-60000&&previous<=activeSince)activeSince=previous;
+ }catch{}
+ function observe(events){
+  enqueueCelebrations(events.filter(event=>event.at>=activeSince));
+  try{sessionStorage.setItem('vanessa-admin-celebration-check',String(Date.now()));}catch{}
+ }
+ let showingCelebration=false;
+ function enqueueCelebrations(events){
+  for(const event of [...events].reverse()){
+   const signed=event.kind==='contract-signed';
+   const entry=event.kind==='payment'&&event.phase==='entry'&&event.confirmed===true;
+   if((!signed&&!entry)||celebrated.has(event.id)||celebrations.some(queued=>queued.id===event.id))continue;
+   celebrations.push(event);
+  }
+  showCelebration();
+ }
+ function showCelebration(){
+  if(showingCelebration||document.hidden||!celebrations.length)return;
+  const event=celebrations.shift();
+  celebrated.add(event.id);
+  if(celebrated.size>250)celebrated.delete(celebrated.values().next().value);
+  try{sessionStorage.setItem('vanessa-admin-celebrations',JSON.stringify([...celebrated]));}catch{}
+  showingCelebration=true;
+  const notice=document.createElement('div');
+  notice.className='admin-celebration';
+  notice.setAttribute('role','status');
+  notice.setAttribute('aria-atomic','true');
+  if(typeof notice.showPopover==='function')notice.setAttribute('popover','manual');
+  document.body.append(notice);
+  if(typeof notice.showPopover==='function'){try{notice.showPopover();}catch{notice.removeAttribute('popover');}}
+  const title=document.createElement('strong');
+  const signed=event.kind==='contract-signed';
+  title.textContent=signed?'Contract signed':'Entry payment confirmed';
+  notice.append(title);
+  if(signed){
+   const name=document.createElement('span');
+   name.textContent=event.name;
+   notice.append(name);
+  }
+  adminBanknoteBurst(notice);
+  setTimeout(()=>{notice.remove();showingCelebration=false;showCelebration();},3600);
+ }
+ document.addEventListener('visibilitychange',showCelebration);
+ if(document.body.hasAttribute?.('data-admin-celebrations')&&window.top===window){
+  let fetching=false;
+  async function poll(){
+   if(fetching||document.hidden)return;
+   fetching=true;
+   try{
+    const response=await fetch('/api/chat/ui-activity',{cache:'no-store',headers:{'X-Chat-Role':'admin'},signal:AbortSignal.timeout(12000)});
+    if(response.ok)observe((await response.json()).events);
+   }catch{}finally{fetching=false;}
+  }
+  void poll();
+  setInterval(poll,5000);
+  document.addEventListener('visibilitychange',poll);
+ }
+ return {observe};
+})();
+
 window.UIActivityNotifications=(()=>{
- if(!document.body.classList.contains('dashboard'))return {active:false,poll:async()=>{}};
+
+ if(!document.body.classList.contains('dashboard')||document.body.hasAttribute?.('data-admin-celebrations'))return {active:false,poll:async()=>{}};
  let items=[],busy=false,started=false,audio=null,sound=true,seen=new Set();
  try{seen=new Set(JSON.parse(localStorage.getItem('vanessa-activity-seen')||'[]'));sound=localStorage.getItem('vanessa-notification-sound')!=='off';}catch{}
  const save=()=>{try{localStorage.setItem('vanessa-activity-seen',JSON.stringify([...seen].slice(-1000)));localStorage.setItem('vanessa-notification-sound',sound?'on':'off');}catch{}};
  function unlock(){if(!sound)return;try{const C=window.AudioContext||window.webkitAudioContext;if(C){audio=audio||new C();audio.resume().catch(()=>{});}}catch{}}
  document.addEventListener('pointerdown',unlock,{passive:true});document.addEventListener('keydown',unlock,{passive:true});
  function chime(){if(!sound||!audio||audio.state!=='running')return;try{const t=audio.currentTime,g=audio.createGain();g.connect(audio.destination);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.08,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+.45);const o=audio.createOscillator();o.type='sine';o.frequency.setValueAtTime(740,t);o.frequency.setValueAtTime(980,t+.16);o.connect(g);o.start(t);o.stop(t+.46);}catch{}}
+
  function badge(){const b=document.getElementById('notifications-toggle');if(!b)return;let ticker=b.querySelector('.notification-ticker');if(!ticker){ticker=document.createElement('span');ticker.className='notification-ticker';ticker.setAttribute('aria-hidden','true');b.append(ticker);}const count=items.filter(e=>!seen.has(e.id)).length+(window.WhatsNew?.unread?.()||0);ticker.hidden=!count;ticker.textContent=count>99?'99+':String(count);b.setAttribute('aria-label','Notifications · '+count+' new');b.title=count?count+' new notifications':'Notifications';}
- async function poll(){if(busy||typeof dashboardAllowed==='undefined'||!dashboardAllowed)return;busy=true;try{const d=await chatAPI('ui-activity'),fresh=started?d.events.filter(e=>!items.some(old=>old.id===e.id)&&!seen.has(e.id)):[];items=d.events;started=true;if(fresh.length){chime();for(const e of fresh)await window.AdminChatNotifications?.crucialAlert?.(e);}const dialog=document.getElementById('notification-centre');if(dialog?.open){render();ack();}badge();}catch{}finally{busy=false;}}
+ async function poll(){if(busy||typeof dashboardAllowed==='undefined'||!dashboardAllowed)return;busy=true;try{const d=await chatAPI('ui-activity'),fresh=started?d.events.filter(e=>!items.some(old=>old.id===e.id)&&!seen.has(e.id)):[];items=d.events;started=true;window.AdminCelebrations?.observe(d.events);if(fresh.length){chime();for(const e of fresh)await window.AdminChatNotifications?.crucialAlert?.(e);}const dialog=document.getElementById('notification-centre');if(dialog?.open){render();ack();}badge();}catch{}finally{busy=false;}}
  function ack(){for(const e of items)seen.add(e.id);save();badge();}
  function render(){const host=document.getElementById('notification-items');if(!host)return;if(typeof renderCodeRequests==='function')renderCodeRequests();
- const labels={'application-start':'Application started',message:'Message',gift:'Gift received',payment:'Payment',application:'Application',verification:'Verification request',code:'Access request'},icons={'application-start':'applications',message:'chat',gift:'gift',payment:'payment',application:'applications',verification:'verification',code:'key'};
+ const labels={'application-start':'Application started',message:'Message',gift:'Gift received',payment:'Payment','contract-signed':'Contract signed',application:'Application',verification:'Verification request',code:'Access request'},icons={'application-start':'applications',message:'chat',gift:'gift',payment:'payment','contract-signed':'applications',application:'applications',verification:'verification',code:'key'};
  const rows=[],groups=new Map();for(const e of items){const group=e.kind==='message'&&e.studentId?'message:'+e.studentId:null;if(group&&groups.has(group)){groups.get(group).extra++;continue;}const row={...e,extra:0};rows.push(row);if(group)groups.set(group,row);}
  host.innerHTML=rows.length?rows.slice(0,40).map(e=>'<button type="button" class="crucial-notification" data-notice-id="'+eduEscape(e.id)+'"><span class="notification-symbol" aria-hidden="true">'+(window.AdminIcons?.svg(icons[e.kind]||'bell')||'')+'</span><span class="notification-copy"><span class="notification-heading"><span class="notification-topic">'+eduEscape(labels[e.kind]||'New activity')+'</span><time>'+eduEscape(UIChat.time(e.at))+'</time></span><strong>'+eduEscape(e.name||'A Sub')+'</strong><span class="notification-preview">'+eduEscape(e.text||'Something new to look at')+'</span>'+(e.extra?'<span class="notification-extra">'+e.extra+' more '+(e.extra===1?'message':'messages')+' in this chat</span>':'')+'</span></button>').join(''):'<p data-activity-empty>You’re all caught up.</p>';
  window.WhatsNew?.attach?.(host);

@@ -1,6 +1,46 @@
 'use strict';
 // Shared Square card SDK, bank-verification timing and payment feedback.
 let squareSDKPromise=null;
+
+const squareCelebratedEntries=new Set();
+
+function squareCelebrateEntry(payment, host){
+ if(!host||payment?.status!=='paid'||!payment.paidAt)return;
+ const key='vanessa-entry-celebrated:'+payment.paidAt;
+ if(squareCelebratedEntries.has(key))return;
+ squareCelebratedEntries.add(key);
+ try{
+  if(sessionStorage.getItem(key))return;
+  sessionStorage.setItem(key,'1');
+ }catch{/* The celebration can work without storage. */}
+ squareBanknoteBurst(host);
+}
+
+function squareBanknoteBurst(host){
+ if(!host||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||
+    typeof Element==='undefined'||!Element.prototype.animate)return;
+ const layer=document.createElement('div');
+ layer.className='square-banknote-burst';
+ layer.setAttribute('aria-hidden','true');
+ host.append(layer);
+ const spread=Math.min(layer.clientWidth*.43,265);
+ const animations=Array.from({length:18},(_,index)=>{
+  const note=document.createElement('span');
+  note.className='square-banknote';
+  layer.append(note);
+  const direction=index%2===0?-1:1;
+  const x=direction*spread*(.32+Math.random()*.68);
+  const lift=48+Math.random()*64;
+  const drift=72+Math.random()*92;
+  const spin=direction*(90+Math.random()*110);
+  return note.animate([
+   {transform:'translate(-50%, -50%) scale(.35)',opacity:0},
+   {transform:`translate(calc(-50% + ${x*.72}px), ${-lift}px) rotate(${spin*.4}deg) scale(1)`,opacity:1,offset:.33},
+   {transform:`translate(calc(-50% + ${x}px), ${drift}px) rotate(${spin}deg) scale(.8)`,opacity:0}
+  ],{duration:1150+Math.random()*400,delay:index*12,easing:'cubic-bezier(.18,.58,.3,1)',fill:'both'});
+ });
+ void Promise.allSettled(animations.map(animation=>animation.finished)).then(()=>layer.remove());
+}
 function squareAwait(promise,ms,message){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(message)),ms);})]).finally(()=>clearTimeout(timer));}
 async function squareTokenize(card,details,ms=180000,cardId=undefined){
  let blocked;

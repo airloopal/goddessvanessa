@@ -21,7 +21,9 @@ async function squareInit(){
  squareDraftRevision=squareState.draft?.revision||0;
  let draft=squareState.draft;try{const local=JSON.parse(sessionStorage.getItem(squareDraftKey)||'null');if(local&&squareState.applicationKey&&local.applicationKey===squareState.applicationKey&&(!draft||local.savedAt>Date.parse(draft.updated_at||'')))draft=local;}catch{}
  if(draft&&!enrolment){squareContractPromoCode=[...activePromos,''].includes(draft.contractPromoCode??draft.squareContractPromoCode)?(draft.contractPromoCode??draft.squareContractPromoCode):null;squarePromoCode=activePromos.includes(draft.squarePromoCode)?draft.squarePromoCode:'';pathId=draft.pathId||'';entryId=draft.entryId||'';contractId=draft.contractId||'';answers=draft.answers||{};learnerName=draft.learnerName||'';learnerEmail=draft.learnerEmail||'';learnerPhone=draft.learnerPhone||'';screen=['paths','entry','intro','questions','review'].includes(draft.screen)?draft.screen:'paths';}
- const paymentReturn=new URLSearchParams(location.search).has('payment');
+ const returnedStage=new URLSearchParams(location.search).get('payment');
+ const paymentReturn=returnedStage!==null;
+ const entryWasPending=squareState.entry?.status==='pending';
  if(paymentReturn&&!squareState.entry)throw Error('Your saved Entry checkout could not be found in this browser. Reopen your private resume link or contact Goddess. Do not pay Entry again.');
  const pendingCheckout=[squareState.entry,squareState.contract].some(p=>p?.status==='pending');
  if((paymentReturn||pendingCheckout)&&squareState.ready){try{squareState={...squareState,...await eduAPI('payments/refresh','POST',{})};}catch{/* Keep the saved status and provide a retry control. */}if(paymentReturn){history.replaceState(null,'',location.pathname+(new URLSearchParams(location.search).get('invitation')==='1'?'?invitation=1':squareResumeToken?'?resume=1#'+squareResumeToken:''));if(!draft&&!enrolment)screen=squareState.contract?'review':'intro';}}
@@ -34,6 +36,9 @@ async function squareInit(){
  if(squareState.contract){squareContractPromoCode=squareState.contract.plan.promoCode||'';contractId=squareState.contract.plan.id;screen='review';}
  else if(squareEntryPaid()&&['paths','entry','intro'].includes(screen)&&pathId&&!enrolment){screen=course.features.questionnaire?'questions':'review';squareSaveDraft();}
  if(squareEntryPaid())await squareEnsureResumeLink();
+ if(squareState.entry?.status==='paid'&&(returnedStage==='entry'||entryWasPending)){
+  globalThis.requestAnimationFrame?.(()=>squareCelebrateEntry(squareState.entry,document.querySelector('.application-main')));
+ }
 }
 // A late tokenization result is discarded after timeout; only this awaited result
 // can submit a charge. HTTP retries always keep the original attempt identity.
@@ -69,7 +74,11 @@ function squareSyncPaymentReady(stage,button){const ready=button.dataset.squareR
 function squareSetPaymentReady(stage,button,ready,confirmation=false){button.dataset.squareReady=ready?'1':'0';button.dataset.squareConfirmation=confirmation?'1':'0';squareSyncPaymentReady(stage,button);}
 function squareRequireAcknowledgement(stage,message){if(squarePaymentAcknowledged(stage))return true;squareNotice(message,'retry','Please tick the checkbox','Confirm the payment acknowledgement before continuing.');document.getElementById('square-'+stage+'-acknowledge')?.focus();return false;}
 function squareCardHTML(){return (typeof squareWalletHTML==='function'?squareWalletHTML():'')+'<div id="square-card-container" aria-label="Secure card details"></div><p class="muted">Secure payment. Card details stay with Square.</p>'+(squareState.savedCardsEnabled?'<label class="square-save-card"><input id="square-save-card" type="checkbox"> <span>Save this card for payments I choose. No automatic charges.</span></label>':'');}
-function squareCheckout(stage){if(stage!=='contract')return;squareSaveDraft();screen='review';squareContractPanel();}
+function squareCheckout(stage){
+ if(stage!=='contract')return;
+ squareSaveDraft();screen='review';squareContractPanel();
+ squareBanknoteBurst(app.querySelector('.square-contract-panel'));
+}
 function squareBillingContact(){const names=learnerName.trim().split(/\s+/).filter(Boolean),contact={};if(names.length){contact.givenName=names[0];if(names.length>1)contact.familyName=names.slice(1).join(' ');}const email=learnerEmail.trim();if(/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email))contact.email=email;return contact;}
 function squareCheckoutActions(){
  squareButton(document.getElementById('lightbox-verification'),'video','Request verification');
@@ -110,13 +119,19 @@ async function squareMountCard(stage,buttonId,statusId){
     const result=await response.json();
     if(!result.paid){if(result.retryCard){attemptId=null;await squareMountCard(stage,buttonId,statusId);squareNotice(message,'retry','Please try again',result.error||'Check your card details and retry.');return;}throw Error(result.error||'Your payment is being checked. Retry confirmation.');}
     await squareDisposeCard();squareState=await eduAPI('payments');entryReviewed=squareEntryPaid();
-    if(stage==='entry'){renderLearning();squareEntryDialog();}else squareContractPanel();
+    if(stage==='entry'){renderLearning();squareEntryDialog();squareCelebrateEntry(squareState.entry,entryDialog.open?entryDialog:app.querySelector('.application-main'));}
+    else squareContractPanel();
    }catch(error){if(version!==squareFormVersion||!button.isConnected)return;squareNotice(message,'retry',attemptId?'Confirmation is taking longer':'Please try again',error.name==='TimeoutError'?'The connection timed out. Retry confirmation to check this same payment safely.':error.message||'Retry to check the same payment safely.');squareButton(button,'retry',attemptId?'Check payment':'Retry card payment');if(!attemptId){squareReportBankIssue(stage,error);await squareDisposeCard();button.onclick=()=>squareMountCard(stage,buttonId,statusId);}squareSetPaymentReady(stage,button,true,!!attemptId);}
   }
   button.onclick=()=>pay();if(!attemptId&&paymentMethods&&typeof squarePrepareWallets==='function')void squarePrepareWallets(paymentMethods,prepared,stage,button,pay,()=>version===squareFormVersion&&button.isConnected);
  }catch(error){squareNotice(message,'retry','Checkout needs another try',error.message);squareSetPaymentReady(stage,button,true);squareButton(button,'retry','Retry checkout');button.onclick=()=>squareMountCard(stage,buttonId,statusId);}
 }
-async function squareRefresh(){squareState={...squareState,...await eduAPI('payments/refresh','POST',{})};entryReviewed=squareEntryPaid();renderLearning();}
+async function squareRefresh(){
+ const entryWasPaid=squareState.entry?.status==='paid';
+ squareState={...squareState,...await eduAPI('payments/refresh','POST',{})};
+ entryReviewed=squareEntryPaid();renderLearning();
+ if(!entryWasPaid&&squareState.entry?.status==='paid')globalThis.requestAnimationFrame?.(()=>squareCelebrateEntry(squareState.entry,entryDialog.open?entryDialog:app.querySelector('.application-main')));
+}
 function squareLabel(){return squareState.mode==='sandbox'?'Sandbox test · No real payment':'Secure card payment';}
 function squareEntryDialog(){
  void squareDisposeCard();clearInterval(verificationPoll);entryDialogView='payment';const plan=entryPlan(),paid=squareEntryPaid();if(paid&&squareState.entry.granted){entryDialog.innerHTML='<button type="button" class="quiet lightbox-close" aria-label="Close entry checkout">×</button><h2>Entry granted by Goddess</h2><p>No entry payment is claimed or required. Continue to review and sign your monthly contract.</p><button type="button" class="p-button" data-grant-continue>Continue to contract</button>';entryDialog.querySelector('.lightbox-close').onclick=closeEntryLightbox;entryDialog.querySelector('[data-grant-continue]').onclick=()=>{closeEntryLightbox();screen='review';renderLearning();};return;}if(paid){squareEntrySuccess(squareState.entry.plan);return;}

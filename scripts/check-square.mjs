@@ -37,7 +37,15 @@ assert.equal((await call('payments',{user:'other'})).data.entry,null);
 assert.equal((await call('payments',{extraEnv:{SQUARE_ENVIRONMENT:'production'}})).data.entry,null);
 const id=complete('order-1',1);assert.equal(await webhook(id),200);assert.equal((await call('payments')).data.entry.status,'pending');
 complete('order-1',8500);assert.equal(await webhook(id,{bad:true}),403);assert.equal((await call('payments')).data.entry.status,'pending');
+payments.get(id).card_details={card:{cardholder_name:' Alex Morgan ',last_4:'1234'}};
 assert.equal(await webhook(id),200);assert.equal(await webhook(id),200);assert.equal((await call('payments')).data.entry.status,'paid');
+const entryAlert=(await call('/api/chat/ui-activity',{user:'owner'})).data.events.find(event=>event.phase==='entry'&&event.confirmed);
+assert.equal(entryAlert?.payerName,'Alex Morgan');
+assert.equal(entryAlert?.amountPence,8500);
+assert.ok(!JSON.stringify(entryAlert).includes('1234'));
+assert.equal((await call('/api/chat/ui-activity')).status,403);
+assert.equal((await call('payments')).data.entry.entryPayerName,undefined);
+
 assert.equal((await post('entry','basic')).data.paid,true);assert.equal(creations,1);
 const config=(await call('published')).data.config;
 const payload={name:'Test Student',pathId:config.paths[0].id,answers:Object.fromEntries(config.questions.map(q=>[q.id,q.options[0]])),accepted:true,review:{revision:0,entryId:'basic',contractId:'month',email:'student@example.test',signature:'Test Student',ageConfirmed:true,aupAccepted:true,read:true,entryReviewed:true}};

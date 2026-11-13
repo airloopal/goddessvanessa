@@ -96,6 +96,11 @@ async function squareApplyPayment(env,paymentId){
   else if(['FAILED','CANCELED'].includes(p.status)&&r.status!=='paid')status='pending';
   const paidAt=r.paidAt||(status==='paid'?(p.card_details?.card_payment_timeline?.captured_at||p.updated_at):null);
   const next={...r,orderId:p.order_id,paymentId:p.id,status,paidAt,providerStatus:p.status,providerUpdatedAt:p.updated_at,receiptUrl:p.receipt_url||null,expiresAt:r.stage==='contract'&&paidAt?squareContractExpiry(r,paidAt):r.stage==='renewal'?r.expiresAt||null:null};
+  // Keep only the display name Square supplied for this confirmed Entry.
+  const cardholder=p.card_details?.card?.cardholder_name;
+  if(r.stage==='entry'&&status==='paid'&&typeof cardholder==='string'&&cardholder.trim()){
+   next.entryPayerName=cardholder.trim().slice(0,96);
+  }
   if(r.stage==='support'&&status==='paid'){const contract=await squareRecord(env,await squareKey(env,r.user,'contract'));if(!contract||contract.status!=='paid')return;next.expiresAt=r.expiresAt||squareExpiry(r.retention?r.plan.id:'month',new Date(Math.max(Date.parse(paidAt),contract.expiresAt?Date.parse(contract.expiresAt):Date.parse(paidAt))).toISOString());}
   if(['donation','renewal'].includes(r.stage)&&r.cardAttempt&&['paid','refund_review'].includes(status))next.cardAttempt={id:r.cardAttempt.id,complete:true};
   const result=await squareWrite(env,key,next,r._revision);if(result.meta.changes){if(status==='paid')await squareStorePaidCard(env,key,next);if(r.stage==='renewal'){if(status==='paid')await squareApplyRenewal(env,key);else if(status==='refund_review'&&r.appliedAt){const parentKey=await squareKey(env,r.user,'contract');await db(env).prepare("UPDATE prototype_settings SET content=jsonb_set(content::jsonb,'{status}','\"refund_review\"'::jsonb)::text,revision=revision+1,updated_at=? WHERE id=?").bind(new Date().toISOString(),parentKey).run();}}if(r.stage==='support'&&status==='paid')await db(env).prepare("UPDATE chat_students SET code_expires=GREATEST(code_expires,?) WHERE user_id=? AND status='active' AND code_hash IS NOT NULL").bind(Date.parse(next.expiresAt),r.user).run();return;}

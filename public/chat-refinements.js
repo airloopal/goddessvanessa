@@ -85,11 +85,17 @@ window.AdminCelebrations=(()=>{
   const signed=event.kind==='contract-signed';
   title.textContent=signed?'Contract signed':'Entry payment confirmed';
   notice.append(title);
+  const detail=document.createElement('span');
   if(signed){
-   const name=document.createElement('span');
-   name.textContent=event.name;
-   notice.append(name);
+   detail.textContent=event.name;
+  }else{
+   const name=event.payerName||'Payer name unavailable';
+   const amount=Number.isSafeInteger(event.amountPence)&&event.amountPence>=0
+    ?new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(event.amountPence/100)
+    :'';
+   detail.textContent=amount?name+' · '+amount:name;
   }
+  notice.append(detail);
   adminBanknoteBurst(notice);
   setTimeout(()=>{notice.remove();showingCelebration=false;showCelebration();},3600);
  }

@@ -21,8 +21,102 @@ window.UIChat=(()=>{
  const lastSeen=at=>{const n=Number(at);if(!Number.isFinite(n)||n<=0)return 'Last seen not recorded yet';const d=new Date(n),today=new Date(),yesterday=new Date();yesterday.setDate(yesterday.getDate()-1);const clock=d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});return 'Last seen '+(d.toDateString()===today.toDateString()?'today at '+clock:d.toDateString()===yesterday.toDateString()?'yesterday at '+clock:d.toLocaleDateString([],{day:'numeric',month:'short',year:'numeric'})+' at '+clock);};
  const country=code=>{try{return new Intl.DisplayNames(['en'],{type:'region'}).of(code);}catch{return code;}};return {time,lastSeen,tier,country,closeMedia,mountEmoji};
 })();
+function adminBanknoteBurst(host){
+ if(!host||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||
+    typeof Element==='undefined'||!Element.prototype.animate)return;
+ const layer=document.createElement('div');
+ layer.className='admin-banknote-burst';
+ layer.setAttribute('aria-hidden','true');
+ host.append(layer);
+ const spread=Math.min(layer.clientWidth*.43,265);
+ const animations=Array.from({length:18},(_,index)=>{
+  const note=document.createElement('span');
+  note.className='admin-banknote';
+  layer.append(note);
+  const direction=index%2===0?-1:1;
+  const x=direction*spread*(.32+Math.random()*.68);
+  const lift=48+Math.random()*64;
+  const drift=72+Math.random()*92;
+  const spin=direction*(90+Math.random()*110);
+  return note.animate([
+   {transform:'translate(-50%, -50%) scale(.35)',opacity:0},
+   {transform:`translate(calc(-50% + ${x*.72}px), ${-lift}px) rotate(${spin*.4}deg) scale(1)`,opacity:1,offset:.33},
+   {transform:`translate(calc(-50% + ${x}px), ${drift}px) rotate(${spin}deg) scale(.8)`,opacity:0}
+  ],{duration:1150+Math.random()*400,delay:index*12,easing:'cubic-bezier(.18,.58,.3,1)',fill:'both'});
+ });
+ void Promise.allSettled(animations.map(animation=>animation.finished)).then(()=>layer.remove());
+}
+window.AdminCelebrations=(()=>{
+ if(!document.body.classList.contains('dashboard')&&!document.body.hasAttribute?.('data-admin-celebrations'))return;
+ const celebrations=[];
+ let celebrated=new Set();
+ let activeSince=Date.now();
+ try{
+  celebrated=new Set(JSON.parse(sessionStorage.getItem('vanessa-admin-celebrations')||'[]'));
+  const previous=Number(sessionStorage.getItem('vanessa-admin-celebration-check'));
+  if(previous>activeSince-60000&&previous<=activeSince)activeSince=previous;
+ }catch{}
+ function observe(events){
+  enqueueCelebrations(events.filter(event=>event.at>=activeSince));
+  try{sessionStorage.setItem('vanessa-admin-celebration-check',String(Date.now()));}catch{}
+ }
+ let showingCelebration=false;
+ function enqueueCelebrations(events){
+  for(const event of [...events].reverse()){
+   const signed=event.kind==='contract-signed';
+   const entry=event.kind==='payment'&&event.phase==='entry'&&event.confirmed===true;
+   if((!signed&&!entry)||celebrated.has(event.id)||celebrations.some(queued=>queued.id===event.id))continue;
+   celebrations.push(event);
+  }
+  showCelebration();
+ }
+ function showCelebration(){
+  if(showingCelebration||document.hidden||!celebrations.length)return;
+  const event=celebrations.shift();
+  celebrated.add(event.id);
+  if(celebrated.size>250)celebrated.delete(celebrated.values().next().value);
+  try{sessionStorage.setItem('vanessa-admin-celebrations',JSON.stringify([...celebrated]));}catch{}
+  showingCelebration=true;
+  const notice=document.createElement('div');
+  notice.className='admin-celebration';
+  notice.setAttribute('role','status');
+  notice.setAttribute('aria-atomic','true');
+  if(typeof notice.showPopover==='function')notice.setAttribute('popover','manual');
+  document.body.append(notice);
+  if(typeof notice.showPopover==='function'){try{notice.showPopover();}catch{notice.removeAttribute('popover');}}
+  const title=document.createElement('strong');
+  const signed=event.kind==='contract-signed';
+  title.textContent=signed?'Contract signed':'Entry payment confirmed';
+  notice.append(title);
+  if(signed){
+   const name=document.createElement('span');
+   name.textContent=event.name;
+   notice.append(name);
+  }
+  adminBanknoteBurst(notice);
+  setTimeout(()=>{notice.remove();showingCelebration=false;showCelebration();},3600);
+ }
+ document.addEventListener('visibilitychange',showCelebration);
+ if(document.body.hasAttribute?.('data-admin-celebrations')&&window.top===window){
+  let fetching=false;
+  async function poll(){
+   if(fetching||document.hidden)return;
+   fetching=true;
+   try{
+    const response=await fetch('/api/chat/ui-activity',{cache:'no-store',headers:{'X-Chat-Role':'admin'},signal:AbortSignal.timeout(12000)});
+    if(response.ok)observe((await response.json()).events);
+   }catch{}finally{fetching=false;}
+  }
+  void poll();
+  setInterval(poll,5000);
+  document.addEventListener('visibilitychange',poll);
+ }
+ return {observe};
+})();
+
 window.UIActivityNotifications=(()=>{
- if(!document.body.classList.contains('dashboard'))return {active:false,poll:async()=>{}};
+
+ if(!document.body.classList.contains('dashboard')||document.body.hasAttribute?.('data-admin-celebrations'))return {active:false,poll:async()=>{}};
  let items=[],busy=false,started=false,audio=null,sound=true,seen=new Set(),cashBuffer=null,cashLoading=null,cashUntil=0,cashSources=new Set();
  try{seen=new Set(JSON.parse(localStorage.getItem('vanessa-activity-seen')||'[]'));sound=localStorage.getItem('vanessa-notification-sound')!=='off';}catch{}
  const save=()=>{try{localStorage.setItem('vanessa-activity-seen',JSON.stringify([...seen].slice(-1000)));localStorage.setItem('vanessa-notification-sound',sound?'on':'off');}catch{}};
@@ -40,11 +134,12 @@ window.UIActivityNotifications=(()=>{
  }
  function chime(){if(!sound||!audio||audio.state!=='running')return;try{const t=audio.currentTime,master=audio.createGain(),limiter=audio.createDynamicsCompressor();master.gain.value=.8;limiter.threshold.value=-12;limiter.knee.value=12;limiter.ratio.value=4;limiter.attack.value=.003;limiter.release.value=.18;master.connect(limiter);limiter.connect(audio.destination);const notes=[1318.51,1567.98,2093,2637.02,2093,3135.96,4186];notes.forEach((hz,i)=>{const at=t+i*.085;for(const [partial,volume] of [[1,.24],[2.76,.035]]){const gain=audio.createGain(),tone=audio.createOscillator();tone.type='sine';tone.frequency.value=hz*partial;gain.gain.setValueAtTime(.0001,at);gain.gain.exponentialRampToValueAtTime(volume,at+.008);gain.gain.exponentialRampToValueAtTime(.0001,at+1.15);tone.connect(gain);gain.connect(master);tone.start(at);tone.stop(at+1.2);tone.onended=()=>{tone.disconnect();gain.disconnect();};}});setTimeout(()=>{master.disconnect();limiter.disconnect();},2000);}catch{}}
 
+
  function badge(){const b=document.getElementById('notifications-toggle');if(!b)return;let ticker=b.querySelector('.notification-ticker');if(!ticker){ticker=document.createElement('span');ticker.className='notification-ticker';ticker.setAttribute('aria-hidden','true');b.append(ticker);}const count=items.filter(e=>!seen.has(e.id)).length+(window.WhatsNew?.unread?.()||0);ticker.hidden=!count;ticker.textContent=count>99?'99+':String(count);b.setAttribute('aria-label','Notifications · '+count+' new');b.title=count?count+' new notifications':'Notifications';}
- async function poll(){if(busy||typeof dashboardAllowed==='undefined'||!dashboardAllowed)return;busy=true;try{const d=await chatAPI('ui-activity'),fresh=started?d.events.filter(e=>!items.some(old=>old.id===e.id)&&!seen.has(e.id)):[];items=d.events;started=true;if(fresh.length){const paid=fresh.filter(e=>e.kind==='payment'&&e.confirmed&&['entry','contract'].includes(e.phase));if(paid.length){kaChing(Math.min(8,paid.reduce((n,e)=>n+(e.phase==='contract'?2:1),0)));}else chime();for(const e of fresh)await window.AdminChatNotifications?.crucialAlert?.(e);}const dialog=document.getElementById('notification-centre');if(dialog?.open){render();ack();}badge();}catch{}finally{busy=false;}}
+ async function poll(){if(busy||typeof dashboardAllowed==='undefined'||!dashboardAllowed)return;busy=true;try{const d=await chatAPI('ui-activity'),fresh=started?d.events.filter(e=>!items.some(old=>old.id===e.id)&&!seen.has(e.id)):[];items=d.events;started=true;window.AdminCelebrations?.observe(d.events);if(fresh.length){const paid=fresh.filter(e=>e.kind==='payment'&&e.confirmed&&['entry','contract'].includes(e.phase));if(paid.length){kaChing(Math.min(8,paid.reduce((n,e)=>n+(e.phase==='contract'?2:1),0)));}else chime();for(const e of fresh)await window.AdminChatNotifications?.crucialAlert?.(e);}const dialog=document.getElementById('notification-centre');if(dialog?.open){render();ack();}badge();}catch{}finally{busy=false;}}
  function ack(){for(const e of items)seen.add(e.id);save();badge();}
  function render(){const host=document.getElementById('notification-items');if(!host)return;if(typeof renderCodeRequests==='function')renderCodeRequests();
- const labels={'application-start':'Application started',message:'Message',gift:'Gift received',payment:'Payment',application:'Application',verification:'Verification request',code:'Access request',account:'Account request'},icons={'application-start':'applications',message:'chat',gift:'gift',payment:'payment',application:'applications',verification:'verification',code:'key',account:'user'};
+ const labels={'application-start':'Application started',message:'Message',gift:'Gift received',payment:'Payment','contract-signed':'Contract signed',application:'Application',verification:'Verification request',code:'Access request',account:'Account request'},icons={'application-start':'applications',message:'chat',gift:'gift',payment:'payment','contract-signed':'applications',application:'applications',verification:'verification',code:'key',account:'user'};
  const rows=[],groups=new Map();for(const e of items){const group=e.kind==='message'&&e.studentId?'message:'+e.studentId:null;if(group&&groups.has(group)){groups.get(group).extra++;continue;}const row={...e,extra:0};rows.push(row);if(group)groups.set(group,row);}
  host.innerHTML=rows.length?rows.slice(0,40).map(e=>'<button type="button" class="crucial-notification" data-notice-id="'+eduEscape(e.id)+'"><span class="notification-symbol" aria-hidden="true">'+(window.AdminIcons?.svg(icons[e.kind]||'bell')||'')+'</span><span class="notification-copy"><span class="notification-heading"><span class="notification-topic">'+eduEscape(labels[e.kind]||'New activity')+'</span><time>'+eduEscape(UIChat.time(e.at))+'</time></span><strong>'+eduEscape(e.name||'A Sub')+'</strong><span class="notification-preview">'+eduEscape(e.text||'Something new to look at')+'</span>'+(e.extra?'<span class="notification-extra">'+e.extra+' more '+(e.extra===1?'message':'messages')+' in this chat</span>':'')+'</span></button>').join(''):'<p data-activity-empty>You’re all caught up.</p>';
  window.WhatsNew?.attach?.(host);

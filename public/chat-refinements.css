@@ -104,18 +104,75 @@ body.dashboard .admin-composer-tools .voice-recording-bar button.quiet,.voice-re
 
 /* Dashboard-wide payment and signing celebration. */
 .admin-celebration {
- position:fixed; inset:16px 16px auto auto; z-index:1200; margin:0;
- width:min(360px,calc(100% - 32px)); box-sizing:border-box; min-height:114px;
- display:grid; align-content:center; gap:6px; padding:22px;
- border:1px solid #e193b9; border-radius:20px;
- background:#fff3f9; color:#4d1b36; box-shadow:0 12px 32px #35112435;
- pointer-events:none; overflow:hidden;
+ position:fixed;
+ inset:max(16px,env(safe-area-inset-top)) 16px auto auto;
+ z-index:1200;
+ margin:0;
+ width:min(440px,calc(100% - 32px));
+ min-height:136px;
+ box-sizing:border-box;
+ display:grid;
+ align-content:center;
+ gap:9px;
+ padding:32px clamp(94px,28%,132px) 24px 22px;
+ border:1px solid #ad9666;
+ border-radius:22px;
+ background:radial-gradient(ellipse at 98% 16%,#255743 0%,transparent 57%),linear-gradient(115deg,#241721 12%,#1a2723 100%);
+ color:#fff5e7;
+ box-shadow:0 16px 48px #110d18a6,inset 0 0 0 4px #ecd6a814;
+ isolation:isolate;
+ pointer-events:none;
+ overflow:hidden;
+}
+.admin-celebration::before {
+ content:"";
+ position:absolute;
+ inset:7px;
+ border:1px solid #eed7ab3d;
+ border-radius:15px;
+}
+.admin-celebration::after {
+ content:"";
+ position:absolute;
+ top:20px;
+ left:22px;
+ width:34px;
+ height:2px;
+ border-radius:2px;
+ background:linear-gradient(90deg,#ffdeb0,#9f7f4d);
 }
 .admin-celebration>strong,.admin-celebration>span {position:relative;z-index:1;overflow-wrap:anywhere}
-.admin-celebration>strong {font-size:1.15rem}
-.admin-celebration>span {font-weight:600}
-.admin-celebration .admin-banknote {top:52%}
-.admin-banknote-burst{position:absolute;inset:0;z-index:0;overflow:hidden;border-radius:inherit;pointer-events:none}
+.admin-celebration>strong {
+ font:700 clamp(24px,5.5vw,29px)/1.05 Georgia,serif;
+ letter-spacing:-.025em;
+ text-wrap:balance;
+}
+.admin-celebration>span {
+ color:#f0dcb5;
+ font:600 .875rem/1.35 system-ui,sans-serif;
+ font-variant-numeric:tabular-nums;
+}
+.admin-banknote-burst {
+ position:absolute;
+ inset:8px 8px 8px auto;
+ width:31%;
+ z-index:0;
+ overflow:hidden;
+ border-radius:0 14px 14px 0;
+ pointer-events:none;
+}
+.admin-banknote-burst::before {
+ content:"";
+ position:absolute;
+ inset:0;
+ background:radial-gradient(ellipse at center,#b6f5b91c,transparent 68%),repeating-linear-gradient(130deg,transparent 0 11px,#d9efd414 11px 12px);
+ mask-image:linear-gradient(90deg,transparent,#000 35%);
+}
+.admin-celebration .admin-banknote {top:64%}
+@media(max-width:360px){
+ .admin-celebration{padding-left:18px;padding-right:86px}
+ .admin-celebration::after{left:18px}
+}
 .admin-banknote{position:absolute;top:clamp(72px,32%,150px);left:50%;width:clamp(31px,8vw,47px);aspect-ratio:1.8;display:grid;place-items:center;border:1px solid #31754f;border-radius:4px;background:linear-gradient(135deg,#dcf8e4,#86d3a3 72%,#55ae7b);color:#184932;box-shadow:0 2px 4px #163e2b40}
 .admin-banknote:nth-child(3n){background:linear-gradient(135deg,#d5f5d7,#70c893)}
 .admin-banknote::before{content:"";position:absolute;inset:3px;border:1px solid #47815b;border-radius:2px;background:radial-gradient(ellipse at center,#c3edcf 0 32%,transparent 34%)}

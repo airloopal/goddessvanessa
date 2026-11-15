@@ -179,3 +179,93 @@ body.dashboard .admin-composer-tools .voice-recording-bar button.quiet,.voice-re
 .admin-banknote::after{content:"£";position:relative;font:700 11px/1 system-ui,sans-serif}
 @media(prefers-reduced-motion:reduce){.admin-banknote-burst{display:none}}
 
+
+/* Live admin light palette for the celebration card. */
+body.dashboard:not([data-admin-celebrations]):not([data-admin-theme=night]) .admin-celebration {
+ border-color:#a58850;
+ background:radial-gradient(ellipse at 98% 16%,#cfe9d1 0%,transparent 58%),linear-gradient(115deg,#fff8eb 12%,#eef4e4 100%);
+ color:#2e2128;
+ box-shadow:0 14px 36px #39252e40,inset 0 0 0 4px #b3944e24;
+}
+body.dashboard:not([data-admin-celebrations]):not([data-admin-theme=night]) .admin-celebration::before {border-color:#aa8a5245}
+body.dashboard:not([data-admin-celebrations]):not([data-admin-theme=night]) .admin-celebration>span {color:#4d5439}
+body.dashboard:not([data-admin-celebrations]):not([data-admin-theme=night]) .admin-banknote-burst::before {
+ background:radial-gradient(ellipse at center,#74bd8b26,transparent 68%),repeating-linear-gradient(130deg,transparent 0 11px,#34795022 11px 12px);
+}
+
+body.dashboard .admin-chat-avatar {
+ position:relative;
+ display:inline-grid;
+ place-items:center;
+ flex:none;
+ vertical-align:middle;
+}
+body.dashboard .admin-chat-avatar>.mini-avatar {float:none;margin:0}
+body.dashboard .admin-chat-avatar>.sub-online-dot {
+ position:absolute;
+ top:1px;
+ right:1px;
+ width:10px;
+ height:10px;
+ margin:0;
+ z-index:1;
+ pointer-events:none;
+}
+body.dashboard .admin-unread-banner {
+ --banner-bg:#fffdf9;
+ --banner-border:#dacdd6;
+ --banner-text:#251c24;
+ --banner-muted:#635661;
+ position:fixed;
+ z-index:1199;
+ inset:max(12px,env(safe-area-inset-top)) 16px auto auto;
+ width:min(390px,calc(100% - 32px));
+ box-sizing:border-box;
+ display:grid;
+ grid-template-columns:minmax(0,1fr) 44px;
+ align-items:start;
+ border:1px solid var(--banner-border);
+ border-radius:21px;
+ background:var(--banner-bg);
+ color:var(--banner-text);
+ box-shadow:0 8px 25px #25111f40;
+}
+body.dashboard:has(.admin-celebration) .admin-unread-banner {top:calc(max(16px,env(safe-area-inset-top)) + 160px)}
+body.dashboard[data-admin-theme=night] .admin-unread-banner {
+ --banner-bg:#302830;
+ --banner-border:#635461;
+ --banner-text:#fff6fb;
+ --banner-muted:#d3c4d1;
+}
+body.dashboard .admin-unread-open,body.dashboard .admin-unread-dismiss {
+ color:inherit;
+ border:0;
+ background:none;
+ font-family:system-ui,sans-serif;
+ cursor:pointer;
+}
+body.dashboard .admin-unread-open {
+ display:grid;
+ grid-template-columns:42px minmax(0,1fr);
+ align-items:center;
+ gap:11px;
+ min-width:0;
+ width:100%;
+ padding:12px 0 12px 12px;
+ text-align:left;
+ border-radius:20px;
+}
+body.dashboard .admin-unread-open .mini-avatar {
+ width:42px;
+ height:42px;
+ border-radius:50%;
+ font:600 17px/1 system-ui,sans-serif;
+}
+.admin-unread-banner .admin-chat-avatar>.sub-online-dot {box-shadow:0 0 0 2px var(--banner-bg)}
+.admin-unread-copy {display:grid;min-width:0;gap:3px;line-height:1.25}
+.admin-unread-meta {display:flex;justify-content:space-between;gap:8px;color:var(--banner-muted);font-size:11px;font-weight:600}
+.admin-unread-copy>strong,.admin-unread-preview {overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.admin-unread-copy>strong {font-size:15px}
+.admin-unread-preview {font-size:13px;color:var(--banner-muted)}
+body.dashboard .admin-unread-dismiss {width:44px;height:44px;padding:0;border-radius:20px;font-size:21px;color:var(--banner-muted)}
+body.dashboard .admin-unread-banner button:focus-visible {outline:2px solid #28804e;outline-offset:-2px}

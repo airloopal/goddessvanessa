@@ -4,6 +4,18 @@ import {request,env} from './check-education.mjs';
 const spoof=new Headers({'x-vercel-ip-country':'GB','x-vercel-ip-city':'London'});assert.equal(visitorLocation(spoof,false),null);assert.deepEqual(visitorLocation(spoof,true),{country:'GB',city:'London'});assert.equal(visitorLocation(new Headers({'x-vercel-ip-country':'GB','x-vercel-ip-city':'%3Cscript%3E'}),true).city,null);
 assert.equal((await request('/api/chat/ui-activity')).status,403);assert.equal((await request('/api/chat/ui-activity',{account:'learner'})).status,403);
 const feed=await request('/api/chat/ui-activity',{account:'owner'});assert.equal(feed.status,200);assert.ok(feed.data.events.some(e=>e.kind==='application'));assert.ok(feed.data.events.every(e=>!('email' in e)&&!('phone' in e)));
+const studentId=crypto.randomUUID(),messageId=crypto.randomUUID(),now=Date.now();
+await env.DB.prepare("INSERT INTO chat_students(id,user_id,name,email,created_at) VALUES(?,?,?,?,?)").bind(studentId,'fixture-'+studentId,'Test sender','fixture@example.test',now).run();
+try{
+ await env.DB.prepare("INSERT INTO chat_messages(id,student_id,sender,body,created_at) VALUES(?,?,'client',?,?)").bind(messageId,studentId,'Test unread message',now).run();
+ const activity=async()=> (await request('/api/chat/ui-activity',{account:'owner'})).data.events.find(event=>event.id==='message:'+messageId);
+ assert.equal((await activity()).unread,true,'A new Sub message is unread for Goddess');
+ const {seq}=await env.DB.prepare('SELECT seq FROM chat_messages WHERE id=?').bind(messageId).first();
+ await env.DB.prepare("INSERT INTO chat_state(student_id,role,read_seq) VALUES(?,'client',?)").bind(studentId,seq).run();
+ assert.equal((await activity()).unread,true,'The Sub read position does not mark a Goddess alert as read');
+ await env.DB.prepare("INSERT INTO chat_state(student_id,role,read_seq) VALUES(?,'admin',?)").bind(studentId,seq).run();
+ assert.equal((await activity()).unread,false,'Reading the chat clears eligibility without deleting notification history');
+}finally{await env.DB.prepare('DELETE FROM chat_students WHERE id=?').bind(studentId).run();}
 const signed=feed.data.events.find(event=>event.kind==='contract-signed');
 assert.ok(signed?.name,'Saved signing is visible to the owner with the signer name');
 assert.deepEqual(Object.keys(signed).sort(),['at','id','kind','name','section','text'],'No contract or contact details in signing notifications');

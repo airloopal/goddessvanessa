@@ -140,14 +140,50 @@ window.UIActivityNotifications=(()=>{
 
 
  function badge(){const b=document.getElementById('notifications-toggle');if(!b)return;let ticker=b.querySelector('.notification-ticker');if(!ticker){ticker=document.createElement('span');ticker.className='notification-ticker';ticker.setAttribute('aria-hidden','true');b.append(ticker);}const count=items.filter(e=>!seen.has(e.id)).length+(window.WhatsNew?.unread?.()||0);ticker.hidden=!count;ticker.textContent=count>99?'99+':String(count);b.setAttribute('aria-label','Notifications · '+count+' new');b.title=count?count+' new notifications':'Notifications';}
- async function poll(){if(busy||typeof dashboardAllowed==='undefined'||!dashboardAllowed)return;busy=true;try{const d=await chatAPI('ui-activity'),fresh=started?d.events.filter(e=>!items.some(old=>old.id===e.id)&&!seen.has(e.id)):[];items=d.events;started=true;window.AdminCelebrations?.observe(d.events);if(fresh.length){const paid=fresh.filter(e=>e.kind==='payment'&&e.confirmed&&['entry','contract'].includes(e.phase));if(paid.length){kaChing(Math.min(8,paid.reduce((n,e)=>n+(e.phase==='contract'?2:1),0)));}else chime();for(const e of fresh)await window.AdminChatNotifications?.crucialAlert?.(e);}const dialog=document.getElementById('notification-centre');if(dialog?.open){render();ack();}badge();}catch{}finally{busy=false;}}
+ async function poll(){if(busy||typeof dashboardAllowed==='undefined'||!dashboardAllowed)return;busy=true;try{const d=await chatAPI('ui-activity'),fresh=started?d.events.filter(e=>!items.some(old=>old.id===e.id)&&!seen.has(e.id)&&(e.kind!=='message'||e.unread!==false)):[];items=d.events;started=true;window.AdminCelebrations?.observe(d.events);unreadChatBanner(fresh);if(fresh.length){const paid=fresh.filter(e=>e.kind==='payment'&&e.confirmed&&['entry','contract'].includes(e.phase));if(paid.length){kaChing(Math.min(8,paid.reduce((n,e)=>n+(e.phase==='contract'?2:1),0)));}else chime();for(const e of fresh)await window.AdminChatNotifications?.crucialAlert?.(e);}const dialog=document.getElementById('notification-centre');if(dialog?.open){render();ack();}badge();}catch{}finally{busy=false;}}
+ let chatBanner=null,bannerTimer=null;
+ function closeChatBanner(){
+  clearTimeout(bannerTimer);chatBanner?.remove();chatBanner=null;
+ }
+ async function openChatEvent(studentId){
+  await loadStudents();
+  const person=chatStudents.find(student=>student.id===studentId);
+  if(!person)return;
+  await navigateDashboard('chats');
+  if(tab!=='chats')return;
+  selectedStudent=person;
+  await PreviewChat.select(person.id);
+  mobileChatOpen=true;
+  renderDashboard();
+ }
+ function unreadChatBanner(fresh){
+  if(chatBanner&&!items.some(event=>event.id===chatBanner.dataset.eventId&&event.unread===true))closeChatBanner();
+  if(document.hidden||document.getElementById('notification-centre')?.open)return;
+  const incoming=fresh.filter(event=>event.kind==='message'&&event.unread===true&&event.studentId);
+  if(!incoming.length)return;
+  const event=incoming[0],student=chatStudents.find(person=>person.id===event.studentId);
+  const count=incoming.filter(message=>message.studentId===event.studentId).length;
+  closeChatBanner();
+  const banner=document.createElement('aside');
+  banner.className='admin-unread-banner';banner.dataset.eventId=event.id;
+  banner.innerHTML='<button type="button" class="admin-unread-open"><span class="admin-unread-copy" role="status"><span class="admin-unread-meta"><span>Messages</span><time></time></span><strong></strong><span class="admin-unread-preview"></span></span></button><button type="button" class="admin-unread-dismiss" aria-label="Dismiss message notification">×</button>';
+  const open=banner.querySelector('.admin-unread-open');
+  open.insertAdjacentHTML('afterbegin',adminChatAvatar({name:event.name,photoUrl:student?.photoUrl,online:student?.online}));
+  banner.querySelector('strong').textContent=event.name||'A Sub';
+  banner.querySelector('time').textContent=UIChat.time(event.at);
+  banner.querySelector('.admin-unread-preview').textContent=count>1?count+' unread messages':event.text||'New message';
+  open.onclick=async()=>{try{await openChatEvent(event.studentId);if(chatBanner===banner)closeChatBanner();}catch{banner.querySelector('.admin-unread-preview').textContent='Could not open the conversation. Try again.';}};
+  banner.querySelector('.admin-unread-dismiss').onclick=closeChatBanner;
+  document.body.append(banner);chatBanner=banner;
+  bannerTimer=setTimeout(()=>{if(!banner.contains(document.activeElement))closeChatBanner();},8000);
+ }
  function ack(){for(const e of items)seen.add(e.id);save();badge();}
  function render(){const host=document.getElementById('notification-items');if(!host)return;if(typeof renderCodeRequests==='function')renderCodeRequests();
  const labels={'application-start':'Application started',message:'Message',gift:'Gift received',payment:'Payment','contract-signed':'Contract signed',application:'Application',verification:'Verification request',code:'Access request',account:'Account request'},icons={'application-start':'applications',message:'chat',gift:'gift',payment:'payment','contract-signed':'applications',application:'applications',verification:'verification',code:'key',account:'user'};
  const rows=[],groups=new Map();for(const e of items){const group=e.kind==='message'&&e.studentId?'message:'+e.studentId:null;if(group&&groups.has(group)){groups.get(group).extra++;continue;}const row={...e,extra:0};rows.push(row);if(group)groups.set(group,row);}
  host.innerHTML=rows.length?rows.slice(0,40).map(e=>'<button type="button" class="crucial-notification" data-notice-id="'+eduEscape(e.id)+'"><span class="notification-symbol" aria-hidden="true">'+(window.AdminIcons?.svg(icons[e.kind]||'bell')||'')+'</span><span class="notification-copy"><span class="notification-heading"><span class="notification-topic">'+eduEscape(labels[e.kind]||'New activity')+'</span><time>'+eduEscape(UIChat.time(e.at))+'</time></span><strong>'+eduEscape(e.name||'A Sub')+'</strong><span class="notification-preview">'+eduEscape(e.text||'Something new to look at')+'</span>'+(e.extra?'<span class="notification-extra">'+e.extra+' more '+(e.extra===1?'message':'messages')+' in this chat</span>':'')+'</span></button>').join(''):'<p data-activity-empty>You’re all caught up.</p>';
  window.WhatsNew?.attach?.(host);
- host.querySelectorAll('[data-notice-id]').forEach(b=>b.onclick=async()=>{const e=items.find(x=>x.id===b.dataset.noticeId);if(e.kind==='account'){document.getElementById('notification-centre').close();await window.AccountManagement.open(e.studentId);return;}if(e.kind==='code'){await loadCodeRequests();document.getElementById('code-request-inbox')?.scrollIntoView({block:'nearest'});return;}document.getElementById('notification-centre').close();if(e.studentId&&e.section==='chats'){await loadStudents();const person=chatStudents.find(s=>s.id===e.studentId);if(person){selectedStudent=person;await PreviewChat.select(person.id);await navigateDashboard('chats');mobileChatOpen=true;renderDashboard();return;}}await navigateDashboard(e.section||'applications');if(e.kind==='application-start')document.getElementById('application-funnel')?.scrollIntoView({block:'start',behavior:'smooth'});});}
+ host.querySelectorAll('[data-notice-id]').forEach(b=>b.onclick=async()=>{const e=items.find(x=>x.id===b.dataset.noticeId);if(e.kind==='account'){document.getElementById('notification-centre').close();await window.AccountManagement.open(e.studentId);return;}if(e.kind==='code'){await loadCodeRequests();document.getElementById('code-request-inbox')?.scrollIntoView({block:'nearest'});return;}document.getElementById('notification-centre').close();if(e.studentId&&e.section==='chats'){await openChatEvent(e.studentId);return;}await navigateDashboard(e.section||'applications');if(e.kind==='application-start')document.getElementById('application-funnel')?.scrollIntoView({block:'start',behavior:'smooth'});});}
  function mountSound(){if(typeof tab==='undefined'||tab!=='settings'||document.getElementById('notification-sound-setting'))return;const card=document.createElement('section');card.id='notification-sound-setting';card.className='dash-card';card.innerHTML='<h2>Notification sound</h2><label><input type="checkbox" '+(sound?'checked':'')+'> Play notification sounds</label><button type="button" class="quiet" data-preview-twinkle>'+AdminIcons.svg('bell')+'Preview fairy twinkle</button><button type="button" class="quiet" data-preview-entry>'+AdminIcons.svg('payment')+'Preview Entry cash register</button><button type="button" class="quiet" data-preview-contract>'+AdminIcons.svg('payment')+'Preview Contract cash register</button><p class="muted">Fairy twinkle for activity; one cash-register sound for confirmed Entry and two for confirmed Contract. Sound starts after you interact with this dashboard; keep it open for live alerts.</p>';card.querySelector('input').onchange=e=>{sound=e.target.checked;save();if(!sound){for(const source of cashSources){try{source.stop();}catch{}}cashUntil=0;}if(sound){unlock();chime();}};card.querySelector('[data-preview-twinkle]').onclick=async()=>{unlock();if(audio)await audio.resume().catch(()=>{});chime();};for(const [selector,count]of [['[data-preview-entry]',1],['[data-preview-contract]',2]])card.querySelector(selector).onclick=async()=>{unlock();if(audio)await audio.resume().catch(()=>{});kaChing(count);};document.getElementById('dashboard-main').append(card);}
  function layout(){const nav=document.getElementById('dashboard-nav'),overview=nav?.querySelector('[data-tab="overview"]'),chats=nav?.querySelector('[data-tab="chats"]');if(overview&&nav.firstElementChild!==overview)nav.prepend(overview);if(chats&&overview.nextElementSibling!==chats)overview.after(chats);
   const live=document.getElementById('visitor-summary'),attention=document.getElementById('overview-next'),body=document.getElementById('overview-body');if(body&&live&&body.firstElementChild!==live)body.prepend(live);if(live&&attention&&live.nextElementSibling!==attention)live.after(attention);

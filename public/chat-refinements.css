@@ -116,9 +116,9 @@ body.dashboard .admin-composer-tools .voice-recording-bar button.quiet,.voice-re
 .admin-celebration>span {font-weight:600}
 .admin-celebration .admin-banknote {top:52%}
 .admin-banknote-burst{position:absolute;inset:0;z-index:0;overflow:hidden;border-radius:inherit;pointer-events:none}
-.admin-banknote{position:absolute;top:clamp(72px,32%,150px);left:50%;width:clamp(31px,8vw,47px);aspect-ratio:1.8;display:grid;place-items:center;border:1px solid #a83669;border-radius:4px;background:linear-gradient(135deg,#ffe0ef,#f7a1c8 72%,#e875a8);color:#792449;box-shadow:0 2px 4px #4f183540}
-.admin-banknote:nth-child(3n){background:linear-gradient(135deg,#ffdfef,#f787b7)}
-.admin-banknote::before{content:"";position:absolute;inset:3px;border:1px solid #ac4e77;border-radius:2px;background:radial-gradient(ellipse at center,#ffd8e9 0 32%,transparent 34%)}
+.admin-banknote{position:absolute;top:clamp(72px,32%,150px);left:50%;width:clamp(31px,8vw,47px);aspect-ratio:1.8;display:grid;place-items:center;border:1px solid #31754f;border-radius:4px;background:linear-gradient(135deg,#dcf8e4,#86d3a3 72%,#55ae7b);color:#184932;box-shadow:0 2px 4px #163e2b40}
+.admin-banknote:nth-child(3n){background:linear-gradient(135deg,#d5f5d7,#70c893)}
+.admin-banknote::before{content:"";position:absolute;inset:3px;border:1px solid #47815b;border-radius:2px;background:radial-gradient(ellipse at center,#c3edcf 0 32%,transparent 34%)}
 .admin-banknote::after{content:"£";position:relative;font:700 11px/1 system-ui,sans-serif}
 @media(prefers-reduced-motion:reduce){.admin-banknote-burst{display:none}}
 

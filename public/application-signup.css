@@ -25,3 +25,28 @@ body.restored-application{background:radial-gradient(ellipse at 5% 10%,#f9deec 0
 @media(max-width:650px){.application-faq{bottom:calc(92px + env(safe-area-inset-bottom))}.application-faq-panel{max-height:min(65dvh,calc(100dvh - 170px));width:min(360px,calc(100vw - 32px))}}
 
 #entry-lightbox .application-faq{position:relative;bottom:auto;right:auto;width:48px;margin:14px 0 0 auto}#entry-lightbox .application-faq-panel{width:min(360px,calc(100vw - 88px));max-height:55dvh}
+
+/* Compact intent checklist beside the existing application navigation. */
+.restored-application .step-actions:has(.application-payments){flex-wrap:wrap;position:sticky;bottom:0;z-index:20;padding:12px 0 0;gap:10px;background:#fff}
+.restored-application .application-payments{flex:0 0 100%;min-width:0;color:#39222f;border:1px solid #e9d6e0;border-radius:13px;background:#fff8fc;padding:9px 12px;box-sizing:border-box}
+.restored-application .application-payments-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;line-height:1.4}
+.restored-application .application-payments-heading>strong{font-weight:600}
+.restored-application .application-payments-heading>span{font-size:10px;color:#795266;white-space:nowrap}
+.restored-application .application-payments-fees{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin:7px 0}
+.restored-application .application-payment{display:flex;align-items:center;gap:7px;min-width:0}
+.restored-application .application-payment-number{display:grid;place-items:center;flex:0 0 20px;height:20px;border:1px solid #dcb7ca;border-radius:50%;font-size:11px;color:#8f2c59;background:#fff}
+.restored-application .application-payment>span:last-child{display:flex;align-items:baseline;gap:5px;flex-wrap:wrap;font-size:12px;line-height:1.4}
+.restored-application .application-payment small{font-size:10px;color:#795266}
+.restored-application .application-payment.is-selected .application-payment-number{background:#fbe6f0;border-color:#c785a6}
+.restored-application .application-payment.is-paid .application-payment-number{color:#266548;border-color:#adc9b9;background:#e6f2e9}
+.restored-application .application-payment.is-paid small{color:#266548}
+.restored-application .application-payment.is-pending small{color:#835718}
+.restored-application .application-payments>p{margin:0;font-size:10px;line-height:1.5;color:#795266}
+@media(max-width:650px){
+ .restored-application .application-layout{padding-bottom:calc(200px + env(safe-area-inset-bottom))}
+ .restored-application .step-actions:has(.application-payments){position:fixed;bottom:0;left:0;right:0;padding:8px 16px calc(10px + env(safe-area-inset-bottom));background:#fffafc;gap:8px;max-height:60svh;overflow-y:auto}
+ .restored-application .application-payments{padding:8px 10px;border-radius:12px}
+ .restored-application .application-payment>span:last-child{font-size:11px}
+ .restored-application .square-contract-panel .step-actions:has(.application-payments){position:static;max-height:none;overflow:visible;padding:12px 0 0;box-shadow:none}
+}
+@media(max-height:500px) and (max-width:950px){.restored-application .step-actions:has(.application-payments){position:static;max-height:none;overflow:visible}}

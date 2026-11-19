@@ -135,6 +135,7 @@ function squareContractPanel(){
  if(p?.receiptUrl){try{const url=new URL(p.receiptUrl);if(url.protocol==='https:'&&url.hostname==='squareup.com'){const link=document.createElement('a');link.href=url.href;link.textContent='View Square receipt';link.className='quiet';link.target='_blank';link.rel='noopener';app.querySelector('.step-actions').append(link);}}catch{}}
  if(!document.getElementById('square-contract-heading')){const heading=app.querySelector('h1');heading.id='square-contract-heading';heading.tabIndex=-1;heading.focus({preventScroll:true});window.scrollTo({top:0,behavior:'instant'});}
  squareCheckoutActions();squareResumeControl();
+ applicationPaymentSummary();
  if(paid&&!expired)squareNotice(document.getElementById('learning-status'),'success','Payment successful','Your contract payment is confirmed and saved.');
  if(!paid)void squareMountCard('contract','square-contract-pay','learning-status');
  document.getElementById('square-contract-refresh')?.addEventListener('click',async e=>{e.currentTarget.disabled=true;try{await squareRefresh();}catch(error){status(error.message);e.target.disabled=false;}});

@@ -4,6 +4,20 @@ const app=document.getElementById('education-app');
 const screens=()=>course.features.questionnaire?['paths','entry','intro','questions','review','lessons']:['paths','entry','intro','review','lessons'];
 function move(to){screen=to;renderLearning();window.ChatLoading?.step();window.scrollTo({top:0,behavior:'instant'});app.querySelector('h1')?.focus({preventScroll:true});}
 function steps(){const all=screens(),at=all.indexOf(screen);return '<div class="step-meta"><span>YOUR APPLICATION</span><span>'+(at+1)+' / '+all.length+'</span></div><div class="p-progress"><span style="width:'+((at+1)/all.length*100)+'%"></span></div>';}
+// Selections show intent; only the server can confirm a payment.
+function applicationPaymentSummary(){
+ const actions=app.querySelector('.step-actions');
+ if(!actions||screen==='lessons')return;
+ const states=squareEnabled()?squareState:{},rows=['entry','contract'].map(stage=>{
+  const plan=stage==='entry'?entryPlan():contractPlan(),saved=states[stage];
+  const selected=!!(saved?.plan||plan),paid=saved?.status==='paid',granted=saved?.status==='granted',pending=saved?.status==='pending';
+  return {selected,paid,granted,pending,label:stage==='entry'?'Tribute':'Contract',status:paid?'Paid':granted?'Approved':pending?'Confirming':selected?'Selected':stage==='contract'?'Choose later':'Choose plan'};
+ });
+ const selected=rows.filter(r=>r.selected).length,notice=rows[0].granted?'Contract payment required. Access after approval.':'Tribute + Contract payment required. Access after approval.';
+ const node=document.createElement('section');node.className='application-payments';node.setAttribute('aria-label','Access checklist');
+ node.innerHTML='<div class="application-payments-heading"><strong>Your access checklist</strong><span>'+selected+' / 2 selected</span></div><div class="application-payments-fees" role="status" aria-live="polite" aria-atomic="true">'+rows.map(r=>'<div class="application-payment '+(r.paid||r.granted?'is-paid':r.pending?'is-pending':r.selected?'is-selected':'')+'"><span class="application-payment-number" aria-hidden="true">'+(r.selected?'✓':'')+'</span><span>'+r.label+' <small>'+r.status+'</small></span></div>').join('')+'</div><p>'+notice+'</p>';
+ const old=actions.querySelector('.application-payments');if(old)old.replaceWith(node);else actions.prepend(node);
+}
 function applicationAside(){const labels={paths:'Your starting point',entry:'Entry plan',intro:'Introduction & entry',questions:'About you',review:'Review & confirm',lessons:'Your learning space'},all=screens(),at=all.indexOf(screen);return '<aside class="application-aside"><span class="overline">A PERSONAL BEGINNING</span><h2>Step inside.<br><em>At your pace.</em></h2><ol class="step-list">'+all.map((key,i)=>'<li class="'+(i===at?'current':i<at?'complete':'')+'" '+(i===at?'aria-current="step"':'')+'><span>'+String(i+1).padStart(2,'0')+'</span>'+labels[key]+'</li>').join('')+'</ol><div class="aside-note"><svg class="p-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/></svg><p>You decide what to share.<br>You can go back at any time.</p></div></aside>';}
 function renderLearning(){if(!course)return;window.ApplicationTracking?.record(screen);if(squareEnabled()){entryReviewed=squareEntryPaid();if(screen==='review'&&squareState.contract)return squareContractPanel();}window.HouseVisual?.scope('education:'+screen);eduTheme(course);if(!course.paths.some(p=>p.id===pathId))pathId='';if(lessonIndex>=course.lessons.length)lessonIndex=0;
  if(screen==='lessons'){renderLessons();return;}
@@ -24,6 +38,7 @@ function renderLearning(){if(!course)return;window.ApplicationTracking?.record(s
  bindReview();
  bindEntryLightbox();
  squareDecorate();
+ applicationPaymentSummary();
 }
 function status(text){const el=document.getElementById('learning-status');if(el)el.textContent=text;}
 function renderLessons(){const lesson=course.lessons[lessonIndex],completed=enrolment?.completed||[],total=course.lessons.filter(l=>completed.includes(l.id)).length;app.innerHTML=`<div class="lesson-layout"><aside class="lesson-menu"><span class="eyebrow">COURSE LIBRARY</span>${course.features.progress?`<span class="progress-label">${total} of ${course.lessons.length} lessons completed</span><progress value="${total}" max="${course.lessons.length}" aria-label="Lesson completion"></progress>`:''}${course.lessons.map((l,i)=>`<button data-lesson="${i}" aria-current="${i===lessonIndex}">${eduEscape(l.title)}<small>${completed.includes(l.id)?'Completed':'Open lesson'}</small></button>`).join('')}<a class="quiet" href="chat.html">Open conversation</a><button id="edit-enrolment">${enrolment?'Review enrolment':'Choose a learning path'}</button></aside><article class="lesson-body"><span class="eyebrow">LESSON ${lessonIndex+1}</span><h1 tabindex="-1" data-edit="lessons.${lessonIndex}.title">${eduEscape(lesson.title)}</h1><p data-edit="lessons.${lessonIndex}.summary">${eduEscape(lesson.summary)}</p>${eduBlocks(lesson.blocks,'lessons.'+lessonIndex+'.blocks')}${!enrolment?'<p class="notice">Browsing mode · Submit your application to save completion.</p>':''}<p id="learning-status" role="status"></p><div class="step-actions">${course.features.progress?`<button id="complete-lesson" class="p-button" ${!enrolment||educationPreview?'disabled':''}>${completed.includes(lesson.id)?'Mark as incomplete':'Mark lesson complete'}</button>`:'<span></span>'}${lessonIndex<course.lessons.length-1?'<button class="quiet" id="next-lesson">Next lesson →</button>':''}</div></article></div>`;

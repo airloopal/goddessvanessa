@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+
+const source=fs.readFileSync('public/education-app.js','utf8');
+const summary=source.slice(source.indexOf('function applicationPaymentSummary()'),source.indexOf('function applicationAside()'));
+const entry={id:'basic',amount:8500},contract={id:'month',amount:25000};
+let html='',mounted=0;
+const actions={querySelector:()=>null,prepend:node=>{html=node.innerHTML;mounted++;}};
+const c=vm.createContext({app:{querySelector:()=>actions},document:{createElement:()=>({setAttribute(){}})},screen:'paths',squareEnabled:()=>true,squareState:{},entryPlan:()=>null,contractPlan:()=>null,reviewPrice:p=>p,course:{agreement:{entryPlans:[entry,{id:'advanced',amount:12500}],contractPlans:[{id:'day',amount:5000},contract]}},gbp:n=>'£'+(n/100).toFixed(2)});
+vm.runInContext(summary+';globalThis.render=applicationPaymentSummary;',c);
+c.render();assert.match(html,/0 \/ 2 selected/);assert.match(html,/Contract <small>Choose later/);assert.match(html,/Tribute \+ Contract payment required/);assert.doesNotMatch(html,/£|Total|To pay|Still to pay/);
+c.entryPlan=()=>entry;c.render();assert.match(html,/1 \/ 2 selected/);assert.match(html,/Tribute <small>Selected/);assert.doesNotMatch(html,/>Paid</);
+c.contractPlan=()=>contract;c.screen='review';c.render();assert.match(html,/2 \/ 2 selected/);assert.match(html,/Contract <small>Selected/);assert.doesNotMatch(html,/>Paid</);
+c.squareState={entry:{status:'pending',plan:entry}};c.render();assert.match(html,/Confirming/);assert.doesNotMatch(html,/>Paid</);
+c.squareState={entry:{status:'paid',plan:{...entry,amount:4250}}};c.render();assert.match(html,/Tribute <small>Paid/);assert.match(html,/Contract <small>Selected/);assert.doesNotMatch(html,/£|4250|25000/);
+c.squareState.contract={status:'pending',plan:contract};c.render();assert.match(html,/Contract <small>Confirming/);
+c.squareState.contract.status='paid';c.render();assert.match(html,/Contract <small>Paid/);
+c.squareState.contract.status='failed';c.render();assert.match(html,/Contract <small>Selected/);
+c.squareState.entry.status='granted';c.render();assert.match(html,/Tribute <small>Approved/);assert.match(html,/Contract payment required\. Access after approval/);assert.doesNotMatch(html,/Tribute <small>Paid/);
+c.squareEnabled=()=>false;c.render();assert.doesNotMatch(html,/>Paid</);
+const before=mounted;c.screen='lessons';c.render();assert.equal(mounted,before);
+assert.ok(!summary.includes('fetch('));assert.ok(!summary.includes('sessionStorage'));
+console.log('Access checklist: selected intentions, confirmed-only Paid labels, pending/failure, no prices, preview isolation and lesson exclusion passed.');

@@ -45,7 +45,7 @@ assert.deepEqual(multiSaved.data.enrolment.snapshot.questions.map(q=>q.answer),O
 for(const bad of [[],['not a current choice'],[next.questions[0].options[0],next.questions[0].options[0]],{},[null]]){const invalid=structuredClone(multi);invalid.answers[next.questions[0].id]=bad;assert.equal((await call('enrolment','PUT',invalid,'student')).status,400);}
 // The actual question renderer permits multiple checks, unchecks, and restores selections after Back.
 const uiElements=new Map();let uiInputs=[];
-const uiHost={innerHTML:'',querySelectorAll(selector){if(selector==='[data-path-id]')return [];if(selector==='.questions input')return uiInputs;return [];}};
+const uiHost={innerHTML:'',querySelector(){return null;},querySelectorAll(selector){if(selector==='[data-path-id]')return [];if(selector==='.questions input')return uiInputs;return [];}};
 const uiDocument={getElementById(id){if(id==='education-app')return uiHost;if(!uiElements.has(id))uiElements.set(id,{addEventListener(){},textContent:''});return uiElements.get(id);}};
 const ui=vm.createContext({structuredClone,URLSearchParams,document:uiDocument,location:{search:'?preview=1'},parent:{postMessage(){}},window:{addEventListener(){}}});
 vm.runInContext(fs.readFileSync('public/education-config.js','utf8'),ui);

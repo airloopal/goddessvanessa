@@ -1,4 +1,5 @@
 import {overview} from './overview.js';
+import {analytics} from './analytics.js';
 import {release,changelog} from './releases.js';
 const ownerEmail='danielvernontp@gmail.com';
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json','Cache-Control':'private, no-store'}});
@@ -18,6 +19,7 @@ export async function statusAPI(request,env,{database,storage}){
  if(!request.headers.get('oai-authenticated-user-id')||request.headers.get('oai-authenticated-user-email')?.toLowerCase()!==ownerEmail)return json({error:'Goddess access required.'},403);
  if(request.method!=='GET')return json({error:'Method not allowed.'},405);
  if(new URL(request.url).pathname==='/api/admin/changelog')return json({release,changelog});
+ if(new URL(request.url).pathname==='/api/admin/analytics'){if(request.headers.get('x-chat-role')==='student')return json({error:'Goddess access required.'},403);const raw=new URL(request.url).searchParams.get('days')||'30';if(!['7','30','90'].includes(raw))return json({error:'Choose 7, 30 or 90 days.'},400);const mode=['production','sandbox'].includes(env.SQUARE_ENVIRONMENT)?env.SQUARE_ENVIRONMENT:'off';return json(await bounded(()=>analytics(database(),{days:Number(raw),mode})));}
  if(new URL(request.url).pathname==='/api/admin/overview')return json(await bounded(()=>overview(database())));
  const checks=[],started=Date.now();let DB,events=[],historyAvailable=false,counts=null;
  const probe=async(id,name,fn)=>{const start=Date.now();try{const detail=await bounded(fn);checks.push({id,name,state:'ok',detail,ms:Date.now()-start});}catch{checks.push({id,name,state:'error',detail:'The check failed or timed out. Review the provider logs, then try again.',ms:Date.now()-start});}};

@@ -1,6 +1,6 @@
 'use strict';
 let mobileChatOpen=false;
-let tab=location.hash==='#settings'?'settings':location.hash==='#overview'?'overview':'chats',dashboardAllowed=false,dashboardCourse=null,enrolments=[],floatingThread=false,unread=false,lastCount=0,chatStudents=[],selectedStudent=null,presenceOnline=false;
+let tab=location.hash==='#analytics'?'analytics':location.hash==='#settings'?'settings':location.hash==='#overview'?'overview':'chats',dashboardAllowed=false,dashboardCourse=null,enrolments=[],floatingThread=false,unread=false,lastCount=0,chatStudents=[],selectedStudent=null,presenceOnline=false;
 const dashboardMain=document.getElementById('dashboard-main'),floatingChat=document.getElementById('floating-chat'),floatingToggle=document.getElementById('floating-chat-toggle');
 const title=(name,copy)=>'<div class="dash-title"><div><h1>'+name+'</h1><p>'+copy+'</p></div></div>';
 function adminChatAvatar(student,preview=false){
@@ -13,6 +13,7 @@ function renderDashboard(){if(!dashboardAllowed)return;document.body.dataset.cha
  document.querySelector('.mobile-chat-back').onclick=()=>{mobileChatOpen=false;renderDashboard();};dashboardMain.querySelectorAll('[data-media-request]').forEach(b=>{b.setAttribute('aria-label','Request '+b.dataset.mediaRequest);b.title='Request '+b.dataset.mediaRequest;[...b.childNodes].filter(n=>n.nodeType===3).forEach(n=>n.remove());});
  bindPreviewComposer(document.getElementById('admin-form'),'admin',refreshAdminThreads);dashboardMain.querySelectorAll('[data-media-request]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{await PreviewChat.send('admin','Send a '+button.dataset.mediaRequest+' relevant to your learning question.');document.getElementById('media-request-status').textContent='Request sent. The sub can attach their response below the conversation.';}catch(error){document.getElementById('media-request-status').textContent=error.message;}finally{button.disabled=false;}});unread=false;refreshAdminThreads();}
 
+ if(tab==='analytics')return window.AdminAnalytics.render(dashboardMain);
  if(tab==='feed')return window.renderGoddessFeed(dashboardMain);
  if(tab==='settings')window.renderGoddessSettings(dashboardMain);
  if(tab==='verifications')return renderVerificationInbox(dashboardMain);

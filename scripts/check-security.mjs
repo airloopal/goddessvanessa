@@ -27,3 +27,14 @@ for(const text of ['http://throne.com/x','https://throne.com.evil.example/x','ht
 assert.equal((await request('/api/chat/messages',{method:'POST',account:'owner',data:{studentId,id:crypto.randomUUID(),text:'Gift https://throne.com/vvannessa'}})).status,200);
 assert.equal((await request('/api/chat/messages',{method:'POST',cookie:studentCookie,data:{id:crypto.randomUUID(),text:'Plain text still works'}})).status,200);
 console.log('Server link policy passed: Sub links and forged sender rejected, unsafe Goddess destinations blocked, approved Goddess links and ordinary text accepted.');
+
+// Reproduce the mobile failure without any customer records or messages.
+for(const text of ["We discussed this before.it’s fine.","We discussed this before.it's fine.","All done.that’s okay.","Please wait.don’t worry."]){
+ const ownerMessage=await request('/api/chat/messages',{method:'POST',account:'owner',data:{studentId,id:crypto.randomUUID(),text}});assert.equal(ownerMessage.status,200,text);assert.equal(ownerMessage.data.message.text,text,'Keep the original punctuation');
+ assert.equal((await request('/api/chat/messages',{method:'POST',cookie:studentCookie,data:{id:crypto.randomUUID(),text}})).status,200,text);
+}
+for(const text of ["before.it’s fine https://evil.example/path","before.it’s fine www.evil.example","evil.com’s","before.it/path"]){
+ assert.equal((await request('/api/chat/messages',{method:'POST',account:'owner',data:{studentId,id:crypto.randomUUID(),text}})).status,400,text);
+ assert.equal((await request('/api/chat/messages',{method:'POST',cookie:studentCookie,data:{id:crypto.randomUUID(),text}})).status,400,text);
+}
+console.log('Punctuation send API passed: Goddess/Sub plain contractions saved unchanged; mixed prohibited links and actual domains still denied.');

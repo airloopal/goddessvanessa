@@ -1,5 +1,19 @@
 // Only the authenticated Goddess can share links; keep the destination list explicit.
-const chatLinkCandidates=text=>text.match(/(?:https?:\/\/|www\.)[^\s<>]+|\b(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}(?:\/[^\s<>]*)?/gi)||[];
+function chatLinkCandidates(text){
+ const links=[];
+ for(const match of text.matchAll(/(?:https?:\/\/|www\.)[^\s<>]+|\b(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}(?:\/[^\s<>]*)?/gi)){
+  const value=match[0];
+  // A missing space before a contraction ("before.it’s") is sentence text,
+  // not a link. Explicit URLs, www addresses, paths and other bare domains
+  // still undergo the unchanged destination check below.
+  if(!/^(?:https?:\/\/|www\.)/i.test(value)&&!value.includes('/')){
+   const word=value.slice(value.lastIndexOf('.')+1),suffix=text.slice(match.index+value.length).match(/^['’](?:s|re|ve|ll|d|t)\b/i)?.[0];
+   if(suffix&&/^(?:(?:it|that|there|here|what|who|where|when|how|he|she|let)['’]s|(?:you|we|they)['’](?:re|ve|ll|d)|(?:it|that|there|here|what|who|where|when|how|he|she)['’](?:ll|d)|(?:don|doesn|didn|isn|aren|wasn|weren|can|couldn|wouldn|shouldn|haven|hasn|hadn|won|mustn)['’]t)$/i.test(word+suffix))continue;
+  }
+  links.push(value);
+ }
+ return links;
+}
 function chatSafeLink(value){try{const u=new URL(value.replace(/[.,!?;:)]+$/,''));return u.protocol==='https:'&&!u.username&&!u.password&&(!u.port||u.port==='443')&&['throne.com','www.throne.com','houseofvanessa.com','www.houseofvanessa.com'].includes(u.hostname.toLowerCase());}catch{return false;}}
 // Private learning-support conversations. Codes are random, reusable until replacement or contract expiry, and stored only as hashes.
 const chatHash=async value=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(x=>x.toString(16).padStart(2,'0')).join('');

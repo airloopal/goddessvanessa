@@ -38,3 +38,13 @@ const adminLink=vm.runInContext('chatMessageText({from:"admin",text:"Gift https:
 const policy=fs.readFileSync('server/chat.js','utf8').split('// Private learning-support')[0];const guard={URL};vm.createContext(guard);vm.runInContext(policy,guard);for(const url of ['http://throne.com/x','https://throne.com.evil.example/x','https://user@throne.com/x','javascript:alert(1)','https://throne.com:444/x'])assert.equal(vm.runInContext('chatSafeLink('+JSON.stringify(url)+')',guard),false);assert.equal(vm.runInContext('chatSafeLink("https://throne.com/vvannessa")',guard),true);for(const text of ['https://evil.example/x','www.evil.example','evil.example/path'])assert.ok(vm.runInContext('chatLinkCandidates('+JSON.stringify(text)+').length',guard));console.log('Chat link checks passed: sender separation, HTTPS allowlist, lookalikes, credentials, ports and plain-text Sub rendering.');
 
 fail=true;failStatus=400;await assert.rejects(chat.send("client","https://throne.com/vvannessa","blocked-link"));assert.equal(chat.all().some(m=>m.id==="blocked-link"),false,"Rejected link is removed rather than offering a futile retry");
+
+// Ordinary punctuation must not become a fake domain; real link checks remain strict.
+for(const text of ["We discussed this before.it’s fine.","We discussed this before.it's fine.","That was helpful.we’re ready.","All done.that’s okay.","Please wait.don’t worry.","Ready.they’ve arrived."]){
+ assert.equal(vm.runInContext('chatLinkCandidates('+JSON.stringify(text)+').length',guard),0,text);
+ assert.doesNotMatch(vm.runInContext('chatMessageText({from:"admin",text:'+JSON.stringify(text)+'})',context),/<a /,'Punctuation stays plain text');
+}
+for(const text of ["before.it", "before.it/path", "evil.com’s", "www.before.it’s", "https://before.it’s", "https://evil.example/it’s", "before.it’s fine https://evil.example/x", "We’re ready.evil.example/path"]){
+ assert.ok(vm.runInContext('chatLinkCandidates('+JSON.stringify(text)+').length',guard),text);
+}
+console.log('Punctuation regression passed: joined contractions remain plain text; explicit/www/bare/path domains and mixed prohibited links remain detected.');

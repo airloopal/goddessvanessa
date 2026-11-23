@@ -8,7 +8,7 @@
   "server/platform/database.js": "3d88394e4fe1e8ed881ca16595b44f455b3737d7",
   "server/platform/storage.js": "e6c03d9feb003b2d64f619192504f5d46f4953a9",
   "server/platform/cloudflare-stream.js": "a904805bd99111c418efc006238c009bc3f9e940",
-  "public/application.html": "5ed693ebfacccb2939d7c23d97409f014bd9d2ca",
+  "public/application.html": "6bbcdd2b584a453cfc2bafd66c399d74a3bfbaa3",
   "public/education-app.js": "fd73242c206bae11922af9175f8dba74331946d5",
   "public/square-payments.js": "7eed27c0d7669a2eabf5d2b9a0461eb2c3976af1",
   "public/member-plans.js": "ee1c0e6368ddf32d89eb31adb20d9c2c6e1c3b03",

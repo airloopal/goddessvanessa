@@ -1,7 +1,7 @@
 {
   "server/square.js": "46eabdabb1a443a5508ffeffdce40b5071d3c8b8",
-  "server/membership.js": "556f92ff0c582b103e444e6fe81f236e5d36d77e",
-  "server/notifications.js": "e022154d3e2920a4fbc476b07f4279060cfe7251",
+  "server/membership.js": "6b5d26e384cade8c682b97235daab20fb4deebed",
+  "server/notifications.js": "bb0c78c582267dc3855823e55476f67f7e54e285",
   "server/mail.js": "98a7382da53045f70afe7077ee3e186805a1ff3e",
   "server/account-management.js": "074b4c7d731e6885f35d5043d0617f7568669565",
   "server/platform/goddess-auth.js": "df25daa38c68c6a4e02e529cc955f279de60eed6",
@@ -11,9 +11,9 @@
   "public/application.html": "6bbcdd2b584a453cfc2bafd66c399d74a3bfbaa3",
   "public/education-app.js": "fd73242c206bae11922af9175f8dba74331946d5",
   "public/square-payments.js": "7eed27c0d7669a2eabf5d2b9a0461eb2c3976af1",
-  "public/member-plans.js": "ee1c0e6368ddf32d89eb31adb20d9c2c6e1c3b03",
-  "public/student-account.js": "b76c2c36f0c5192d01ea75b426dd1791df633ede",
-  "public/admin-email.js": "dcec837041bdfdf9aa6a7454c2c2818e7467c6da",
+  "public/member-plans.js": "f2ab4cf9c406e3af94b8f9d6cc4149a23f1a54c2",
+  "public/student-account.js": "a78fe524a97cf7694434231ed935bed93471f242",
+  "public/admin-email.js": "f0d8cbaabf4762c9f484e8385f0778fe93c15b29",
   "public/account-management.js": "803b867c77f8479097ec6e8ce48c3e188c05bc23",
   "server/contract-invite.js": "b33710b901a97f27404ba5febb6b01c76d364ee3",
   "package-lock.json": "8ed9e57022c278fb2d1c0a1a54d42cf361a2d19a"

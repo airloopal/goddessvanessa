@@ -14,22 +14,24 @@ function commercialHTML({title,text,link,label,eyebrow='HOUSE OF VANESSA',footer
 async function commercialPreferenceKey(email){return 'marketing-preference:'+await chatHash(email.trim().toLowerCase());}
 async function commercialSavePreference(env,student,enabled){
  const key=await commercialPreferenceKey(student.email),old=await squareRecord(env,key),token=old?.unsubscribeToken||chatToken(),now=new Date().toISOString();
- const value={enabled,emailHash:key.split(':')[1],studentId:student.id,consentVersion:'offers-weekly-v1',...(enabled?{consentedAt:now}:{unsubscribedAt:now}),unsubscribeToken:token};
+ const value={enabled,emailHash:key.split(':')[1],studentId:student.id,consentVersion:'offers-weekly-v1',...(enabled?{consentedAt:now}:{unsubscribedAt:now}),unsubscribeToken:token,...(old?.ownerExcluded===true?{ownerExcluded:true}: {})};
  await db(env).batch([db(env).prepare('INSERT INTO prototype_settings(id,content,revision,updated_at) VALUES(?,?,1,?) ON CONFLICT(id) DO UPDATE SET content=excluded.content,revision=prototype_settings.revision+1,updated_at=excluded.updated_at').bind(key,JSON.stringify(value),now),db(env).prepare('INSERT INTO prototype_settings(id,content,revision,updated_at) VALUES(?,?,1,?) ON CONFLICT(id) DO NOTHING').bind('marketing-unsubscribe:'+await chatHash(token),JSON.stringify({key}),now)]);
  return {enabled};
 }
-function commercialContent(kind,name,discount=false){
- const hello='Hi '+String(name||'there').split(/\s+/)[0]+',',offer=discount?'\n\nBlack Friday: 15% off your next Contract purchase until 30 November, 23:59 UK time. Renewals and upgrades only. One offer per purchase; no stacking.':'',common='\n\nYour next plan starts after your current paid term. No automatic charge. Keep your existing login code and conversation.';
- if(kind==='black-friday')return {title:'Your next chapter. 15% less.',subject:'House of Vanessa · Your Black Friday invitation',text:hello+'\n\nContinue your private access with a Contract that suits you.'+offer+common,label:'Choose your next Contract',path:'/plans.html'};
- if(kind==='renewal')return {title:'Keep your membership going.',subject:'House of Vanessa · Choose your next Contract',text:hello+'\n\nYour current access is nearing its end. Choose your next Contract to keep your conversation going.'+offer+common,label:'Renew Membership',path:'/plans.html'};
+function commercialContent(kind,name,discount=false,expired=false){
+ const hello='Hi '+String(name||'there').split(/\s+/)[0]+',',offer=discount?'\n\nBlack Friday: 15% off your next Contract purchase until 30 November, 23:59 UK time. Renewals and upgrades only. One offer per purchase; no stacking.':'',common=expired?'\n\nYour new term starts once your payment is confirmed. No automatic charge. Keep your existing login code and conversation.':'\n\nYour next plan starts after your current paid term. No automatic charge. Keep your existing login code and conversation.';
+ if(kind==='black-friday')return {title:'Your next chapter. 15% less.',subject:'House of Vanessa · Your Black Friday invitation',text:hello+(expired?'\n\nReturn to your private access with a new Contract that suits you.':'\n\nContinue your private access with a Contract that suits you.')+offer+common,label:'Choose your next Contract',path:'/plans.html'};
+ if(kind==='renewal')return {title:'Keep your membership going.',subject:'House of Vanessa · Choose your next Contract',text:hello+(expired?'\n\nYour previous Contract has ended. Choose a new Contract to return to your conversation.':'\n\nYour current access is nearing its end. Choose your next Contract to keep your conversation going.')+offer+common,label:'Renew Membership',path:'/plans.html'};
  if(kind==='upgrade')return {title:'Make room for more.',subject:'House of Vanessa · Explore your next plan',text:hello+'\n\nExplore a longer Contract for your next term, at the price shown before you pay.'+offer+common,label:'Explore Contract plans',path:'/plans.html'};
  return {title:'A little extra, by choice.',subject:'House of Vanessa · A gift for Goddess',text:hello+'\n\nIf you would like to send a little extra, explore Goddess’s Feed and choose a gift on a post you enjoy.\n\nGifts are optional and full price. This gift is non-refundable. No automatic charge.',label:'Explore Goddess’s Feed',path:'/feed.html'};
 }
 async function commercialEligible(env,s){
  if(!s||s.status!=='active'||!noticeEmail(s.email))return false;
- const p=await squareRecord(env,await commercialPreferenceKey(s.email));if(!p?.enabled||p.studentId!==s.id||p.consentVersion!=='offers-weekly-v1')return false;
+ const p=await squareRecord(env,await commercialPreferenceKey(s.email));if(!p?.enabled||p.ownerExcluded===true||p.studentId!==s.id||p.consentVersion!=='offers-weekly-v1')return false;
  const life=await accountRecord(env,s.id);if(life.until>Date.now()||['pending','approved','deleting','deleted'].includes(life.deletion))return false;
- return await squareAccessAllowed(env,s.user_id);
+ if(await squareAccessAllowed(env,s.user_id))return true;
+ const {entry,contract}=await squarePaymentState(env,s.user_id);
+ return entryEntitled(entry)&&contract?.status==='paid'&&Number.isFinite(Date.parse(contract.expiresAt));
 }
 async function commercialPayload(env,s,kind){
  s=await db(env).prepare('SELECT id,user_id,name,email,status FROM chat_students WHERE id=?').bind(s.id).first();
@@ -38,7 +40,10 @@ async function commercialPayload(env,s,kind){
  if(!settings.enabled||!origin||squareMode(env)!=='production')return null;
  const discount=!!commercialPrice(env,settings,{amount:100}).offerId;
  if(kind==='black-friday'&&!discount)return null;
- const c=commercialContent(kind,s.name,kind!=='gift'&&discount),unsubscribe=origin+'/email-preferences.html?unsubscribe='+p.unsubscribeToken;
+ const expired=!await squareAccessAllowed(env,s.user_id);
+ if(expired&&kind==='gift')return null;
+ if(expired&&kind==='upgrade')kind='renewal';
+ const c=commercialContent(kind,s.name,kind!=='gift'&&discount,expired),unsubscribe=origin+'/email-preferences.html?unsubscribe='+p.unsubscribeToken;
  return {from:env.EMAIL_FROM,to:[s.email],subject:c.subject,text:c.text+'\n\n'+origin+c.path+'\n\nUnsubscribe from offers: '+unsubscribe,html:commercialHTML({...c,link:origin+c.path,eyebrow:kind==='black-friday'?'BLACK FRIDAY · 15% OFF':'YOUR MEMBERSHIP',footer:'Optional member offers · At most one promotional email every seven days. Message and account alerts are separate.',unsubscribe}),headers:{'List-Unsubscribe':'<'+origin+'/api/email/unsubscribe?token='+p.unsubscribeToken+'>','List-Unsubscribe-Post':'List-Unsubscribe=One-Click'}};
 }
 async function commercialDispatch(env){
@@ -77,7 +82,7 @@ async function commercialAPI(request,env,url){
  }
  if(url.pathname==='/api/email/admin'){
   const owner=!!request.headers.get('oai-authenticated-user-id')&&request.headers.get('oai-authenticated-user-email')?.toLowerCase()===EDUCATION_OWNER&&request.headers.get('x-chat-role')!=='student';if(!owner)return json({error:'Goddess access required'},403);
-  if(request.method==='GET'){const settings=await commercialSettings(env),counts=await db(env).prepare("SELECT content::jsonb->>'state' AS state,COUNT(*)::int AS count FROM prototype_settings WHERE id LIKE 'marketing-delivery:%' GROUP BY 1").all();const subscribed=await db(env).prepare("SELECT COUNT(*)::int AS count FROM prototype_settings WHERE id LIKE 'marketing-preference:%' AND content::jsonb->>'enabled'='true'").first();return json({settings,subscribed:subscribed.count,counts:counts.results,samples:['black-friday','renewal','upgrade','gift'].map(kind=>{const c=commercialContent(kind,'Alex',true);return {title:c.title,html:commercialHTML({...c,link:'https://houseofvanessa.com'+c.path,unsubscribe:'https://houseofvanessa.com/email-preferences.html',footer:'Preview only. No email is being sent.'})};})});}
+  if(request.method==='GET'){const settings=await commercialSettings(env),counts=await db(env).prepare("SELECT content::jsonb->>'state' AS state,COUNT(*)::int AS count FROM prototype_settings WHERE id LIKE 'marketing-delivery:%' GROUP BY 1").all();const subscribed=await db(env).prepare("SELECT COUNT(*)::int AS count FROM prototype_settings WHERE id LIKE 'marketing-preference:%' AND content::jsonb->>'enabled'='true' AND COALESCE(content::jsonb->>'ownerExcluded','false')<>'true'").first();return json({settings,subscribed:subscribed.count,counts:counts.results,samples:['black-friday','renewal','upgrade','gift'].map(kind=>{const c=commercialContent(kind,'Alex',true);return {title:c.title,html:commercialHTML({...c,link:'https://houseofvanessa.com'+c.path,unsubscribe:'https://houseofvanessa.com/email-preferences.html',footer:'Preview only. No email is being sent.'})};})});}
   if(request.method!=='POST')return json({error:'Method not allowed'},405);const body=await educationBody(request,url,1000);if(body instanceof Response)return body;
   if(typeof body.enabled!=='boolean'||typeof body.blackFriday!=='boolean'||Object.keys(body).some(k=>!['enabled','blackFriday'].includes(k)))return json({error:'Choose the email and offer switches.'},400);
   await commercialDeliveryWrite(env,'commercial-settings:'+squareMode(env),{enabled:body.enabled,blackFriday:body.blackFriday,approvedAt:new Date().toISOString()});return json({ok:true});
